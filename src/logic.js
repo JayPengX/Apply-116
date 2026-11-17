@@ -244,34 +244,34 @@
       // and (where the official percentile table exists) clearly fewer people ahead of you than ahead of the cut.
       const robust = cmp.stages.filter(s => !s.arts).every(s => s.diff >= (s.last ? 2 : 1));
       tier = robust && (cmp.ratio == null || cmp.ratio <= SAFE_RATIO) ? '穩' : '適中';
-      reasons.push(cmp.binding ? `去年最低 ${cmp.binding.raw}，你 ${cmp.binding.mine}（+${cmp.binding.diff}）` : '高於去年每一關');
+      reasons.push(cmp.binding ? `115 最低 ${cmp.binding.raw}，你 ${cmp.binding.mine}（+${cmp.binding.diff}）` : '每一關都高於 115 最低');
     } else if (cmp.status === 'edge') {
       tier = '衝';
       const b = cmp.stages.find(s => s.last);
-      reasons.push(`剛好等於去年最後一關 ${b.raw}：要看同級分超額篩選`);
+      reasons.push(`剛好等於 115 最後一關 ${b.raw}：要看同級分超額篩選`);
     } else {
       if (cmp.missing && cmp.missing.length) {
         tier = '難';
-        reasons.push('去年用 ' + cmp.missing.map(k => SUBJ_NAME[k]).join('、') + ' 篩選，你沒有這科成績');
+        reasons.push('115 用 ' + cmp.missing.map(k => SUBJ_NAME[k]).join('、') + ' 篩選，你沒有這科成績');
       } else {
         const worst = cmp.stages.filter(s => s.diff != null && s.diff < 0).sort((a, b) => a.diff - b.diff)[0];
         const near = cmp.ratio != null ? cmp.ratio <= REACH_RATIO : cmp.minDiff >= -1;
         tier = near ? '衝' : '難';
-        reasons.push(`去年 ${worst.raw}，你 ${worst.mine}（${worst.diff}）`);
+        reasons.push(`115 最低 ${worst.raw}，你 ${worst.mine}（${worst.diff}）`);
       }
     }
-    if (cmp.unknown && tier !== '無資料') warnings.push('去年還有術科／APCS 篩選關卡，這裡沒算進去');
+    if (cmp.unknown && tier !== '無資料') warnings.push('115 還有術科／APCS 篩選關卡，這裡沒算進去');
 
     // Caps: last year's data is a weaker guide when the rules changed or the match is not exact.
     const capReasons = [];
     if (r.chg) capReasons.push('116 篩選倍率或科目跟 115 不同');
     if (r.via) capReasons.push('用的是' + (r.via.startsWith('同系') ? r.via : '相近系組') + '的資料');
     const e115 = expected115(r);
-    if (e115 && d.ei && d.ei < e115 * 0.85) capReasons.push(`預計甄試人數變少（${e115}→${d.ei}）`);
+    if (e115 && d.ei && d.ei < e115 * 0.85) capReasons.push(`預計甄試人數變少（115 約 ${e115} → 116 ${d.ei}）`);
     if (res.thRisk) capReasons.push('檢定邊緣');
     if (tier === '穩' && capReasons.length) { tier = '適中'; reasons.push('最多判「適中」：' + capReasons.join('；')); }
     else if (capReasons.length) warnings.push(capReasons.join('；'));
-    if (e115 && d.ei && d.ei > e115 * 1.15) warnings.push(`預計甄試人數變多（${e115}→${d.ei}），可能比去年好進`);
+    if (e115 && d.ei && d.ei > e115 * 1.15) warnings.push(`預計甄試人數變多（115 約 ${e115} → 116 ${d.ei}），可能比 115 好進`);
 
     res.tier = tier;
     res.e115 = e115;

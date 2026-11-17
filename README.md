@@ -13,7 +13,7 @@
 - 線上版：GitHub Pages（`docs/index.html`）
 - 離線版：下載 [`docs/index.html`](docs/index.html)，用瀏覽器打開就好。
 
-你的成績、候選和志願只存在自己的瀏覽器（localStorage），不會上傳。可以「備份我的資料」換裝置。
+你的成績、收藏和志願只存在自己的瀏覽器（localStorage），不會上傳。可以「備份我的資料」換裝置。
 
 ## 落點怎麼判斷
 
