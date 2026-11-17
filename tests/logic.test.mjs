@@ -255,10 +255,16 @@ test('115 screened nobody, but 116 screens other subjects or fewer people → �
   assert.equal(e.tier, '無資料');
   assert.match(e.reasons.join('；'), /國文 ×6/);
   assert.match(e.reasons.join('；'), /115 一階沒有篩掉人/);
-  // 115: 自 ×4.5, 名額 11 (about 50 people) screened nobody; 116: 自 ×3.5, 名額 13 (about 46): fewer people
+  // 115: 自 ×4.5, 名額 11 (about 50 people) screened nobody; 116: 自 ×3.5, 名額 9 (about 32): clearly fewer people
   const fewer = dept({ sub: [sub('自', null, 3.5)], mult: { 自: 4.5 }, cut: [], q: 11 });
+  fewer.q = 9;
+  const ef = L.evaluate(fewer, S({ 自: 15 }), O);
+  assert.equal(ef.tier, '無資料');
+  assert.match(ef.reasons.join('；'), /從約 50 減到約 32/);
+  // 名額 13 (about 46): within 10% of 115, so 115's "nobody was screened" still applies
   fewer.q = 13;
-  assert.equal(L.evaluate(fewer, S({ 自: 15 }), O).tier, '無資料');
+  assert.deepEqual(L.evaluate(fewer, S({ 自: 15 }), O).cmp.stages.map(s => s.kind), ['open']);
+  assert.equal(L.evaluate(fewer, S({ 自: 15 }), O).tier, '適中');
   // a 115 combination that screened nobody: its subjects come only from the 115 分則 (r115.combo)
   const combo = dept({ sub: [{ k: '國英社', p: ['國', '英', '社'], t: null, m: 7, w: null }], mult: { 組合: 7 }, cut: [], q: 1 });
   assert.equal(L.evaluate(combo, S({ 國: 12, 英: 12, 社: 12 }), O).tier, '無資料');

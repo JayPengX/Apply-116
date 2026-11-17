@@ -175,7 +175,7 @@ test('every 116 stage borrows a 115 cut only for exactly the same subjects, each
   }
   // 2,661 stages screen like 115, 354 changed only the 倍率, 388 use subjects 115 never screened together (or screened
   // nobody with, at a 116 size that is now smaller), 23 screened nobody in 115 and let through at least as many in 116
-  assert.deepEqual(kinds, { same: 2661, mult: 354, none: 387, open: 24 });
+  assert.deepEqual(kinds, { same: 2661, mult: 354, none: 384, open: 27 });
 });
 
 test('no tier is ever decided by a subject the 116 screening does not use', () => {
@@ -213,6 +213,11 @@ test('116 vs 115 spot checks (校系分則 and 115 篩選標準一覽表)', () =
   assert.equal(L.compare116(by['008432'], {}, D.pct).status, 'arts');
   // 彰師大揚鷹C組: 數B ×12 screened nobody in 115 and stays ×12 in 116
   assert.deepEqual(kinds('023262'), ['數B×12:open', '英×10:same']);
+  // 淡江外交全英: 社 ×6 screened nobody in 115 (名額 30, 180 people); 116 名額 29 (174 people) is within 10%
+  assert.equal(L.align116(by['014292']).stages.find(s => s.k === '社').kind, 'open');
+  // 中華都計智慧城市組: 自 ×9 screened nobody (99 people); 116 自 ×4 lets 48 through: cannot tell
+  const s373 = L.align116(by['017372']).stages.find(s => s.k === '自');
+  assert.equal(s373.kind, 'none'); assert.equal(s373.open.n115, 99); assert.equal(s373.open.n116, 48);
   // 臺北大學財政飛鳶組: 115 分則 says its 組合 ×7 was 國英數A社, the same as 116; nobody was screened
   assert.deepEqual(kinds('099202'), ['國+英+數A+社×7:open', '數A×6:open', '英×5:open']);
   // 佛光應用經濟國際商務組: 115 社 ×7 screened nobody; 116 screens 國 ×6 instead

@@ -204,8 +204,10 @@
    * 116, and a 116 stage borrows a 115 cut only when 115 screened exactly the same subjects. kind:
    *   same  same subjects and multiple in 115
    *   mult  same subjects, different multiple (the cut moves; 116 lets more people through when its multiple is bigger)
-   *   open  115 screened these subjects but nobody was cut, and 116 lets at least as many people through (倍率 × 名額)
-   *   none  no 115 cut applies: 115 never screened these subjects together, or it cut nobody but 116 lets fewer through
+   *   open  115 screened these subjects but nobody was cut, and 116 lets about as many people through or more
+   *         (倍率 × 名額, at most 10% fewer)
+   *   none  no 115 cut applies: 115 never screened these subjects together, or it cut nobody but 116 lets clearly
+   *         fewer through (st.open says so), or the 115 data is a sibling group's
    */
   function align116(d) {
     const r = d.r115;
@@ -234,8 +236,12 @@
           st.scaled = Math.abs(st.scale - 1) > SCALE_TOL; // structural: holds with or without scores
         }
       } else {
-        st.open = open.find(x => x.k === k) || null;
-        if (st.open && qk != null && p.m * d.q >= st.open.m * r.q) st.kind = 'open';
+        const o = open.find(x => x.k === k);
+        if (o) {
+          // 115 cut nobody here. 116 still cuts nobody if it lets through about as many people or more.
+          st.open = qk == null ? { ...o } : { ...o, n115: Math.round(o.m * r.q), n116: Math.round(p.m * d.q) };
+          if (qk != null && p.m * d.q >= o.m * r.q * (1 - SCALE_TOL)) st.kind = 'open';
+        }
       }
       return st;
     });
@@ -325,16 +331,16 @@
   }
   /** Why a 116 stage has no usable 115 cut, for the stages in cmp.unknown. */
   function unknownText(cmp) {
-    const none = cmp.unknown.filter(s => s.kind === 'none');
-    let t = '';
-    if (none.length) {
-      t = `116 用${none.map(s => `「${stageText(s)}」`).join('和')}篩選，115 沒有同樣科目的門檻`;
-      const stricter = none.filter(s => s.open);
-      if (stricter.length) t += `（${stricter.map(s => `115 ${partsText(s.parts)} 是 ×${s.open.m}，沒有篩掉人`).join('；')}）`;
+    const out = [];
+    const fresh = cmp.unknown.filter(s => s.kind === 'none' && !s.open);
+    if (fresh.length) out.push(`116 用${fresh.map(s => `「${stageText(s)}」`).join('和')}篩選，115 沒有同樣科目的門檻`);
+    for (const s of cmp.unknown.filter(x => x.kind === 'none' && x.open)) {
+      const why = s.open.n115 != null ? ` 116 收的人從約 ${s.open.n115} 減到約 ${s.open.n116}` : '那是同系別組的資料，人數沒辦法比';
+      out.push(`116 用「${stageText(s)}」篩選：115 ${partsText(s.parts)} ×${s.open.m} 沒有篩掉人，但${why}，看不出 116 會不會篩人`);
     }
     const unsure = cmp.unknown.filter(s => s.res === 'unsure');
-    if (unsure.length) t += (t ? '；' : '') + unsure.map(s => `116 ${stageText(s)} 比 115 的 ×${s.ref.m} 收得少，115 最低 ${s.v} 只是下限`).join('；');
-    return t;
+    if (unsure.length) out.push(unsure.map(s => `116 ${stageText(s)} 比 115 的 ×${s.ref.m} 收得少，115 最低 ${s.v} 只是下限`).join('；'));
+    return out.join('；');
   }
   /** One stage against its 115 cut, in words; when 116 lets through a different number of people, says so. */
   function cutReason(s) {

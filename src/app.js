@@ -200,7 +200,7 @@
     const name = `${partsLabel(s.parts)} ×${s.m}`;
     if (!r) return name;
     if (s.ref) { const tag = changeTag(s); return `${name}（115 最低 ${s.ref.v}${tag ? '，' + tag : ''}）`; }
-    return `${name}（${s.kind === 'open' ? '115 沒有篩掉人' : '115 沒有同樣科目'}）`;
+    return `${name}（${s.kind === 'open' ? '115 沒有篩掉人' : s.open ? '115 沒有篩掉人，116 收得比較少' : '115 沒有同樣科目'}）`;
   }
   /** 檢定 and the 116 一階 stages (each with its comparable 115 cut), for the copied plan and the CSV. */
   function requirementParts(d) {
@@ -502,7 +502,7 @@
     else if (!r) tail = `<span class="lab">${esc(d.why || '116 新設或改名，115 沒有可對應的校系')}</span>`;
     else if (!r.cut.length) tail = '<span class="lab">115 一階</span><span class="val">沒有篩掉人</span>';
     else {
-      const cut = A.stages.map(s => { const tag = s.ref ? changeTag(s) : ''; return `${partsLabel(s.parts)} ${s.ref ? s.ref.v + (tag ? `（${tag}）` : '') : s.kind === 'open' ? '沒篩人' : '（115 沒有）'}`; });
+      const cut = A.stages.map(s => { const tag = s.ref ? changeTag(s) : ''; return `${partsLabel(s.parts)} ${s.ref ? s.ref.v + (tag ? `（${tag}）` : '') : s.kind === 'open' ? '沒篩人' : s.open ? '沒篩人（116 收得比較少）' : '（115 沒有）'}`; });
       tail = `<span class="lab">115 一階最低</span><span class="val">${esc(cut.join(' → '))}</span>`;
     }
     return `<span class="lab">檢定</span><span class="val">${th.length ? esc(th.join('、')) : '不設'}</span><span class="sep">｜</span>` + tail;
@@ -632,9 +632,10 @@
         return stepHTML(cls, no, title, `<div class="reqs"><div class="req"><span class="what">115 最低 ${s.v}${unit}</span>${you}</div></div><p class="step-d">${esc(notes.join('。'))}</p>`);
       }
       // No 115 cut for these subjects: say why, and show where you stand among 115 考生 on them.
-      const what = s.kind === 'open' ? '115 這一關沒有篩掉人' : !r ? '沒有 115 資料' : '115 沒有同樣科目的門檻';
-      if (s.kind === 'open') notes.push(`115 也用${partsLabel(s.parts)}篩選（× ${s.open.m}），報名的人沒有超過這個倍數`);
-      else if (s.open) notes.push(`115 用${partsLabel(s.parts)} × ${s.open.m} 沒有篩掉人；116 改成 × ${s.m}，收的人比較少，看不出會不會篩人`);
+      const what = s.open ? '115 這一關沒有篩掉人' : !r ? '沒有 115 資料' : '115 沒有同樣科目的門檻';
+      const ppl = o => (o.n115 != null ? `；115 約 ${o.n115} 人，116 約 ${o.n116} 人` : '');
+      if (s.kind === 'open') notes.push(`115 也用${partsLabel(s.parts)}篩選（× ${s.open.m}），報名的人沒有超過收的人數${ppl(s.open)}`);
+      else if (s.open) notes.push(`115 用${partsLabel(s.parts)} × ${s.open.m} 沒有篩掉人，但${s.open.n115 != null ? ` 116 收的人變少（115 名額 ${r.q}，約 ${s.open.n115} 人；116 × ${s.m}、名額 ${d.q}，約 ${s.open.n116} 人）` : '那是同系別組的資料，人數沒辦法比'}，看不出 116 會不會篩人`);
       else if (r) notes.push(`115 沒有用${partsLabel(s.parts)}${s.parts.length > 1 ? '的總和' : ''}篩選，${r.cut.length ? '115 的門檻不能拿來比' : '看不出 116 會不會篩人'}`);
       if (has && s.mine != null) {
         if (s.kind === 'open') cls = 'ok';
@@ -653,9 +654,11 @@
     h += `<div class="plan116"><span>116 倍率篩選</span>${plan.length ? plan.map((p, i) => `<span class="tagc">${i + 1}. ${esc(partsLabel(p.parts))} × ${p.m}</span>`).join('') : '<span class="tagc">不篩學測</span>'}${arts}</div>`;
     if (r && r.cut.length && cmp.stages.length) {
       // 116 is the rule; say exactly how it differs from 115 and what 115 was.
-      const none = cmp.stages.filter(s => s.kind === 'none'), mult = cmp.stages.filter(s => s.kind === 'mult');
+      const none = cmp.stages.filter(s => s.kind === 'none' && !s.open), mult = cmp.stages.filter(s => s.kind === 'mult');
+      const fewer = cmp.stages.filter(s => s.kind === 'none' && s.open);
       const parts = [];
       if (none.length) parts.push(`${none.map(s => `${partsLabel(s.parts)} × ${s.m}`).join('、')} 是 115 沒有篩過的科目組合，沒有門檻可以比`);
+      if (fewer.length) parts.push(`${fewer.map(s => `${partsLabel(s.parts)} × ${s.m}`).join('、')} 在 115 沒有篩掉人，但 116 收的人比較少，看不出會不會篩人`);
       if (mult.length) parts.push(mult.map(s => `${partsLabel(s.parts)} 的倍率從 × ${s.ref.m} 改成 × ${s.m}${s.scale == null ? '' : s.scaled ? `（約 ${s.n115} → ${s.n116} 人）` : '（名額也改了，人數差不多）'}`).join('、'));
       if (cmp.dropped.length) parts.push(`115 的${cmp.dropped.map(c => `${partsLabel(c.parts)} × ${c.m ?? '?'}`).join('、')} 這${cmp.dropped.length > 1 ? '幾' : '一'}關，116 拿掉了`);
       if (parts.length) {
