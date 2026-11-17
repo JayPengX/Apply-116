@@ -13,6 +13,7 @@ const SHOTS = process.env.SHOTS || join(root, 'build', 'shots');
 mkdirSync(SHOTS, { recursive: true });
 let failures = 0;
 const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { failures++; console.log('  ✗ ' + msg); } };
+const TIER_ORDER = ['穩', '適中', '衝', '難', '不符', '無資料'];
 
 async function newPage(browser, ctxOpts = {}) {
   const ctx = await browser.newContext({ acceptDownloads: true, ...ctxOpts });
@@ -24,9 +25,23 @@ async function newPage(browser, ctxOpts = {}) {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   return { ctx, page, errors, external };
 }
-async function setScores(page, s) {
-  for (const [k, v] of Object.entries(s)) await page.selectOption(`select[data-score="${k}"]`, String(v));
+// Scores are entered on 15-cell sliders: click (or tap) the cell for the wanted 級分.
+async function setSlider(page, sel, v, touch) {
+  const t = page.locator(sel);
+  await t.evaluate(e => e.scrollIntoView({ block: 'center' }));
+  const b = await t.boundingBox();
+  const n = Number(await t.getAttribute('data-max'));
+  const x = b.x + ((v - 0.5) * b.width) / n, y = b.y + b.height / 2;
+  if (touch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
+  await page.waitForTimeout(80);
 }
+async function setScores(page, s, touch) {
+  for (const [k, v] of Object.entries(s)) {
+    if (k === '聽') await page.click(`#scorePanel [data-listen="${v}"]`);
+    else await setSlider(page, `#scorePanel [data-slider="${k}"]`, v, touch);
+  }
+}
+const scores = page => page.evaluate(() => window.__app.st().scores);
 
 const browser = await chromium.launch();
 try {
@@ -35,85 +50,112 @@ try {
     const { ctx, page, errors, external } = await newPage(browser, { viewport: { width: 1360, height: 900 } });
     const t0 = Date.now();
     await page.goto(URL_);
-    await page.waitForSelector('.item');
+    await page.waitForSelector('.row');
     ok(Date.now() - t0 < 5000, `loads in ${Date.now() - t0} ms`);
-    ok((await page.locator('#summary').innerText()).includes('2240') === false && (await page.locator('.item').count()) === 60, 'first page shows 60 departments before scores');
-    ok(await page.locator('.banner').isVisible(), 'asks for scores first');
+    ok((await page.locator('#list .row[data-code]').count()) === 50, 'first page shows 50 departments before scores');
+    ok(await page.locator('#overview .cta').isVisible(), 'asks for scores first');
+    ok(/另有 \d+ 個特殊組別/.test(await page.locator('#overview').innerText()), 'says how many special groups are left out');
 
-    await setScores(page, { 國: 12, 英: 15, 數B: 1, 社: 13, 聽: 'A' });
-    await page.click('[data-group="法政"]');
-    const summary = await page.locator('#summary').innerText();
-    ok(/穩 \d+/.test(summary) && /適中 \d+/.test(summary), 'summary shows tier counts: ' + summary);
-    const badges = await page.locator('.item .badge').allInnerTexts();
-    ok(badges.length > 10 && !badges.includes('不符'), '不符 hidden by default');
-    const order = ['穩', '適中', '衝', '難', '不符', '無資料'];
-    ok(badges.every((b, i) => i === 0 || order.indexOf(badges[i - 1]) <= order.indexOf(b)), 'sorted by tier');
+    // the editor must stay open while the first scores go in (regression: it collapsed after the first click)
+    await setScores(page, { 國: 12 });
+    ok(await page.locator('#scorePanel.editing [data-listen]').count() > 0, 'score editor stays open after the first score');
+    await setScores(page, { 英: 15, 數B: 1, 社: 13, 聽: 'A' });
+    const s = await scores(page);
+    ok(s.國 === '12' && s.英 === '15' && s.數B === '1' && s.社 === '13' && s.聽 === 'A', 'sliders set the scores: ' + JSON.stringify(s));
+    // keyboard: arrow keys move one 級分
+    await page.locator('#scorePanel [data-slider="社"]').focus();
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(450);
+    ok((await scores(page)).社 === '12', 'arrow key lowers a score');
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(450);
+    ok((await scores(page)).社 === '13', 'arrow key raises a score');
+    await page.click('[data-act="doneScores"]');
+    ok((await page.locator('#scorePanel .tile').count()) === 8, 'done collapses the editor to score tiles');
+
+    await page.click('#filterPanel [data-group="法政"]');
+    const ov = await page.locator('#overview').innerText();
+    ok(ov.includes('法政') && /穩\s*\d+/.test(ov) && /適中\s*\d+/.test(ov), 'overview shows the scope and tier counts');
+    const pills = await page.locator('#list .row .pill').allInnerTexts();
+    ok(pills.length > 10 && !pills.includes('不符'), '不符 hidden by default');
+    ok(pills.every((b, i) => i === 0 || TIER_ORDER.indexOf(pills[i - 1]) <= TIER_ORDER.indexOf(b)), 'sorted by tier');
 
     // show 不符 and check NTU law is blocked by 數B 檢定
-    await page.click('[data-tier="不符"]');
+    await page.click('#overview [data-tier="不符"]');
+    ok((await page.locator('#overview [data-tier="不符"]').getAttribute('aria-pressed')) === 'true', 'legend toggles a tier');
     await page.fill('#q', '臺灣大學 法律');
     await page.waitForTimeout(400);
-    const why = await page.locator('.item').first().innerText();
+    const why = await page.locator('#list .row').first().innerText();
     ok(why.includes('不符') && why.includes('數學B'), 'NTU law blocked by 數B 檢定');
     await page.fill('#q', '');
     await page.waitForTimeout(400);
 
-    // detail dialog
-    await page.locator('.item .i-main').first().click();
+    // detail drawer
+    await page.locator('#list .row .r-title').first().click();
     await page.waitForSelector('#detail[open]');
     const dtxt = await page.locator('#dBody').innerText();
-    ok(dtxt.includes('第一階段：檢定') && dtxt.includes('第二階段'), 'detail shows both stages');
+    ok(dtxt.includes('第一階段') && dtxt.includes('第二階段'), 'detail shows both stages');
+    ok(dtxt.includes('115'), 'detail labels the 115 reference year');
     await page.screenshot({ path: join(SHOTS, 'desktop-detail.png') });
     await page.click('#dClose');
+    await page.waitForFunction(() => !document.querySelector('#detail').open);
 
     // build a plan of 6 with the first six results
-    const codes = await page.locator('.item').evaluateAll(els => els.slice(0, 7).map(e => e.dataset.code));
+    const codes = await page.locator('#list .row[data-code]').evaluateAll(els => els.slice(0, 7).map(e => e.dataset.code));
     for (const c of codes.slice(0, 6)) {
-      await page.locator(`.item[data-code="${c}"] .i-main`).click();
-      await page.click(`#dBody [data-plan="${c}"]`);
+      await page.locator(`#list .row[data-code="${c}"] .r-title`).click();
+      await page.click(`#dFoot [data-plan="${c}"]`);
       await page.click('#dClose');
     }
-    await page.locator(`.item[data-code="${codes[6]}"] .i-main`).click();
-    await page.click(`#dBody [data-plan="${codes[6]}"]`);
+    await page.locator(`#list .row[data-code="${codes[6]}"] .r-title`).click();
+    await page.click(`#dFoot [data-plan="${codes[6]}"]`);
     ok((await page.locator('#toast').innerText()).includes('6 個'), 'seventh choice is refused');
     await page.click('#dClose');
-    ok((await page.locator('#planCount').innerText()) === '6/6', 'plan counter 6/6');
+    ok((await page.locator('#tabs [data-plancount]').innerText()) === '6/6', 'plan counter 6/6');
 
-    await page.click('[data-tab="plan"]');
+    await page.click('#tabs [data-tab="plan"]');
     ok((await page.locator('#planList li[data-code]').count()) === 6, 'plan tab lists 6');
-    ok(await page.locator('#planAnalysis .timeline li').count() > 6, 'plan timeline rendered');
-    // reorder
+    ok((await page.locator('#plan .cal > li').count()) > 3, 'plan calendar rendered');
+    ok((await page.locator('#plan .check').count()) > 2, 'plan checks rendered');
     const first = await page.locator('#planList li[data-code]').first().getAttribute('data-code');
-    await page.click(`[data-down="${first}"]`);
+    await page.click(`#planList [data-down="${first}"]`);
     ok((await page.locator('#planList li[data-code]').nth(1).getAttribute('data-code')) === first, 'move down works');
-    // CSV download
-    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#csvPlan')]);
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="csvPlan"]')]);
     ok(dl.suggestedFilename().endsWith('.csv'), 'CSV downloads');
     await page.screenshot({ path: join(SHOTS, 'desktop-plan.png'), fullPage: true });
 
     // persistence
     await page.reload();
-    await page.waitForSelector('.item');
-    ok((await page.locator('#planCount').innerText()) === '6/6', 'plan survives reload');
-    ok((await page.inputValue('select[data-score="英"]')) === '15', 'scores survive reload');
+    await page.waitForSelector('#planList li[data-code]');
+    ok((await page.locator('#tabs [data-plancount]').innerText()) === '6/6', 'plan survives reload (and the page reopens on the plan tab)');
+    await page.click('#tabs [data-tab="explore"]');
+    await page.waitForSelector('.row');
+    ok((await page.locator('#scorePanel [data-focus="英"] .v').innerText()) === '15', 'scores survive reload');
 
     // boost tab
-    await page.click('[data-tab="boost"]');
-    await page.waitForSelector('.boost-table');
+    await page.click('#tabs [data-tab="boost"]');
+    await page.waitForSelector('#boost .heat');
     const btxt = await page.locator('#boost').innerText();
     ok(btxt.includes('擋住') && btxt.includes('數學B'), 'boost tab names the 數B blocker');
-    await page.selectOption('select[data-try="數B"]', '6');
+    await setSlider(page, '#boost [data-try="數B"]', 6);
+    await page.waitForTimeout(300);
     ok((await page.locator('#tryOut').innerText()).includes('→'), 'what-if lists improved departments');
+    ok((await scores(page)).數B === '1', 'what-if does not change the saved scores');
     await page.screenshot({ path: join(SHOTS, 'desktop-boost.png'), fullPage: true });
 
     // guide
-    await page.click('[data-tab="guide"]');
+    await page.click('#tabs [data-tab="guide"]');
     ok((await page.locator('#guide').innerText()).includes('登記就讀志願序'), 'guide renders');
 
     // deep link
     await page.goto(URL_ + '#d=001012');
     await page.waitForSelector('#detail[open]');
     ok((await page.locator('#dTitle').innerText()) === '中國文學系', 'deep link opens a department');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#detail').open);
+    // the dialog's close event is async, so give it a moment to tidy the URL
+    const cleared = await page.waitForFunction(() => !/#d=/.test(location.hash), null, { timeout: 3000 }).then(() => true, () => false);
+    ok(cleared, 'closing the drawer clears the link');
 
     ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
     ok(external.length === 0, 'no network requests' + (external.length ? ': ' + external.join(', ') : ''));
@@ -124,17 +166,41 @@ try {
   {
     const { ctx, page, errors } = await newPage(browser, { ...devices['iPhone 13'] });
     await page.goto(URL_);
-    await page.waitForSelector('.item');
-    await setScores(page, { 國: 12, 英: 15, 社: 13 });
-    const sw = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    ok(sw <= 0, 'no horizontal scroll on phone (overflow ' + sw + ')');
+    await page.waitForSelector('.row');
+    ok(await page.locator('#bottomnav').isVisible(), 'bottom tab bar on phone');
+    await setScores(page, { 國: 12, 英: 15, 社: 13 }, true);
+    const s = await scores(page);
+    ok(s.國 === '12' && s.英 === '15' && s.社 === '13', 'taps set the scores: ' + JSON.stringify(s));
+    await page.click('[data-act="doneScores"]');
     await page.screenshot({ path: join(SHOTS, 'phone-list.png') });
-    await page.locator('.item .i-main').first().click();
+
+    // filters live in a bottom sheet
+    await page.click('#openFilters');
+    await page.waitForSelector('#sheet[open]');
+    await page.click('#sheetBody [data-group="法政"]');
+    ok(/看 [\d,]+ 個結果/.test(await page.locator('#sheetDone').innerText()), 'sheet button shows the result count');
+    await page.click('#sheetDone');
+    await page.waitForFunction(() => !document.querySelector('#sheet').open);
+    ok((await page.locator('#overview').innerText()).includes('法政'), 'filter from the sheet applies');
+    // the panel moves back on the dialog's async close event
+    const back = await page.waitForFunction(() => document.querySelector('#filterPanel').parentElement.id === 'rail', null, { timeout: 3000 }).then(() => true, () => false);
+    ok(back, 'filter panel returns to the page');
+
+    await page.locator('#list .row .r-title').first().click();
     await page.waitForSelector('#detail[open]');
     const box = await page.locator('#detail').boundingBox();
     ok(box.width <= 400, 'detail is full-screen on phone');
     await page.screenshot({ path: join(SHOTS, 'phone-detail.png') });
-    ok(errors.length === 0, 'no console errors on phone');
+    await page.click('#dClose');
+    await page.waitForFunction(() => !document.querySelector('#detail').open);
+
+    for (const tab of ['explore', 'plan', 'boost', 'guide']) {
+      await page.click(`#bottomnav [data-tab="${tab}"]`);
+      if (tab === 'boost') await page.waitForSelector('#boost .heat');
+      const sw = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      ok(sw <= 0, `no horizontal scroll on phone: ${tab} (overflow ${sw})`);
+    }
+    ok(errors.length === 0, 'no console errors on phone' + (errors.length ? ': ' + errors.join(' | ') : ''));
     await ctx.close();
   }
 
@@ -142,9 +208,12 @@ try {
   {
     const { ctx, page } = await newPage(browser, { colorScheme: 'dark', viewport: { width: 1200, height: 800 } });
     await page.goto(URL_);
-    await page.waitForSelector('.item');
+    await page.waitForSelector('.row');
     const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    ok(bg === 'rgb(15, 20, 24)', 'dark background ' + bg);
+    ok(bg === 'rgb(14, 17, 22)', 'dark background ' + bg);
+    await page.click('#themeBtn');
+    const bg2 = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    ok(bg2 !== bg, 'theme button switches to light ' + bg2);
     await page.screenshot({ path: join(SHOTS, 'dark.png') });
     await ctx.close();
   }
@@ -154,9 +223,9 @@ try {
     const { ctx, page, errors } = await newPage(browser);
     await page.addInitScript(() => { Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } }); });
     await page.goto(URL_);
-    await page.waitForSelector('.item');
+    await page.waitForSelector('.row');
     await setScores(page, { 國: 10 });
-    ok(errors.length === 0, 'works when localStorage throws');
+    ok((await scores(page)).國 === '10' && errors.length === 0, 'works when localStorage throws');
     await ctx.close();
   }
 } finally {
