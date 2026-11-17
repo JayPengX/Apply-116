@@ -182,7 +182,9 @@ try {
     await page.click('#sheetDone');
     await page.waitForFunction(() => !document.querySelector('#sheet').open);
     ok((await page.locator('#overview').innerText()).includes('法政'), 'filter from the sheet applies');
-    ok(await page.evaluate(() => document.querySelector('#filterPanel').parentElement.id === 'rail'), 'filter panel returns to the page');
+    // the panel moves back on the dialog's async close event
+    const back = await page.waitForFunction(() => document.querySelector('#filterPanel').parentElement.id === 'rail', null, { timeout: 3000 }).then(() => true, () => false);
+    ok(back, 'filter panel returns to the page');
 
     await page.locator('#list .row .r-title').first().click();
     await page.waitForSelector('#detail[open]');
