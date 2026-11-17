@@ -96,10 +96,10 @@ test('new department without 115 data → 無資料 with a reason', () => {
   assert.ok(e.reasons[0].length > 0);
 });
 
-test('穩 is capped at 適中 when rules changed or the data is from a sibling group', () => {
+test('穩 is capped at 適中 when the 116 倍率 changed or the data is from a sibling group', () => {
   const base = { sub: [sub('國', null, 3)], cut: [{ raw: '國文8', s: ['國'], v: 8 }] };
   assert.equal(L.evaluate(dept(base), S({ 國: 15 }), O).tier, '穩');
-  assert.equal(L.evaluate(dept({ ...base, chg: true }), S({ 國: 15 }), O).tier, '適中');
+  assert.equal(L.evaluate(dept({ ...base, mult: { 國: 2.5 } }), S({ 國: 15 }), O).tier, '適中'); // 115 ×2.5 → 116 ×3
   assert.equal(L.evaluate(dept({ ...base, via: '同系去年的「X」' }), S({ 國: 15 }), O).tier, '適中');
   assert.equal(L.evaluate(dept({ ...base, ei: 10, q: 10, mult: { 國: 3 } }), S({ 國: 15 }), O).tier, '適中'); // 30 → 10 interviewees
 });
@@ -175,4 +175,95 @@ test('二階 items are sorted into kinds', () => {
   assert.equal(L.hasInterview(d), false);
   assert.equal(L.noVisit(d), false);
   assert.equal(L.noVisit({ idays: [] }), true);
+});
+
+// ---------------------------------------------------------------- 116 rules first (115 cuts only for the same subjects)
+test('116 screens a combination 115 never used → 無資料, not judged on 115 subjects', () => {
+  // 115 教育心理與輔導: 國+英+數B+社 ×3 ≥ 53; 116: 國+英+社 ×3
+  const d = dept({ sub: [sub('國', null, 3), sub('英', null, 3), sub('社', null, 3)], mult: { 組合: 3 },
+    cut: [{ raw: '國英數B社53', s: ['國', '英', '數B', '社'], v: 53 }] });
+  const e = L.evaluate(d, S({ 國: 14, 英: 14, 數B: 1, 社: 14 }), O);
+  assert.equal(e.cmp.status, 'unknown');
+  assert.equal(e.tier, '無資料');
+  assert.match(e.reasons[0], /國\+英\+社 ×3/);
+  assert.equal(e.cmp.stages[0].kind, 'none');
+  assert.equal(e.cmp.dropped.length, 1);
+});
+
+test('a subject 115 screened but 116 does not is ignored (no 難 for a subject you did not take)', () => {
+  // 115: 英 ×10 ≥ 8 → 數A ×3 ≥ 10; 116: 英 ×3 only
+  const d = dept({ sub: [sub('英', null, 3)], mult: { 英: 10, 數A: 3 }, cut: [{ raw: '英文8', s: ['英'], v: 8 }, { raw: '數學A10', s: ['數A'], v: 10 }] });
+  const top = L.evaluate(d, S({ 英: 15 }), O);
+  assert.notEqual(top.tier, '難');
+  assert.equal(top.tier, '適中'); // 倍率 changed: never 穩
+  assert.ok(top.reasons.some(r => r.includes('拿掉了')));
+  // 英 9 passes 115's ×10 cut but 116 keeps only 3 × quota: not inside the smaller group
+  const low = L.evaluate(d, S({ 英: 9 }), O);
+  assert.equal(low.cmp.stages[0].res, 'short');
+  assert.ok(['衝', '難'].includes(low.tier));
+});
+
+test('missing a stage that does match still counts when another stage is new', () => {
+  const d = dept({ sub: [sub('英', null, 8), sub('國', null, 3), sub('社', null, 3)], mult: { 英: 8, 組合: 3 },
+    cut: [{ raw: '英文13', s: ['英'], v: 13 }, { raw: '國英數B社53', s: ['國', '英', '數B', '社'], v: 53 }] });
+  const e = L.evaluate(d, S({ 國: 15, 英: 9, 社: 15 }), O);
+  assert.equal(e.cmp.status, 'fail');
+  assert.equal(e.tier, '難');
+  assert.ok(e.warnings.some(w => w.includes('國文+社會 ×3')));
+  assert.equal(L.evaluate(d, S({ 國: 15, 英: 14, 社: 15 }), O).tier, '無資料');
+});
+
+test('a bigger 116 倍率 can turn a miss into 衝; a smaller one needs room above the 115 cut', () => {
+  const lenient = dept({ sub: [sub('英', null, 3)], mult: { 英: 2 }, cut: [{ raw: '英文13', s: ['英'], v: 13 }] });
+  const e = L.evaluate(lenient, S({ 英: 12 }), O);
+  assert.equal(e.cmp.stages[0].kind, 'mult');
+  assert.ok(['maybe', 'fail'].includes(e.cmp.stages[0].res));
+  assert.notEqual(L.evaluate(lenient, S({ 英: 13 }), O).tier, '穩');
+  assert.equal(L.evaluate(lenient, S({ 英: 13 }), O).cmp.stages[0].res, 'pass');
+  const strict = dept({ sub: [sub('國', null, 3), sub('英', null, 3), sub('社', null, 3)], mult: { 組合: 4 }, cut: [{ raw: '國英社38', s: ['國', '英', '社'], v: 38 }] });
+  assert.equal(L.evaluate(strict, S({ 國: 13, 英: 13, 社: 12 }), O).cmp.stages[0].res, 'short'); // just at the 115 cut
+  assert.equal(L.evaluate(strict, S({ 國: 15, 英: 15, 社: 15 }), O).tier, '適中');
+});
+
+test('116 order and grouping decide the stages: equal multiples are summed and matched to the same 115 sum', () => {
+  // 115 臺大政治理論: (國+社) ×5 ≥ 28 → 英 ×2.5 ≥ 14; 116 國際關係組: 國 ×5, 社 ×5, 英 ×3
+  const d = dept({ sub: [sub('國', null, 5), sub('英', null, 3), sub('社', null, 5)], mult: { 國: 5, 英: 2.5, 社: 5 },
+    cut: [{ raw: '(國文+社會)28', s: ['國', '社'], v: 28 }, { raw: '英文14', s: ['英'], v: 14 }] });
+  const A = L.align116(d);
+  assert.deepEqual(A.stages.map(s => [s.k, s.kind]), [['國+社', 'same'], ['英', 'mult']]);
+  assert.equal(A.stages[1].last, true);
+});
+
+test('115 stages that screened nobody, 術科-only screening, and no 倍率 at all', () => {
+  // 115: 數B ×12 (nobody cut) → 英 ×10 ≥ 9
+  const open = dept({ sub: [sub('數B', null, 12), sub('英', null, 10)], mult: { 數B: 12, 英: 10 }, cut: [{ raw: '英文9', s: ['英'], v: 9 }] });
+  const e = L.evaluate(open, S({ 數B: 5, 英: 13 }), O);
+  assert.deepEqual(e.cmp.stages.map(s => s.kind), ['open', 'same']);
+  assert.notEqual(e.tier, '無資料');
+  const stricter = dept({ sub: [sub('數B', null, 6), sub('英', null, 3)], mult: { 數B: 12, 英: 3 }, cut: [{ raw: '英文9', s: ['英'], v: 9 }] });
+  assert.equal(L.evaluate(stricter, S({ 數B: 5, 英: 13 }), O).tier, '無資料');
+  const artsOnly = dept({ sub: [sub('國', '均標')], mult: { 組合: 3 }, cut: [{ raw: '國英21', s: ['國', '英'], v: 21 }] });
+  artsOnly.arts = { items: [{ i: '彩繪技法', t: null, m: 10, w: 1 }] };
+  assert.equal(L.evaluate(artsOnly, S({ 國: 15, 英: 15 }), O).tier, '無資料');
+  assert.equal(L.evaluate(dept({ sub: [sub('國', '均標')], r115: false }), S({ 國: 15 }), O).tier, '穩'); // new 系, no 倍率
+});
+
+test('115 screened nobody, but 116 screens other subjects or fewer people → 無資料, not 適中', () => {
+  // 115: 社 ×7 screened nobody; 116: 國 ×6
+  const moved = dept({ sub: [sub('國', null, 6)], mult: { 社: 7 }, cut: [], q: 7 });
+  const e = L.evaluate(moved, S({ 國: 15 }), O);
+  assert.equal(e.tier, '無資料');
+  assert.match(e.reasons.join('；'), /國文 ×6/);
+  assert.match(e.reasons.join('；'), /115 一階沒有篩掉人/);
+  // 115: 自 ×4.5, 名額 11 (about 50 people) screened nobody; 116: 自 ×3.5, 名額 13 (about 46): fewer people
+  const fewer = dept({ sub: [sub('自', null, 3.5)], mult: { 自: 4.5 }, cut: [], q: 11 });
+  fewer.q = 13;
+  assert.equal(L.evaluate(fewer, S({ 自: 15 }), O).tier, '無資料');
+  // a 115 combination that screened nobody: its subjects come only from the 115 分則 (r115.combo)
+  const combo = dept({ sub: [{ k: '國英社', p: ['國', '英', '社'], t: null, m: 7, w: null }], mult: { 組合: 7 }, cut: [], q: 1 });
+  assert.equal(L.evaluate(combo, S({ 國: 12, 英: 12, 社: 12 }), O).tier, '無資料');
+  combo.r115.combo = ['國', '英', '社'];
+  const ec = L.evaluate(combo, S({ 國: 12, 英: 12, 社: 12 }), O);
+  assert.deepEqual(ec.cmp.stages.map(s => s.kind), ['open']);
+  assert.equal(ec.tier, '適中');
 });

@@ -28,6 +28,13 @@ MATCH_FIXES_REMOVE = {
     ("056", "中國音樂學系擦弦組"): "115 申請入學沒有「擦弦組」（舊比對誤配到「彈弦組」，是不同樂器組，已移除）",
 }
 
+# Subjects of a 115 組合 (summed) stage that screened nobody: the 115 篩選結果 lists combinations only through their
+# cuts, so a combination without a cut needs the official 115 校系分則. Checked on 2026-11-17 against
+# https://www.cac.edu.tw/apply115/system/ColQry_115xappLyfOrStu_Azd5gP29/html/115_<code>.htm
+COMBO115 = {
+    "099202": ["國", "英", "數A", "社"],  # 臺北大學財政學系(飛鳶組): 篩選 國英數A社 ×7
+}
+
 # School main-campus city (校本部). Department names that state a campus override this.
 CITY = {
     "001": "臺北市", "002": "臺北市", "003": "臺中市", "004": "臺南市", "005": "臺北市", "006": "臺北市",
@@ -198,6 +205,8 @@ def main():
                 "gender": ref.get("gender"), "entr": entrance,
                 "note": ref.get("note") or "",
             }
+            if ref["code115"] in COMBO115 and "組合" in ref["mult"]:
+                r115["combo"] = COMBO115[ref["code115"]]
         near = None
         if not r115:
             cands = sorted(((difflib.SequenceMatcher(None, norm(n), norm(name)).ratio(), c, n)

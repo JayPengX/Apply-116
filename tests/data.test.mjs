@@ -155,3 +155,75 @@ test('二階 spot checks against the official 116 校系分則', () => {
   assert.deepEqual(L.stage2(by['001092']).map(x => x.kind), ['review', 'written']);
   assert.deepEqual(L.reviewGroups(by['001012'].rv).map(g => [g.g, g.codes.join('')]), [['修課紀錄', 'A'], ['課程學習成果', 'BC'], ['多元表現', 'FJKN'], ['學習歷程自述', 'OPQ']]);
 });
+
+// ---------------------------------------------------------------- 116 stages first
+test('every 116 stage borrows a 115 cut only for exactly the same subjects, each cut at most once', () => {
+  const kinds = {};
+  for (const d of D.depts) {
+    const A = L.align116(d);
+    const used = new Set();
+    for (const s of A.stages) {
+      kinds[s.kind] = (kinds[s.kind] || 0) + 1;
+      if (!s.ref) continue;
+      assert.deepEqual([...s.ref.parts].sort(), [...s.parts].sort(), `${d.c} stage ${s.k}`);
+      assert.ok(!used.has(s.ref.i), `${d.c} reuses a 115 cut`);
+      used.add(s.ref.i);
+      assert.ok(s.kind === 'same' ? s.ref.m === s.m : s.ref.m !== s.m, `${d.c} kind`);
+    }
+    // the stages are the 116 rules: same subjects and multiples as the 116 校系分則, highest multiple first
+    assert.deepEqual(A.stages.map(s => s.m), L.screenPlan(d).map(p => p.m));
+  }
+  // 2,661 stages screen like 115, 354 changed only the 倍率, 388 use subjects 115 never screened together (or screened
+  // nobody with, at a 116 size that is now smaller), 23 screened nobody in 115 and let through at least as many in 116
+  assert.deepEqual(kinds, { same: 2661, mult: 354, none: 387, open: 24 });
+});
+
+test('no tier is ever decided by a subject the 116 screening does not use', () => {
+  const profiles = [{ 國: 12, 英: 15, 數B: 1, 社: 13, 聽: 'A' }, { 國: 13, 英: 13, 數A: 12, 自: 13, 聽: 'A' }, { 國: 10, 英: 9, 數B: 8, 社: 11, 聽: 'B' }];
+  const O = { std: D.std['115'], stdByYear: D.std, stdYear: '115', pct: D.pct };
+  for (const S of profiles) {
+    for (const d of D.depts) {
+      const e = L.evaluate(d, S, O);
+      const screened = new Set(L.screenPlan(d).flatMap(p => p.parts));
+      for (const s of (e.cmp && e.cmp.stages) || []) for (const p of s.parts) assert.ok(screened.has(p), `${d.c} judged on ${p}`);
+      if (e.tier === '難' || e.tier === '衝') assert.ok(e.cmp.stages.some(s => s.ref), `${d.c} ${e.tier} without a comparable 115 cut`);
+    }
+  }
+});
+
+test('116 vs 115 spot checks (校系分則 and 115 篩選標準一覽表)', () => {
+  const by = Object.fromEntries(D.depts.map(d => [d.c, d]));
+  const kinds = c => L.align116(by[c]).stages.map(s => `${s.k}×${s.m}:${s.kind}`);
+  // 臺師大教育心理與輔導: 115 國+英+數B+社 ×3 ≥ 53 → 116 國+英+社 ×3
+  assert.deepEqual(kinds('002022'), ['國+英+社×3:none']);
+  // 臺大政治理論組: 115 (國+社) ×5 → 英 ×2.5; 116 國 ×5 → (英+社) ×3
+  assert.deepEqual(kinds('001162'), ['國×5:none', '英+社×3:none']);
+  // 高醫公共衛生: 115 英 ×10 ≥ 8 → 數A ×3 ≥ 10; 116 英 ×3 only
+  assert.deepEqual(kinds('007102'), ['英×3:mult']);
+  assert.deepEqual(L.align116(by['007102']).dropped.map(c => c.raw), ['數學A10']);
+  // 270 → 78 people through 英: a change in people is structural, so it shows before any scores are typed in
+  const s007 = L.compare116(by['007102'], {}, D.pct).stages[0];
+  assert.equal(s007.n115, 270); assert.equal(s007.n116, 78); assert.equal(s007.scaled, true);
+  const s017 = L.compare116(by['017522'], {}, D.pct).stages[0]; // 社 ×3 名額 16 → ×4 名額 12: 48 → 48 people
+  assert.equal(s017.kind, 'mult'); assert.equal(s017.scaled, false);
+  // 臺大藥學: 116 keeps (數A+自) ×3 ≥ 28 and drops 115's 國英 ×2.5
+  assert.deepEqual(kinds('001272'), ['數A+自×3:same']);
+  assert.equal(L.align116(by['001272']).stages[0].ref.v, 28);
+  // 中原商業設計甲類: 115 screened 國英 21; 116 screens by 術科 only
+  assert.equal(L.compare116(by['008432'], {}, D.pct).status, 'arts');
+  // 彰師大揚鷹C組: 數B ×12 screened nobody in 115 and stays ×12 in 116
+  assert.deepEqual(kinds('023262'), ['數B×12:open', '英×10:same']);
+  // 臺北大學財政飛鳶組: 115 分則 says its 組合 ×7 was 國英數A社, the same as 116; nobody was screened
+  assert.deepEqual(kinds('099202'), ['國+英+數A+社×7:open', '數A×6:open', '英×5:open']);
+  // 佛光應用經濟國際商務組: 115 社 ×7 screened nobody; 116 screens 國 ×6 instead
+  const O = { std: D.std['115'], stdByYear: D.std, stdYear: '115', pct: D.pct };
+  const e130 = L.evaluate(by['130192'], { 國: '13', 英: '13', 社: '13' }, O);
+  assert.equal(e130.tier, '無資料');
+  assert.match(e130.reasons.join('；'), /國文 ×6/);
+  // A 115 組合 with no cut does not say its subjects: every such stage a 116 stage could match is filled from the 分則
+  for (const d of D.depts) {
+    const r = d.r115;
+    if (!r || r.mult['組合'] == null || r.combo || r.cut.some(c => c.s && c.s.length > 1)) continue;
+    assert.ok(!L.align116(d).stages.some(s => s.kind === 'none' && s.parts.length > 1), `${d.c}: 115 組合 subjects unknown`);
+  }
+});

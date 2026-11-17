@@ -14,6 +14,7 @@
   // Tuning for tiers. ratio = (115 考生 at or above my score) / (115 考生 at or above last year's cut).
   const SAFE_RATIO = 0.75; // 穩: at most 75% as many people at or above me as at or above the cut
   const REACH_RATIO = 1.4; // 衝: below the cut, but at most 40% more people ahead of me than ahead of the cut
+  const SCALE_TOL = 0.1; // a 116 stage that lets through more than 10% more or fewer people than 115 is scaled (compare116)
 
   /** A score is "not taken" when blank, missing, or 0 (project rule: blank or 0 = 沒考). */
   function val(S, k) {
@@ -158,6 +159,194 @@
     }));
   }
 
+  // ------------------------------------------------------------ 116 stages first, 115 cuts only where they apply
+  const STAGE_SUBJ = ['國', '英', '數A', '數B', '社', '自', '識', '實'];
+  const APCS_MULT = { 識: 'APCS識讀', 實: 'APCS實作' };
+  const setKey = ps => STAGE_SUBJ.filter(s => ps.includes(s)).join('+');
+  const numOrNull = v => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+  /** 國文 / 國文+社會 / 國+英+社 (APCS keeps its full name). */
+  function partsText(ps) {
+    if (ps.length <= 2) return ps.map(p => SUBJ_NAME[p] || p).join('+');
+    return ps.map(p => (APCS_MULT[p] ? SUBJ_NAME[p] : p)).join('+');
+  }
+
+  /** The 115 multiple of one 115 cut stage: a single subject, subjects with equal multiples (summed), or the 組合 row. */
+  function mult115(r, s) {
+    const m = r.mult || {};
+    const one = p => numOrNull(m[p] ?? m[APCS_MULT[p]]);
+    if (!s || !s.length) return null;
+    if (s.length === 1) return one(s[0]);
+    const ms = s.map(one);
+    if (ms.every(v => v != null && v === ms[0])) return ms[0];
+    return numOrNull(m['組合']);
+  }
+
+  /** 115 stages that screened nobody: listed in the 115 multiples but without a cut. Single subjects say which; a
+   *  combination (組合) says which only through r.combo, taken from the official 115 校系分則. */
+  function openStages115(r, cutKeys) {
+    const by = new Map(), out = [];
+    for (const [k, v] of Object.entries(r.mult || {})) {
+      const m = numOrNull(v);
+      if (m == null) continue;
+      if (k === '組合') { if (r.combo && r.combo.length) out.push({ m, parts: r.combo.slice(), k: setKey(r.combo) }); continue; }
+      const p = STAGE_SUBJ.includes(k) ? k : Object.keys(APCS_MULT).find(x => APCS_MULT[x] === k);
+      if (!p) continue;
+      if (!by.has(m)) by.set(m, []);
+      by.get(m).push(p);
+    }
+    for (const [m, ps] of by) out.push({ m, parts: ps, k: setKey(ps) });
+    return out.filter(x => !cutKeys.includes(x.k));
+  }
+
+  /**
+   * Line up the 116 一階 stages with 115. The 116 分則 is the rule: stages, subjects, multiples and order all come from
+   * 116, and a 116 stage borrows a 115 cut only when 115 screened exactly the same subjects. kind:
+   *   same  same subjects and multiple in 115
+   *   mult  same subjects, different multiple (the cut moves; 116 lets more people through when its multiple is bigger)
+   *   open  115 screened these subjects but nobody was cut, and 116 lets at least as many people through (倍率 × 名額)
+   *   none  no 115 cut applies: 115 never screened these subjects together, or it cut nobody but 116 lets fewer through
+   */
+  function align116(d) {
+    const r = d.r115;
+    const plan = screenPlan(d);
+    const artsM = d.arts ? d.arts.items.filter(i => i.m != null) : [];
+    const minM = plan.length ? plan[plan.length - 1].m : null;
+    const artsAfter = artsM.some(i => numOrNull(i.m) != null && minM != null && i.m < minM);
+    const cuts = r ? (r.cut || []).map((c, i) => ({ i, raw: c.raw, parts: c.s, v: c.v, apcs: !!c.apcs, m: c.s ? mult115(r, c.s) : null, k: c.s ? setKey(c.s) : null })) : [];
+    const open = r ? openStages115(r, cuts.filter(c => c.k).map(c => c.k)) : [];
+    // People let through a stage = 倍率 × 招生名額. Quotas compare only for the same 系 (not a sibling group's data).
+    const qk = r && !r.via && d.q && r.q ? d.q / r.q : null;
+    const used = new Set();
+    const stages = plan.map((p, i) => {
+      const k = setKey(p.parts);
+      const st = { parts: p.parts, m: p.m, k, last: i === plan.length - 1 && !artsAfter, apcs: p.parts.some(x => APCS_MULT[x]), kind: 'none', ref: null, open: null, scaled: false };
+      const cands = cuts.filter(c => c.k === k && !used.has(c.i));
+      if (cands.length) {
+        const gap = c => (c.m == null ? Infinity : Math.abs(c.m - p.m));
+        const ref = cands.find(c => c.m === p.m) || cands.slice().sort((a, b) => gap(a) - gap(b))[0];
+        used.add(ref.i);
+        st.ref = ref;
+        st.kind = ref.m == null || ref.m === p.m ? 'same' : 'mult';
+        if (ref.m != null && qk != null) { // 116 people through this stage ÷ 115's
+          st.scale = (p.m * d.q) / (ref.m * r.q);
+          st.n115 = Math.round(ref.m * r.q); st.n116 = Math.round(p.m * d.q); st.q115 = r.q; st.q116 = d.q;
+          st.scaled = Math.abs(st.scale - 1) > SCALE_TOL; // structural: holds with or without scores
+        }
+      } else {
+        st.open = open.find(x => x.k === k) || null;
+        if (st.open && qk != null && p.m * d.q >= st.open.m * r.q) st.kind = 'open';
+      }
+      return st;
+    });
+    return { stages, dropped: cuts.filter(c => c.k && !used.has(c.i)), cuts, arts116: artsM, artsAfter };
+  }
+
+  /**
+   * Compare my scores with the 116 stages (see align116). Each stage with a 115 cut gets res:
+   *   pass / edge (tied at the last stage) / fail (below the cut)
+   *   short  116 lets fewer people through: you reach the 115 cut, but not within the smaller 116 group
+   *   maybe  116 lets more people through: you miss the 115 cut, but would be within the bigger 116 group
+   * A stage is scaled when it lets through more than 10% more or fewer people than in 115 (倍率 × 招生名額). On the
+   * official 115 級分人數累計表 (the same table the 穩/衝 thresholds use) you are within the 116 group if
+   * (115 考生 at or above you) ≤ scale × (115 考生 at or above the 115 cut), scale = 116 people ÷ 115 people.
+   * status: free (116 has no 學測 倍率) | arts (116 screens only by 術科) | fail | unknown (a stage has no 115 cut)
+   *         | maybe | edge | pass
+   */
+  function compare116(d, S, pct) {
+    const A = align116(d);
+    const stages = A.stages.map(st => {
+      const { v: mine, missing } = sumOf(st.parts, S);
+      const o = Object.assign({}, st, { mine, missing });
+      if (st.ref) o.v = st.ref.v;
+      if (mine == null) return o;
+      o.topMine = topPercent(pct, st.parts, mine);
+      if (!st.ref) { if (st.kind === 'open') o.res = 'pass'; return o; }
+      o.diff = mine - st.ref.v;
+      const nm = countAtOrAbove(pct, st.parts, mine), nc = countAtOrAbove(pct, st.parts, st.ref.v);
+      if (nm != null && nc) { o.ratio = nm / nc; o.topCut = topPercent(pct, st.parts, st.ref.v); }
+      if (o.scaled) {
+        if (o.ratio != null) o.adj = o.ratio / st.scale;
+        if (st.scale < 1) o.res = o.diff < 0 ? 'fail' : o.adj == null ? 'unsure' : o.adj <= 1 ? 'pass' : 'short';
+        else if (o.diff < 0) o.res = o.adj != null && o.adj <= 1 ? 'maybe' : 'fail';
+        else o.res = st.last && o.diff === 0 && !(o.adj != null && o.adj <= SAFE_RATIO) ? 'edge' : 'pass';
+      } else {
+        o.res = o.diff < 0 ? 'fail' : st.last && o.diff === 0 ? 'edge' : 'pass';
+      }
+      return o;
+    });
+    const res = { stages, dropped: A.dropped, cuts: A.cuts, arts116: A.arts116, artsAfter: A.artsAfter };
+    res.unknown = stages.filter(s => s.kind === 'none' || s.res === 'unsure');
+    if (!stages.length) { res.status = A.arts116.length ? 'arts' : 'free'; return res; }
+    if (stages.some(s => s.mine == null)) {
+      res.status = 'fail';
+      res.missing = [...new Set(stages.flatMap(s => s.missing || []))];
+      return res;
+    }
+    const evals = stages.filter(s => s.ref);
+    const rel = s => (s.adj != null ? s.adj : s.ratio); // people ahead of you relative to the 116-sized group
+    res.minDiff = evals.length ? Math.min(...evals.map(s => s.diff)) : null;
+    const ratios = evals.map(rel).filter(x => x != null);
+    res.ratio = ratios.length ? Math.max(...ratios) : null;
+    res.binding = evals.reduce((a, b) => {
+      if (a == null) return b;
+      if (rel(b) != null && rel(a) != null) return rel(b) > rel(a) ? b : a;
+      return b.diff < a.diff ? b : a;
+    }, null);
+    const bad = evals.filter(s => s.res === 'fail' || s.res === 'short');
+    if (bad.length) {
+      res.status = 'fail';
+      res.worst = bad.reduce((a, b) => (rel(a) != null && rel(b) != null ? (rel(b) > rel(a) ? b : a) : b.diff < a.diff ? b : a));
+    } else if (res.unknown.length) res.status = 'unknown';
+    else if (evals.some(s => s.res === 'maybe')) res.status = 'maybe';
+    else if (evals.some(s => s.res === 'edge')) res.status = 'edge';
+    else res.status = 'pass';
+    return res;
+  }
+
+  const stageText = s => `${partsText(s.parts)} ×${s.m}`;
+  /** People let through a stage, 115 → 116: "115 ×4 約 48 人 → 116 ×3.5 約 49 人" (multiples only when quotas do not compare). */
+  function flowText(s) {
+    const mm = s.ref.m !== s.m;
+    if (s.n115 == null) return `115 ×${s.ref.m} → 116 ×${s.m}`;
+    return `115 ${mm ? `×${s.ref.m} ` : ''}約 ${s.n115} 人 → 116 ${mm ? `×${s.m} ` : ''}約 ${s.n116} 人`;
+  }
+  /** How the 116 screening differs from 115 in ways that move the cuts (empty when it screens the same way). */
+  function screenChanges(cmp) {
+    const out = [];
+    for (const s of cmp.stages) {
+      if (s.kind !== 'mult' || (s.scale != null && !s.scaled)) continue;
+      out.push(`${partsText(s.parts)} ${flowText(s)}${s.scale == null ? '' : s.scale < 1 ? '（收的人變少，門檻可能比 115 高）' : '（收的人變多，門檻可能比 115 低）'}`);
+    }
+    const order = cmp.stages.filter(s => s.ref).map(s => s.ref.i);
+    if (order.some((x, i) => i > 0 && x < order[i - 1])) out.push('篩選順序跟 115 不同');
+    for (const c of cmp.dropped) out.push(`116 拿掉了 115 的 ${partsText(c.parts)}${c.m != null ? ' ×' + c.m : ''} 這一關`);
+    return out;
+  }
+  /** Why a 116 stage has no usable 115 cut, for the stages in cmp.unknown. */
+  function unknownText(cmp) {
+    const none = cmp.unknown.filter(s => s.kind === 'none');
+    let t = '';
+    if (none.length) {
+      t = `116 用${none.map(s => `「${stageText(s)}」`).join('和')}篩選，115 沒有同樣科目的門檻`;
+      const stricter = none.filter(s => s.open);
+      if (stricter.length) t += `（${stricter.map(s => `115 ${partsText(s.parts)} 是 ×${s.open.m}，沒有篩掉人`).join('；')}）`;
+    }
+    const unsure = cmp.unknown.filter(s => s.res === 'unsure');
+    if (unsure.length) t += (t ? '；' : '') + unsure.map(s => `116 ${stageText(s)} 比 115 的 ×${s.ref.m} 收得少，115 最低 ${s.v} 只是下限`).join('；');
+    return t;
+  }
+  /** One stage against its 115 cut, in words; when 116 lets through a different number of people, says so. */
+  function cutReason(s) {
+    const base = `115 最低 ${partsText(s.parts)} ${s.v}，你 ${s.mine}（${s.diff > 0 ? '+' : ''}${s.diff}）`;
+    if (!s.scaled) return s.kind === 'mult' ? `${base}（116 倍率 ×${s.ref.m} → ×${s.m}，${s.n115 != null ? '名額也改了，收的人數差不多' : '人數沒辦法比'}）` : base;
+    const flow = `116 這一關收的人${s.scale < 1 ? '變少' : '變多'}（${flowText(s)}）`;
+    if (s.res === 'short') return `${base}；但 ${flow}，照 115 級分人數換算你還不夠`;
+    if (s.res === 'maybe') return `${base}；但 ${flow}，照 115 級分人數換算你有機會`;
+    if (s.res === 'fail') return s.scale > 1 ? `${base}；${flow}，但換算後還是不夠` : `${base}；${flow}`;
+    return `${base}；${flow}${s.scale < 1 ? '，換算後你還在範圍內' : ''}`;
+  }
+
   /** Untaken subjects that 116 uses for 倍率篩選 (you would be screened with 0) or for 二階 採計. */
   function missingUse(d, S) {
     const screen = new Set(), weight = new Set();
@@ -222,49 +411,72 @@
       warnings.push('檢定邊緣：如果 116 五標跟 ' + risk.map(r => r.year).join('、') + ' 年一樣，你會卡在 ' + risk[0].fails.join('、'));
     }
 
+    // 116 is the rule: its stages decide what is compared, and a 115 cut is used only for the same subjects.
+    const cmp = compare116(d, S, o.pct);
+    res.cmp = cmp;
+    if (cmp.status === 'free') {
+      res.tier = '穩';
+      reasons.push('116 沒有倍率篩選：通過檢定就能進二階');
+      return res;
+    }
+    if (cmp.status === 'arts') {
+      res.tier = '無資料';
+      reasons.push('116 一階只用術科篩選，要看你的術科成績');
+      return res;
+    }
     const r = d.r115;
     if (!r) {
       res.tier = '無資料';
       reasons.push(d.why || '116 新設或改名，115 沒有可對應的校系');
       return res;
     }
-    const cmp = compareCuts(r.cut, S, o.pct);
-    res.cmp = cmp;
-    const hasMult116 = res.plan.length > 0 || (d.arts && d.arts.items.some(i => i.m != null));
 
     let tier;
-    if (cmp.status === 'none') {
-      if (!hasMult116) { tier = '穩'; reasons.push('116 沒有倍率篩選：通過檢定就能進二階'); }
-      else { tier = '適中'; reasons.push('115 一階沒有篩掉人（通過檢定者都進二階），116 不一定一樣'); }
-    } else if (cmp.status === 'arts') {
+    const withCut = cmp.stages.filter(s => s.ref);
+    if (!r.cut.length && cmp.status === 'unknown') {
+      // 115 screened nobody, but 116 screens other subjects or lets fewer people through: 115 cannot say.
       tier = '無資料';
-      reasons.push('115 一階只用術科篩選，要看你的術科成績');
-    } else if (cmp.status === 'pass') {
-      // 穩 = still passes even if every cut rises by 1 級分 (ties pass except at the last stage),
-      // and (where the official percentile table exists) clearly fewer people ahead of you than ahead of the cut.
-      const robust = cmp.stages.filter(s => !s.arts).every(s => s.diff >= (s.last ? 2 : 1));
-      tier = robust && (cmp.ratio == null || cmp.ratio <= SAFE_RATIO) ? '穩' : '適中';
-      reasons.push(cmp.binding ? `115 最低 ${cmp.binding.raw}，你 ${cmp.binding.mine}（+${cmp.binding.diff}）` : '每一關都高於 115 最低');
-    } else if (cmp.status === 'edge') {
-      tier = '衝';
-      const b = cmp.stages.find(s => s.last);
-      reasons.push(`剛好等於 115 最後一關 ${b.raw}：要看同級分超額篩選`);
-    } else {
+      reasons.push(unknownText(cmp));
+      if (!cmp.unknown.some(s => s.open)) reasons.push('115 一階沒有篩掉人（通過檢定的人都進了二階）');
+    } else if (!r.cut.length) {
+      tier = '適中';
+      reasons.push('115 一階沒有篩掉人（通過檢定的人都進了二階），116 不一定一樣');
+    } else if (cmp.status === 'fail') {
       if (cmp.missing && cmp.missing.length) {
         tier = '難';
-        reasons.push('115 用 ' + cmp.missing.map(k => SUBJ_NAME[k]).join('、') + ' 篩選，你沒有這科成績');
+        reasons.push('116 用 ' + cmp.missing.map(k => SUBJ_NAME[k]).join('、') + ' 篩選，你沒有這科成績');
       } else {
-        const worst = cmp.stages.filter(s => s.diff != null && s.diff < 0).sort((a, b) => a.diff - b.diff)[0];
-        const near = cmp.ratio != null ? cmp.ratio <= REACH_RATIO : cmp.minDiff >= -1;
-        tier = near ? '衝' : '難';
-        reasons.push(`115 最低 ${worst.raw}，你 ${worst.mine}（${worst.diff}）`);
+        const w = cmp.worst, rr = w.adj != null ? w.adj : w.ratio;
+        tier = (rr != null ? rr <= REACH_RATIO : w.diff >= -1) ? '衝' : '難';
+        reasons.push(cutReason(w));
+        if (cmp.unknown.length) warnings.push(unknownText(cmp) + '，這一關沒算進去');
       }
+    } else if (cmp.status === 'maybe') {
+      tier = '衝';
+      reasons.push(cutReason(cmp.stages.find(s => s.res === 'maybe')));
+    } else if (cmp.status === 'unknown') {
+      // A stage on subjects 115 never screened together: last year's cuts cannot say whether you pass it.
+      tier = '無資料';
+      reasons.push(unknownText(cmp));
+      const ok = withCut.filter(s => s.res === 'pass' || s.res === 'edge');
+      if (ok.length) reasons.push(`${ok.map(s => partsText(s.parts)).join('、')}${ok.length > 1 ? '這幾關' : '這一關'}你達到 115 最低`);
+    } else if (cmp.status === 'edge') {
+      tier = '衝';
+      const b = cmp.stages.find(s => s.res === 'edge');
+      reasons.push(`剛好等於 115 最後一關 ${partsText(b.parts)} ${b.v}：要看同級分超額篩選`);
+    } else {
+      // 穩 = still passes even if every cut rises by 1 級分 (ties pass except at the last stage),
+      // and (where the official percentile table exists) clearly fewer people ahead of you than ahead of the cut.
+      const robust = withCut.every(s => s.diff >= (s.last ? 2 : 1));
+      tier = robust && (cmp.ratio == null || cmp.ratio <= SAFE_RATIO) ? '穩' : '適中';
+      reasons.push(cmp.binding ? cutReason(cmp.binding) : '116 的每一關，115 都沒有篩掉人');
     }
-    if (cmp.unknown && tier !== '無資料') warnings.push('115 還有術科／APCS 篩選關卡，這裡沒算進去');
+    if (cmp.arts116.length && tier !== '無資料') warnings.push('116 還有術科篩選，這裡沒算進去');
 
-    // Caps: last year's data is a weaker guide when the rules changed or the match is not exact.
+    // Caps: 115 is a weaker guide when the 116 screening changed or the match is not exact.
     const capReasons = [];
-    if (r.chg) capReasons.push('116 篩選倍率或科目跟 115 不同');
+    const changes = r.cut.length && tier !== '無資料' ? screenChanges(cmp) : [];
+    if (changes.length) capReasons.push('116 篩選跟 115 不同：' + changes.join('；'));
     if (r.via) capReasons.push('用的是' + (r.via.startsWith('同系') ? r.via : '相近系組') + '的資料');
     const e115 = expected115(r);
     if (e115 && d.ei && d.ei < e115 * 0.85) capReasons.push(`預計甄試人數變少（115 約 ${e115} → 116 ${d.ei}）`);
@@ -396,6 +608,7 @@
   return {
     SUBJ, SUBJ_NAME, LEVELS, TIERS, SAFE_RATIO, REACH_RATIO,
     val, sumOf, checkThreshold, countAtOrAbove, topPercent, compareCuts, screenPlan, missingUse,
+    partsText, align116, compare116, screenChanges, unknownText, cutReason, flowText,
     expected115, thresholdRisk, evaluate, chanceKey, selectivity, satShare, targets, conflicts, fmtDay,
     splitTop, reviewGroups, stage2Kind, stage2, hasInterview, hasWritten, noVisit,
   };

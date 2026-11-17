@@ -32,10 +32,10 @@
   const TIER_HELP = {
     穩: '每一關都高出 115 最低，就算門檻漲 1 級分也還會過',
     適中: '達到 115 的每一關，但差距小，或 116 規則有變',
-    衝: '剛好等於 115 最後一關（要看超額篩選），或略低於 115 門檻',
+    衝: '剛好等於 115 最後一關（要看超額篩選）、略低於 115 門檻，或 116 倍率改了而可能差一點',
     難: '明顯低於 115 門檻',
     不符: '檢定沒過，或沒考 116 要篩選的科目：一定進不了一階',
-    無資料: '116 新設或改名、沒有 115 資料，或只用術科篩選（都會寫原因）',
+    無資料: '沒有可以比的 115 門檻：116 改用 115 沒篩過的科目、116 新設或改名，或只用術科篩選（都會寫原因）',
   };
   const REVIEW = { A: '修課紀錄', B: '書面報告', C: '實作作品', D: '自然科學探究與實作成果', E: '社會領域探究活動成果', F: '自主學習計畫與成果', G: '社團活動經驗', H: '擔任幹部經驗', I: '服務學習經驗', J: '競賽表現', K: '非修課紀錄之成果作品', L: '檢定證照', M: '特殊優良表現證明', N: '多元表現綜整心得', O: '高中學習歷程反思', P: '就讀動機', Q: '未來學習計畫與生涯規劃' };
   const SCORE_KEYS = ['國', '英', '數A', '數B', '社', '自'];
@@ -142,8 +142,6 @@
   const catOf = d => (d.cats.length ? d.cats : ['一般']);
   const subj = k => L.SUBJ_NAME[k] || k;
   const partsLabel = ps => (ps.length === 1 ? subj(ps[0]) : ps.length === 2 ? ps.map(subj).join('+') : ps.map(p => ABBR[p] || p).join('+'));
-  const stageName = s => (s.arts || !s.s ? s.raw : s.apcs ? subj(s.s[0]) : partsLabel(s.s));
-  const cutLabel = c => (!c.s ? c.raw : stageName(c) + ' ' + c.v + (c.apcs ? ' 級' : ''));
   function fmtTop(x) {
     if (x == null) return '';
     if (x < 1) return '前 ' + x.toFixed(2) + '%';
@@ -189,10 +187,34 @@
     }
     return out;
   }
-  function requirementLine(d) {
+  /** A 116 stage with the 115 cut it is compared with: 國+英+社 ×3（115 最低 38）. */
+  /** How a stage's 倍率 and the people it lets through (倍率 × 名額) changed from 115; empty when neither did. */
+  function changeTag(s) {
+    const t = [];
+    if (s.kind === 'mult') t.push(`倍率 ${s.ref.m}→${s.m}`);
+    if (s.scaled) t.push(`約 ${s.n115}→${s.n116} 人`);
+    else if (s.kind === 'mult' && s.scale != null) t.push('人數差不多');
+    return t.join('，');
+  }
+  function stageCutText(s, r) {
+    const name = `${partsLabel(s.parts)} ×${s.m}`;
+    if (!r) return name;
+    if (s.ref) { const tag = changeTag(s); return `${name}（115 最低 ${s.ref.v}${tag ? '，' + tag : ''}）`; }
+    return `${name}（${s.kind === 'open' ? '115 沒有篩掉人' : '115 沒有同樣科目'}）`;
+  }
+  /** 檢定 and the 116 一階 stages (each with its comparable 115 cut), for the copied plan and the CSV. */
+  function requirementParts(d) {
     const th = d.sub.filter(s => s.t).map(s => (s.k === '聽' ? '英聽' + s.t : s.apcs ? subj(s.p[0]) + s.t + '級' : subj(s.k).replace('數學', '數') + s.t));
-    const cut = d.r115 ? (d.r115.cut.length ? d.r115.cut.map(c => c.raw).join(' → ') : '115 沒篩人') : '無 115 資料（' + (d.why || '116 新設或改名') + '）';
-    return (th.length ? '檢定 ' + th.join('、') : '無檢定') + '　|　115 一階 ' + cut;
+    const A = L.align116(d), r = d.r115;
+    let one = A.stages.length ? A.stages.map(s => stageCutText(s, r)).join(' → ') + (A.arts116.length ? '，另有術科篩選' : '')
+      : A.arts116.length ? '只用術科篩選' : '不篩學測，通過檢定就進二階';
+    if (A.stages.length && r && !r.cut.length) one += '；115 一階沒有篩掉人';
+    if (!r) one += `；無 115 資料（${d.why || '116 新設或改名'}）`;
+    return { th: th.length ? '檢定 ' + th.join('、') : '無檢定', one };
+  }
+  function requirementLine(d) {
+    const p = requirementParts(d);
+    return `${p.th}　|　116 一階 ${p.one}`;
   }
   const hayCache = new Map();
   function hay(d) {
@@ -458,24 +480,32 @@
       return '<span class="lab">檢定沒過</span>' + thFailParts(e.th).map(x => `<span class="val">${esc(x.what)}</span><span class="lab">要 ${esc(x.need)}，你 ${esc(x.mine)}</span>`).join('<span class="sep">｜</span>');
     }
     const c = e.cmp;
-    if (e.tier !== '不符' && e.tier !== '無資料' && c && c.stages && c.stages.length && !['none', 'arts'].includes(c.status)) {
-      let s = null;
-      if (c.status === 'fail') s = c.stages.filter(x => x.diff != null).sort((a, b) => a.diff - b.diff)[0];
-      else if (c.status === 'edge') s = c.stages.find(x => x.last);
-      else s = c.binding;
-      if (s && s.mine != null) {
-        const n = c.stages.filter(x => !x.arts).length;
-        return `<span class="lab">115 最低</span><span class="val">${esc(cutLabel(s))}</span><span class="lab">你</span><span class="val">${s.mine}</span>${deltaHTML(s.diff, s.last)}${n > 1 ? `<span class="lab">共 ${n} 關，這是${s.last ? '最後一關' : c.status === 'fail' ? '差最多的一關' : '最接近門檻的一關'}</span>` : ''}`;
+    // The 116 stage that decides the tier, against the 115 cut for the same subjects.
+    if (e.tier !== '不符' && e.tier !== '無資料' && c && c.stages && c.stages.length && d.r115 && d.r115.cut.length) {
+      const s = c.status === 'fail' ? c.worst : c.status === 'edge' ? c.stages.find(x => x.res === 'edge')
+        : c.status === 'maybe' ? c.stages.find(x => x.res === 'maybe') : c.binding;
+      if (s && s.ref && s.mine != null) {
+        const n = c.stages.length;
+        const moved = s.res === 'short' || s.res === 'maybe';
+        const delta = moved ? `<span class="delta eq">${s.diff > 0 ? '+' : ''}${s.diff}</span>` : deltaHTML(s.diff, s.last);
+        const flow = s.scaled ? `<span class="lab">這關 115 約 ${s.n115} 人 → 116 約 ${s.n116} 人</span>` : s.kind === 'mult' && s.scale == null ? `<span class="lab">116 倍率 ×${s.ref.m} → ×${s.m}</span>` : '';
+        return `<span class="lab">115 最低</span><span class="val">${esc(partsLabel(s.parts))} ${s.v}</span><span class="lab">你</span><span class="val">${s.mine}</span>${delta}${flow}${n > 1 ? `<span class="lab">共 ${n} 關，這是${s.last ? '最後一關' : c.status === 'fail' ? '差最多的一關' : '最接近門檻的一關'}</span>` : ''}`;
       }
     }
     return `<span>${esc(e.reasons[0] || '')}</span>`;
   }
   function reqHTML(d) {
     const th = thList(d);
-    const r = d.r115;
-    const cut = r ? (r.cut.length ? r.cut.map(cutLabel).join(' → ') : '沒有篩掉人') : '';
-    return `<span class="lab">檢定</span><span class="val">${th.length ? esc(th.join('、')) : '不設'}</span><span class="sep">｜</span>` +
-      (r ? `<span class="lab">115 一階最低</span><span class="val">${esc(cut)}</span>` : `<span class="lab">${esc(d.why || '116 新設或改名，115 沒有可對應的校系')}</span>`);
+    const r = d.r115, A = L.align116(d);
+    let tail;
+    if (!A.stages.length) tail = `<span class="lab">一階</span><span class="val">${A.arts116.length ? '只用術科篩選' : '不篩學測，通過檢定就進二階'}</span>`;
+    else if (!r) tail = `<span class="lab">${esc(d.why || '116 新設或改名，115 沒有可對應的校系')}</span>`;
+    else if (!r.cut.length) tail = '<span class="lab">115 一階</span><span class="val">沒有篩掉人</span>';
+    else {
+      const cut = A.stages.map(s => { const tag = s.ref ? changeTag(s) : ''; return `${partsLabel(s.parts)} ${s.ref ? s.ref.v + (tag ? `（${tag}）` : '') : s.kind === 'open' ? '沒篩人' : '（115 沒有）'}`; });
+      tail = `<span class="lab">115 一階最低</span><span class="val">${esc(cut.join(' → '))}</span>`;
+    }
+    return `<span class="lab">檢定</span><span class="val">${th.length ? esc(th.join('、')) : '不設'}</span><span class="sep">｜</span>` + tail;
   }
   function metaHTML(d) {
     const parts = partsLine(d);
@@ -559,38 +589,88 @@
     const risk = e && e.thRisk ? `<p class="step-d" style="color:var(--warn)">${esc(e.warnings.find(w => w.startsWith('檢定邊緣')) || '')}</p>` : '';
     return stepHTML(cls, has ? icon(th.ok ? 'check' : 'x') : '檢', `檢定<small>用 ${st.stdYear} 學年度五標換算</small>`, `<div class="reqs">${rows.join('')}</div>${risk}`);
   }
+  /** How many people a stage lets through in 115 and 116 (倍率 × 名額), what that does to the cut, and where you land. */
+  function flowNote(s, has) {
+    if (s.scale == null) return `115 這一關是 × ${s.ref.m}，116 改成 × ${s.m}；用的是同系別組的資料，名額不同，人數沒辦法直接比`;
+    const mm = s.ref.m !== s.m;
+    const what = `115 ${mm ? `× ${s.ref.m}、` : ''}名額 ${s.q115}，約 ${s.n115} 人過這一關；116 ${mm ? `× ${s.m}、` : ''}名額 ${s.q116}，約 ${s.n116} 人`;
+    if (!s.scaled) return `${what}：人數差不多，115 的門檻可以直接比`;
+    const fewer = s.scale < 1;
+    let t = `${what}：${fewer ? '收的人變少，門檻很可能比 115 高' : '收的人變多，門檻可能比 115 低'}`;
+    if (has && s.adj != null && (fewer ? s.diff >= 0 : s.diff < 0)) t += `。照 115 級分人數換算，你${s.adj <= 1 ? (fewer ? '還在收的人數內' : '有機會在收的人數內') : '可能不夠'}`;
+    return t;
+  }
   function stageSteps(d, e) {
     const r = d.r115;
-    if (!r || !r.cut.length) return '';
     const has = hasScores();
-    const cmp = e && e.cmp ? e.cmp : L.compareCuts(r.cut, st.scores, D.pct);
-    return cmp.stages.map((s, i) => {
-      const title = `${s.last ? '最後一關' : `第 ${i + 1} 關`}<small>${esc(stageName(s))}</small>`;
-      if (s.arts) return stepHTML('', i + 1, title, `<p class="step-d">115 最低 ${esc(s.raw)}：看術科成績，這個工具沒有術科資料。</p>`);
+    const cmp = e && e.cmp && e.cmp.stages ? e.cmp : L.compare116(d, st.scores, D.pct);
+    // 116 order: 學測 stages and 術科 stages (no 術科 scores here) by multiple, highest first.
+    const steps = cmp.stages.map(s => ({ m: s.m, s }));
+    const byM = new Map();
+    (d.arts ? d.arts.items.filter(i => i.m != null) : []).forEach(i => { const m = typeof i.m === 'number' ? i.m : -1; if (!byM.has(m)) byM.set(m, []); byM.get(m).push(i.i); });
+    for (const [m, names] of byM) steps.push({ m, arts: names });
+    steps.sort((a, b) => b.m - a.m);
+    return steps.map((x, i) => {
+      const no = i + 1, lastStep = i === steps.length - 1;
+      if (x.arts) return stepHTML('', no, `${lastStep ? '最後一關' : `第 ${no} 關`}<small>${esc(x.arts.join('+'))}${x.m >= 0 ? ` × ${x.m}` : ''}</small>`, '<p class="step-d">術科篩選：看術科成績，這個工具沒有術科資料。</p>');
+      const s = x.s;
       const unit = s.apcs ? ' 級' : '';
-      let cls = '', you = '';
-      if (has) {
-        if (s.mine == null) { cls = 'bad'; you = `<span class="you">你沒考${esc((s.missing || []).map(subj).join('、'))}</span><span class="delta down">沒過</span>`; }
-        else { cls = s.diff > 0 ? 'ok' : s.diff === 0 ? (s.last ? 'eq' : 'ok') : 'bad'; you = `<span class="you">你 ${s.mine}${unit}</span>${deltaHTML(s.diff, s.last)}`; }
-      }
+      const title = `${s.last ? '最後一關' : `第 ${no} 關`}<small>${esc(partsLabel(s.parts))} × ${s.m}</small>`;
       const notes = [];
-      if (!s.apcs) notes.push(s.last ? `剛好 ${s.v} 要比同級分超額篩選，${s.v + 1} 以上直接過` : `${s.v} 以上進下一關，同分的人一起過`);
-      if (has && s.topCut != null) notes.push(`你在 115 考生${fmtTop(s.topMine)}，門檻是${fmtTop(s.topCut)}`);
-      else if (!s.apcs) { const p = L.topPercent(D.pct, s.s, s.v); if (p != null) notes.push(`門檻是 115 考生${fmtTop(p)}`); }
-      return stepHTML(cls, i + 1, title, `<div class="reqs"><div class="req"><span class="what">115 最低 ${s.v}${unit}</span>${you}</div></div><p class="step-d">${esc(notes.join('。'))}</p>`);
+      let cls = '', you = '';
+      if (has && s.mine == null) { cls = 'bad'; you = `<span class="you">你沒考${esc((s.missing || []).map(subj).join('、'))}</span><span class="delta down">沒過</span>`; }
+      if (s.ref) {
+        if (has && s.mine != null) {
+          const moved = s.res === 'short' || s.res === 'maybe';
+          cls = s.res === 'pass' ? 'ok' : s.res === 'fail' ? 'bad' : s.res === 'edge' || moved ? 'eq' : '';
+          you = `<span class="you">你 ${s.mine}${unit}</span>${moved ? `<span class="delta eq">${s.diff > 0 ? '+' : ''}${s.diff}</span>` : deltaHTML(s.diff, s.last)}`;
+        }
+        if (s.kind === 'mult' || s.scaled) notes.push(flowNote(s, has));
+        else if (!s.apcs) notes.push(s.last ? `剛好 ${s.v} 要比同級分超額篩選，${s.v + 1} 以上直接過` : `${s.v} 以上進下一關，同分的人一起過`);
+        if (has && s.topCut != null) notes.push(`你在 115 考生${fmtTop(s.topMine)}，門檻是${fmtTop(s.topCut)}`);
+        else if (!s.apcs) { const p = L.topPercent(D.pct, s.parts, s.v); if (p != null) notes.push(`門檻是 115 考生${fmtTop(p)}`); }
+        return stepHTML(cls, no, title, `<div class="reqs"><div class="req"><span class="what">115 最低 ${s.v}${unit}</span>${you}</div></div><p class="step-d">${esc(notes.join('。'))}</p>`);
+      }
+      // No 115 cut for these subjects: say why, and show where you stand among 115 考生 on them.
+      const what = s.kind === 'open' ? '115 這一關沒有篩掉人' : !r ? '沒有 115 資料' : '115 沒有同樣科目的門檻';
+      if (s.kind === 'open') notes.push(`115 也用${partsLabel(s.parts)}篩選（× ${s.open.m}），報名的人沒有超過這個倍數`);
+      else if (s.open) notes.push(`115 用${partsLabel(s.parts)} × ${s.open.m} 沒有篩掉人；116 改成 × ${s.m}，收的人比較少，看不出會不會篩人`);
+      else if (r) notes.push(`115 沒有用${partsLabel(s.parts)}${s.parts.length > 1 ? '的總和' : ''}篩選，${r.cut.length ? '115 的門檻不能拿來比' : '看不出 116 會不會篩人'}`);
+      if (has && s.mine != null) {
+        if (s.kind === 'open') cls = 'ok';
+        you = `<span class="you">你 ${s.mine}${unit}</span>`;
+        if (s.topMine != null) notes.push(`你的${partsLabel(s.parts)}在 115 考生${fmtTop(s.topMine)}`);
+      }
+      return stepHTML(cls, no, title, `<div class="reqs"><div class="req"><span class="what">${what}</span>${you}</div></div><p class="step-d">${esc(notes.join('。'))}</p>`);
     }).join('');
   }
   function stage1HTML(d, e) {
     const r = d.r115;
     const plan = L.screenPlan(d);
+    const cmp = e && e.cmp && e.cmp.stages ? e.cmp : L.compare116(d, st.scores, D.pct);
     let h = '<section class="d-sec"><h3>第一階段：一階篩選<small>檢定 → 倍率篩選 → 同級分超額篩選</small></h3>';
     const arts = d.arts ? d.arts.items.filter(i => i.i && i.i !== '--').map(i => `<span class="tagc">${esc(i.i)}${i.t ? ' 檢定' + esc(i.t) : ''}${i.m != null ? ' 倍率' + esc(i.m) : ''}</span>`).join('') : '';
     h += `<div class="plan116"><span>116 倍率篩選</span>${plan.length ? plan.map((p, i) => `<span class="tagc">${i + 1}. ${esc(partsLabel(p.parts))} × ${p.m}</span>`).join('') : '<span class="tagc">不篩學測</span>'}${arts}</div>`;
-    if (r && r.chg) h += noteHTML('warn', `116 的篩選倍率或科目跟 115 不同（115 是 ${esc(Object.entries(r.mult || {}).map(([k, v]) => `${k} ${v} 倍`).join('、'))}），下面 115 的門檻只能粗略參考。`);
+    if (r && r.cut.length && cmp.stages.length) {
+      // 116 is the rule; say exactly how it differs from 115 and what 115 was.
+      const none = cmp.stages.filter(s => s.kind === 'none'), mult = cmp.stages.filter(s => s.kind === 'mult');
+      const parts = [];
+      if (none.length) parts.push(`${none.map(s => `${partsLabel(s.parts)} × ${s.m}`).join('、')} 是 115 沒有篩過的科目組合，沒有門檻可以比`);
+      if (mult.length) parts.push(mult.map(s => `${partsLabel(s.parts)} 的倍率從 × ${s.ref.m} 改成 × ${s.m}${s.scale == null ? '' : s.scaled ? `（約 ${s.n115} → ${s.n116} 人）` : '（名額也改了，人數差不多）'}`).join('、'));
+      if (cmp.dropped.length) parts.push(`115 的${cmp.dropped.map(c => `${partsLabel(c.parts)} × ${c.m ?? '?'}`).join('、')} 這${cmp.dropped.length > 1 ? '幾' : '一'}關，116 拿掉了`);
+      if (parts.length) {
+        const was = cmp.cuts.map(c => (c.k ? `${partsLabel(c.parts)} × ${c.m ?? '?'}（最低 ${c.v}${c.apcs ? ' 級' : ''}）` : c.raw)).join(' → ');
+        h += noteHTML('warn', `116 的一階篩選跟 115 不同：${esc(parts.join('；'))}。下面每一關只跟 115 用同樣科目篩選的門檻比。<br><span class="muted">115 是：${esc(was)}</span>`);
+      }
+    }
     if (r && r.via) h += noteHTML('warn', `這裡用的是${esc(r.via)}的 115 資料，不是同一個系組。`);
     if (!r) h += noteHTML('info', `沒有 115 資料：${esc(d.why || '116 新設或改名，115 沒有可對應的校系')}。${d.near ? `名稱相近的 115 校系：${esc(d.near.join('、'))}（沒有拿來算落點，請自己判斷）。` : ''}`);
-    else if (!r.cut.length) h += noteHTML('info', '115 一階沒有篩掉人：通過檢定的人都進了二階。');
-    h += `<ol class="steps" style="margin-top:16px">${thresholdStep(d, e)}${stageSteps(d, e)}${r && r.cut.length ? stepHTML('', '=', '同級分超額篩選<small>最後一關同分時，116 依序比</small>', `<p class="step-d">${esc(d.tbS || '—')}</p>`) : ''}</ol>`;
+    else if (!r.cut.length) {
+      const m115 = Object.entries(r.mult || {}).filter(([, v]) => typeof v === 'number')
+        .map(([k, v]) => `${k === '組合' ? (r.combo ? partsLabel(r.combo) : '科目組合') : subj(k)} × ${v}`).join('、');
+      h += noteHTML('info', `115 一階沒有篩掉人${m115 ? `（115 倍率：${esc(m115)}）` : ''}：通過檢定的人都進了二階。`);
+    }
+    h += `<ol class="steps" style="margin-top:16px">${thresholdStep(d, e)}${stageSteps(d, e)}${plan.length ? stepHTML('', '=', '同級分超額篩選<small>最後一關同分時，116 依序比</small>', `<p class="step-d">${esc(d.tbS || '—')}</p>`) : ''}</ol>`;
     if (r && r.majors) h += `<p class="hint" style="margin-top:10px">115 各主修最低：${esc(r.majors.map(m => m.major + ' ' + m.cut.map(c => c.raw).join('→')).join('；'))}</p>`;
     const e115 = r ? L.expected115(r) : null;
     h += `<dl class="kv" style="margin-top:18px"><dt>招生名額</dt><dd>${d.q}${d.gen !== '無' ? '（' + esc(d.gen) + '）' : ''}</dd><dt>預計甄試人數</dt><dd>${d.ei}${e115 ? `（115 約 ${e115}）` : ''}</dd>${r ? `<dt>115 對照</dt><dd>${esc(r.name)}（${r.code}）· 名額 ${r.q}</dd>` : ''}</dl></section>`;
@@ -738,7 +818,7 @@
       else ck('ok', `有 ${c('穩')} 個「穩」保底`, '');
       if (c('衝') + c('難') >= 4) ck('warn', `${c('衝') + c('難')} 個是「衝」或「難」`, '如果申請是主要管道，2 衝 2 適中 2 穩左右比較安全；打算考分科當後路就可以接受。');
       if (c('穩') >= 4) ck('warn', `${c('穩')} 個都是「穩」`, '可能浪費機會。考慮把 1–2 個換成更想讀、但要衝一下的系。');
-      if (c('無資料')) ck('info', `${c('無資料')} 個沒有 115 資料`, '新設、改名或只看術科，無法估計落點。');
+      if (c('無資料')) ck('info', `${c('無資料')} 個沒有可以比的 115 門檻`, '116 改用 115 沒篩過的科目、新設或改名，或只看術科，無法估計落點。點進去看是哪一關。');
     } else ck('info', '輸入成績才能檢查穩衝搭配', '在「找校系」輸入學測級分（或模考、目標分數）。');
     const cf = L.conflicts(P);
     if (cf.length) {
@@ -866,7 +946,7 @@
     P.forEach((d, i) => lines.push(row(d, i)));
     const others = st.fav.filter(c => !st.plan.includes(c)).map(c => BY_CODE[c]).filter(Boolean);
     if (others.length) { lines.push('', '【其他收藏】'); others.forEach(d => lines.push(row(d))); }
-    lines.push('', '說明：落點用 115 一階篩選結果推估（不是保證），116 五標 2027/2/25 公布。');
+    lines.push('', '說明：一階照 116 的篩選規則一關一關看，每一關只拿 115 同樣科目的最低級分推估（不是保證）；116 改用 115 沒篩過的科目時判「無資料」。116 五標 2027/2/25 公布。');
     return lines.join('\n');
   }
   function download(name, text, type) {
@@ -879,13 +959,13 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
   function csv() {
-    const rows = [['志願', '校系代碼', '學校', '校系', '落點', '理由', '檢定', '115一階', '二階', '審查資料', '審查資料截止', '甄試日期', '放榜', '甄試費', '官方網址']];
+    const rows = [['志願', '校系代碼', '學校', '校系', '落點', '理由', '檢定', '116一階（115同科目最低）', '二階', '審查資料', '審查資料截止', '甄試日期', '放榜', '甄試費', '官方網址']];
     [...st.plan, ...st.fav.filter(c => !st.plan.includes(c))].forEach(c => {
       const d = BY_CODE[c];
       if (!d) return;
       const e = EV.get(c), i = st.plan.indexOf(c);
-      const req = requirementLine(d).split('　|　');
-      rows.push([i >= 0 ? i + 1 : '收藏', d.c, sch(d), d.n, e ? e.tier : '', e ? e.reasons.join('；') : '', req[0], req[1].replace('115 一階 ', ''), partsLine(d, true), d.rv || '', rocDate(d.dd), d.idays.length ? rocText(d.idate) : '不用到校甄試', rocDate(d.rd), d.fee || '', d.url]);
+      const req = requirementParts(d);
+      rows.push([i >= 0 ? i + 1 : '收藏', d.c, sch(d), d.n, e ? e.tier : '', e ? e.reasons.join('；') : '', req.th, req.one, partsLine(d, true), d.rv || '', rocDate(d.dd), d.idays.length ? rocText(d.idate) : '不用到校甄試', rocDate(d.rd), d.fee || '', d.url]);
     });
     return '﻿' + rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   }
@@ -1056,9 +1136,10 @@
         <li><div><b>學測有一科 0 級分也能報。</b>只要該系用到的科目加總不是 0 就可以（學生手冊 Q&amp;A）。這個工具把空白和 0 都當「沒考」。</div></li>
       </ol></section>
       <section class="sec"><h2>這個工具怎麼判斷落點</h2><ul class="tdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul>
-        <div class="prose" style="margin-top:16px"><p>判斷用的是 <b>115 學年度一階篩選結果</b>（甄選會只公布圖片，每一格都經兩次獨立判讀核對）：你每一關的級分都要大於或等於 115 最低，最後一關剛好相等要看超額篩選。</p>
+        <div class="prose" style="margin-top:16px"><p><b>以 116 的篩選規則為準</b>：科目、倍率和順序都照 116 校系分則，一關一關看。每一關只拿 <b>115 用同樣科目篩選的最低級分</b>來比（115 一階篩選結果，甄選會只公布圖片，每一格都經兩次獨立判讀核對）：你每一關的級分都要大於或等於 115 最低，最後一關剛好相等要看超額篩選。</p>
+        <p>116 改用 115 沒篩過的科目組合時（例如 115 篩國+英+數B+社、116 改篩國+英+社），115 的門檻不能拿來比，這個系判「無資料」並寫出是哪一關；除非你在其他同科目的關卡已經明顯不夠。科目一樣但收的人數變了（一關大約收「倍率 × 招生名額」人，差超過 10%），就用大考中心 115 級分人數表換算，看你是不是還在 116 收的人數內；倍率改了但名額也跟著改、人數差不多的，115 的門檻照樣可以直接比。</p>
         <p>「穩」比較嚴格：每一關都要比 115 高，最後一關至少高 2 級分（門檻漲 1 也還會過），而且用大考中心 115 年各科、各科組合的級分人數表換算，排在你前面的人要明顯少於排在門檻前面的人。</p>
-        <p>遇到這些情況，最多只判「適中」並寫出原因：116 倍率或科目跟 115 不同、用的是同系別組或名稱相近系組的資料、預計甄試人數比 115 少 15% 以上、你的級分換成 113 或 114 年五標就會檢定不過。</p>
+        <p>遇到這些情況，最多只判「適中」並寫出原因：116 改了倍率而收的人數差超過 10%、116 篩選順序跟 115 不同、116 拿掉了 115 的某一關、用的是同系別組或名稱相近系組的資料、預計甄試人數比 115 少 15% 以上、你的級分換成 113 或 114 年五標就會檢定不過。</p>
         <p class="hint">這只是一階能不能過的估計，不是錄取機率。二階要看審查資料、面試和當年的競爭。</p></div></section>
       <section class="sec"><h2>審查資料代碼</h2><p class="sub">課程學習成果最多 3 件，多元表現最多 10 件（另附綜整心得）。R、S、T 看各系分則。</p><div class="codegrid">${Object.entries(REVIEW).map(([k, v]) => `<span class="code"><b>${k}</b>${v}</span>`).join('')}</div></section>
       <section class="sec"><h2>資料來源</h2><ul class="srcs">
