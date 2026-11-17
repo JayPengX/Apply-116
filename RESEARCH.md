@@ -68,6 +68,7 @@
 - 甄選會 115 申請入學統計（報名 78,280 人、通過篩選 65,914 人、獲分發 42,628 人）：https://www.cac.edu.tw/cacportal/apply_his_report/115/115_member_statistics.php
 - 大考中心 115 學測統計圖表：https://www.ceec.edu.tw/xmdoc/cont?xsmsid=0J018604485538810196&sid=0Q056289672991900264
 - 教育部 116 學生手冊：https://nsdua.moe.edu.tw/download/116學年度學生手冊.pdf
+- 甄選會 116 申請入學招生簡章（總則，審查資料件數與上傳格式）：https://www.cac.edu.tw/apply116/appform_1.php
 - 甄選會新聞稿 116 參採學測科目（2026-10-27）、116 扶助弱勢校系一覽表
 - 背景文章：1111 人力銀行升學專欄、聯合報 114 超篩報導、uptogo 落點工具評論、各高中選填說明講義
 

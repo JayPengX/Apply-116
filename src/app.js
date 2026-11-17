@@ -21,8 +21,12 @@
   const CATS = [['一般', '一般組'], ['公費', '公費生'], ['APCS', 'APCS 組'], ['術科', '術科（音樂、美術、體育）'], ['扶弱', '扶弱專組'], ['青儲', '青年儲蓄帳戶組']];
   const DEFAULT_CATS = ['一般', '公費', 'APCS'];
   const DEFAULT_TIERS = ['穩', '適中', '衝', '難', '無資料'];
-  const ST2 = [['noInterview', '不用面試'], ['noWritten', '不用筆試'], ['satHeavy', '學測佔 50% 以上']];
-  const SORTS = ['chance', 'select', 'sat', 'date', 'quota', 'code'];
+  // 第二階段 filters: the 甄試 chips combine; the 學測 share is one choice (none picked = any share).
+  const ST2 = [['noInterview', '不用面試'], ['noWritten', '不用筆試'], ['noVisit', '不用到校甄試']];
+  const SAT = [['none', '不計學測', '二階不計學測', d => !d.sp], ['light', '20% 以下', '學測佔二階 20% 以下', d => (d.sp || 0) <= 20], ['heavy', '50% 以上', '學測佔二階 50% 以上', d => (d.sp || 0) >= 50]];
+  const SAT_BY = Object.fromEntries(SAT.map(x => [x[0], x]));
+  const ST2_TEST = { noInterview: d => !L.hasInterview(d), noWritten: d => !L.hasWritten(d), noVisit: L.noVisit };
+  const SORTS = ['chance', 'select', 'sat', 'satLow', 'date', 'quota', 'code'];
   const TIERS = L.TIERS;
   const TC = { 穩: 't1', 適中: 't2', 衝: 't3', 難: 't4', 不符: 't5', 無資料: 't6' };
   const TIER_HELP = {
@@ -75,7 +79,7 @@
     v: 1,
     scores: { 國: '', 英: '', 數A: '', 數B: '', 社: '', 自: '', 聽: '', 識: '', 實: '' },
     stdYear: '115',
-    f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sort: 'chance' },
+    f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', sort: 'chance' },
     fav: [], plan: [], theme: '',
   });
   function sanitize(s) {
@@ -94,7 +98,10 @@
     f.regions = arr(f.regions, r => REGIONS.includes(r));
     f.tiers = Array.isArray(f.tiers) ? f.tiers.filter(t => TIERS.includes(t)) : d.f.tiers;
     f.cats = Array.isArray(f.cats) ? f.cats.filter(c => CATS.some(x => x[0] === c)) : d.f.cats;
+    // v3 kept「學測佔 50% 以上」among the 第二階段 chips; it is now one of the 學測-share choices.
+    if (Array.isArray(f.st2) && f.st2.includes('satHeavy') && !(s.f && s.f.sat)) f.sat = 'heavy';
     f.st2 = arr(f.st2, k => ST2.some(x => x[0] === k));
+    if (!SAT_BY[f.sat]) f.sat = 'all';
     if (!['all', 'pub', 'pri'].includes(f.own)) f.own = 'all';
     if (!SORTS.includes(f.sort)) f.sort = 'chance';
     out.fav = [...new Set(arr(s.fav, c => BY_CODE[c]))];
@@ -167,16 +174,9 @@
     const t = ds.length > 1 && consecutive(ds) ? L.fmtDay(ds[0]) + '–' + L.fmtDay(ds[ds.length - 1]) : ds.map(L.fmtDay).join('、');
     return bare ? t : '甄試 ' + t;
   }
-  function stage2Parts(d) {
-    const parts = [];
-    if (d.sp) parts.push({ n: '學測', p: d.sp, sat: true });
-    for (const x of d.st2) parts.push({ n: x.i.replace(/^指定項目甄試[:：]?/, ''), p: x.p, t: x.t });
-    if (d.arts && d.arts.p) parts.push({ n: '術科', p: d.arts.p });
-    return parts.filter(x => x.p);
-  }
   const shortItem = n => (n === '審查資料' ? '審查' : n);
-  const hasInterview = d => d.st2.some(x => /面試|口試|面談|座談/.test(x.i));
-  const hasWritten = d => d.st2.some(x => /筆試|測驗|小論文/.test(x.i));
+  /** One line for lists, e.g. "學測 40% · 審查 30% · 面試 30%"; leads with 不計學測 when the 二階 total leaves 學測 out. */
+  const partsLine = (d, full) => [d.sp ? '' : '不計學測', ...L.stage2(d).map(x => `${full ? x.n : shortItem(x.n)} ${x.p}%`)].filter(Boolean).join(full ? '・' : ' · ');
   function thList(d) {
     const items = d.sub.filter(s => s.t);
     const math = items.filter(s => (s.k === '數A' || s.k === '數B') && !s.apcs);
@@ -216,19 +216,19 @@
       if (d.cats.includes('青儲') && !f.cats.includes('青儲')) return false;
       if (d.cats.includes('扶弱') && !f.cats.includes('扶弱')) return false;
     }
-    if (f.st2.includes('noInterview') && hasInterview(d)) return false;
-    if (f.st2.includes('noWritten') && hasWritten(d)) return false;
-    if (f.st2.includes('satHeavy') && !(d.sp >= 50)) return false;
+    if (skip !== 'sat' && f.sat !== 'all' && !SAT_BY[f.sat][3](d)) return false;
+    if (skip !== 'st2' && f.st2.some(k => !ST2_TEST[k](d))) return false;
     if (qTerms.length) { const h = hay(d); if (!qTerms.every(t => h.includes(t))) return false; }
     return true;
   }
   const baseFiltered = skip => D.depts.filter(d => passes(d, skip));
-  const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + st.f.st2.length + (catsChanged() ? 1 : 0);
+  const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + (st.f.sat !== 'all' ? 1 : 0) + st.f.st2.length + (catsChanged() ? 1 : 0);
   function scopeLabel() {
     const f = st.f, p = [];
     if (f.groups.length) p.push(f.groups.join('、'));
     if (f.regions.length) p.push(f.regions.map(regionLabel).join('、'));
     if (f.own !== 'all') p.push(f.own === 'pub' ? '公立' : '私立');
+    if (f.sat !== 'all') p.push(SAT_BY[f.sat][2]);
     f.st2.forEach(k => p.push(ST2.find(x => x[0] === k)[1]));
     if (f.q.trim()) p.push('「' + f.q.trim() + '」');
     return p.join(' · ');
@@ -240,6 +240,7 @@
       chance: (a, b) => (ti(a) - ti(b)) || ((L.selectivity(b) || 0) - (L.selectivity(a) || 0)),
       select: (a, b) => (L.selectivity(b) || 0) - (L.selectivity(a) || 0),
       sat: (a, b) => (b.sp || 0) - (a.sp || 0),
+      satLow: (a, b) => (a.sp || 0) - (b.sp || 0),
       date: (a, b) => ((a.idays[0] || '99') < (b.idays[0] || '99') ? -1 : (a.idays[0] || '99') > (b.idays[0] || '99') ? 1 : 0),
       quota: (a, b) => b.q - a.q,
       code: () => 0,
@@ -258,7 +259,7 @@
   const noteHTML = (kind, html) => `<div class="note ${kind}">${icon(kind === 'warn' ? 'alert' : 'info')}<div>${html}</div></div>`;
   function focusKey(el) {
     if (!el || !el.dataset) return null;
-    for (const a of ['slider', 'try', 'focus', 'tier', 'group', 'region', 'own', 'cat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
+    for (const a of ['slider', 'try', 'focus', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
       if (el.dataset[a] != null) return `[data-${a}="${CSS.escape(el.dataset[a])}"]`;
     }
     return el.id ? '#' + CSS.escape(el.id) : null;
@@ -372,12 +373,18 @@
     const gc = facet('groups', d => d.g);
     const rc = facet('regions', d => [CITY_REGION[d.city]]);
     const oc = facet('own', d => [isPub(d) ? 'pub' : 'pri']);
+    const sc = facet('sat', d => SAT.filter(x => x[3](d)).map(x => x[0]));
+    // 甄試 chips combine, so each count is what the list would show with that chip on.
+    const pool = baseFiltered('st2'), xc = {};
+    for (const [k] of ST2) xc[k] = pool.filter(d => ST2_TEST[k](d) && f.st2.every(x => x === k || ST2_TEST[x](d))).length;
     const n = filterCount();
     const h = `<div class="filter-h"><h2>篩選</h2><button class="textbtn" type="button" data-act="resetFilters" ${n ? '' : 'hidden'}>${icon('reset', 'sm')}重設</button></div>
       <div class="fsec"><h3>學群${f.groups.length ? '<button class="textbtn" type="button" data-act="groupsAll">全部學群</button>' : ''}</h3><div class="chips">${GROUPS.map(g => chip(g, f.groups.includes(g), `data-group="${g}"`, gc[g] || 0)).join('')}</div></div>
       <div class="fsec"><h3>地區</h3><div class="chips">${REGIONS.map(r => chip(regionLabel(r), f.regions.includes(r), `data-region="${r}"`, rc[r] || 0)).join('')}</div></div>
       <div class="fsec"><h3>公私立</h3><div class="segctl" role="group" aria-label="公私立">${[['all', '全部'], ['pub', '公立'], ['pri', '私立']].map(([k, l]) => `<button type="button" data-own="${k}" aria-pressed="${f.own === k}">${l}${k !== 'all' ? `<span class="muted num"> ${oc[k] || 0}</span>` : ''}</button>`).join('')}</div></div>
-      <div class="fsec"><h3>第二階段</h3><div class="chips">${ST2.map(([k, l]) => chip(l, f.st2.includes(k), `data-st2="${k}"`)).join('')}</div></div>
+      <div class="fsec"><h3>第二階段</h3>
+        <p class="fsub" id="satLab">學測佔二階總成績</p><div class="chips" role="group" aria-labelledby="satLab">${SAT.map(([k, l]) => chip(l, f.sat === k, `data-sat="${k}"`, sc[k] || 0)).join('')}</div>
+        <p class="fsub" id="ivLab">甄試</p><div class="chips" role="group" aria-labelledby="ivLab">${ST2.map(([k, l]) => chip(l, f.st2.includes(k), `data-st2="${k}"`, xc[k] || 0)).join('')}</div></div>
       <div class="fsec"><details id="catsBox" ${ui.catsOpen || catsChanged() ? 'open' : ''}><summary>${icon('chevR', 'sm')}特殊組別${catsChanged() ? '（已變更）' : ''}</summary><div class="chips">${CATS.map(([k, l]) => chip(l, f.cats.includes(k), `data-cat="${k}"`)).join('')}</div><p class="hint">扶弱專組、青年儲蓄帳戶組和術科組別預設隱藏，多數限特定身分或要考術科。</p></details></div>`;
     keepFocus(el, () => { el.innerHTML = h; });
     const fc = $('#filterCount');
@@ -390,6 +397,7 @@
     f.groups.forEach(g => out.push(af(g, `data-group="${g}"`)));
     f.regions.forEach(r => out.push(af(regionLabel(r), `data-region="${r}"`)));
     if (f.own !== 'all') out.push(af(f.own === 'pub' ? '公立' : '私立', 'data-own="all"'));
+    if (f.sat !== 'all') out.push(af(SAT_BY[f.sat][2], 'data-sat="all"'));
     f.st2.forEach(k => out.push(af(ST2.find(x => x[0] === k)[1], `data-st2="${k}"`)));
     if (catsChanged()) out.push(af('特殊組別已變更', 'data-act="resetCats"'));
     if (out.length > 1) out.push('<button class="textbtn" type="button" data-act="resetAll">全部清除</button>');
@@ -470,7 +478,7 @@
       (r ? `<span class="lab">115 一階最低</span><span class="val">${esc(cut)}</span>` : `<span class="lab">${esc(d.why || '116 新設或改名，115 沒有可對應的校系')}</span>`);
   }
   function metaHTML(d) {
-    const parts = stage2Parts(d).map(x => `${shortItem(x.n)} ${x.p}%`).join(' · ');
+    const parts = partsLine(d);
     return [`<span>名額 ${d.q}</span>`, `<span>${esc(daysText(d))}</span>`, `<span>${esc(d.city)}</span>`, parts ? `<span class="parts">${esc(parts)}</span>` : ''].join('');
   }
   function rowHTML(d) {
@@ -588,22 +596,50 @@
     h += `<dl class="kv" style="margin-top:18px"><dt>招生名額</dt><dd>${d.q}${d.gen !== '無' ? '（' + esc(d.gen) + '）' : ''}</dd><dt>預計甄試人數</dt><dd>${d.ei}${e115 ? `（115 約 ${e115}）` : ''}</dd>${r ? `<dt>115 對照</dt><dd>${esc(r.name)}（${r.code}）· 名額 ${r.q}</dd>` : ''}</dl></section>`;
     return h;
   }
+  const joinAnd = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join('、') + '和' + a[a.length - 1]);
+  const fmtPct = p => String(Math.round(p * 10) / 10);
+  /** The 二階 total in one sentence (HTML), plus how many people the 系 expects to see per seat.
+   *  Each number stays on one line with its words, so a phone never strands "1。" or splits 招生名額. */
+  function stage2Lead(d) {
+    const rest = L.stage2(d).filter(x => x.kind !== 'sat');
+    const names = esc(joinAnd([...new Set(rest.map(x => x.n))]));
+    const nw = t => `<span class="nw">${t}</span>`;
+    let s = !rest.length ? '二階總成績全看學測。'
+      : d.sp ? `學測佔二階總成績 ${nw(fmtPct(d.sp) + '%')}，${nw(`另外 ${fmtPct(100 - d.sp)}%`)} 看${names}。`
+      : `二階總成績不計學測：學測只用在一階篩選，過了一階就看${names}。`;
+    if (d.ei && d.q) { const r = d.ei / d.q; s += `${nw(`預計 ${d.ei} 人`)}參加二階，${nw(`招生名額 ${d.q} 人`)}，${nw(`約 ${r >= 10 ? Math.round(r) : fmtPct(r)} 取 1`)}。`; }
+    return s;
+  }
+  // How each kind of 審查資料 is handed in (116 簡章總則：審查資料上傳).
+  const REVIEW_HOW = {
+    修課紀錄: '學習歷程資料庫提供',
+    課程學習成果: '從學習歷程資料庫勾選，最多 3 件',
+    多元表現: '從學習歷程資料庫勾選，最多 10 件，另寫綜整心得（800 字、3 張圖以內）',
+    學習歷程自述: '自己寫，做成一個 PDF 上傳',
+    其他: '自己做成一個 PDF，內容依各系規定',
+  };
+  const codeChip = (c, t) => `<span class="code">${c ? `<b>${esc(c)}</b>` : ''}${esc(t)}</span>`;
+  function reviewHTML(d) {
+    const gs = L.reviewGroups(d.rv);
+    if (!gs.length) return '';
+    return `<h4 class="d-h4">要交的審查資料</h4><div class="rgs">${gs.map(g => `<div class="rg"><p class="rg-h"><b>${esc(g.g)}</b>${REVIEW_HOW[g.g] ? `<span>${esc(REVIEW_HOW[g.g])}</span>` : ''}</p><div class="codes">${(g.g === '其他' ? g.items.map(it => codeChip(it.c, it.t)) : g.codes.map(c => codeChip(c, REVIEW[c] || ''))).join('')}</div></div>`).join('')}</div>`;
+  }
+  const foldHTML = (title, text) => `<details class="fold"><summary>${icon('chevR', 'sm')}${esc(title)}</summary><div class="long">${esc(text)}</div></details>`;
   function stage2HTML(d) {
-    const parts = stage2Parts(d);
+    const parts = L.stage2(d);
     const sat = hasScores() ? L.satShare(d, st.scores) : null;
-    let h = '<section class="d-sec"><h3>第二階段：總成績怎麼算<small>116 校系分則</small></h3>';
+    let h = `<section class="d-sec"><h3>第二階段：總成績怎麼算<small>116 校系分則</small></h3><p class="s2lead">${stage2Lead(d)}</p>`;
     if (parts.length) {
-      h += `<div class="wbars">${parts.map(x => `<div class="wbar"><span class="wl">${esc(x.n)}${x.t ? `<span class="muted">（${esc(x.t)}以上）</span>` : ''}</span><span class="wt"><i style="width:${x.p}%"></i>${x.sat && sat ? `<i class="mine" style="width:${sat.points.toFixed(1)}%"></i>` : ''}</span><b>${x.p}%</b></div>`).join('')}</div>`;
+      h += `<div class="wbars">${parts.map(x => `<div class="wbar"><span class="wl">${esc(x.n)}${x.t ? `<span class="muted">（${esc(x.t)}以上）</span>` : ''}</span><span class="wt"><i style="width:${x.p}%"></i>${x.kind === 'sat' && sat ? `<i class="mine" style="width:${sat.points.toFixed(1)}%"></i>` : ''}</span><b>${x.p}%</b></div>`).join('')}</div>`;
       if (sat) h += `<p class="hint">深色是你的學測部分：約 ${sat.points.toFixed(1)} / ${sat.of} 分（${Math.round(sat.pct * 100)}%）。依多數學校「級分 × 權重」換算的估計${sat.missing ? '，沒考的科目以 0 計' : ''}。</p>`;
     }
     const w = d.sub.filter(s => s.w != null).map(s => `${subj(s.k)} × ${s.w}`).join('、');
-    const codes = [...new Set((d.rv || '').match(/\b[A-Q](?=[、,，)\s]|$)/g) || [])];
     h += `<dl class="kv" style="margin-top:14px"><dt>學測採計</dt><dd>${esc(w || '—')}</dd>
       <dt>甄試日期</dt><dd>${d.idays.length ? esc(rocText(d.idate)) : '不用到校甄試'}</dd><dt>審查資料截止</dt><dd>${esc(rocDate(d.dd))}</dd><dt>放榜</dt><dd>${esc(rocDate(d.rd))}</dd>
       <dt>甄試費</dt><dd>${d.fee ? fmtN(d.fee) + ' 元' : '—'}</dd><dt>總成績同分</dt><dd>${esc(d.tbT || '—')}</dd></dl>`;
-    if (d.rv) h += `<h3 style="font-size:14px;margin:18px 0 8px">要交的審查資料</h3><p class="hint" style="margin-bottom:8px">${esc(d.rv)}</p>${codes.length ? `<div class="codes">${codes.map(c => `<span class="code"><b>${c}</b>${esc(REVIEW[c] || '')}</span>`).join('')}</div>` : ''}`;
-    if (d.rn) h += `<details class="fold"><summary>${icon('chevR', 'sm')}審查資料說明</summary><div class="long">${esc(d.rn)}</div></details>`;
-    if (d.iv) h += `<details class="fold"><summary>${icon('chevR', 'sm')}甄試說明</summary><div class="long">${esc(d.iv)}</div></details>`;
+    h += reviewHTML(d);
+    if (d.rn) h += foldHTML('審查資料說明', d.rn);
+    if (d.iv) h += foldHTML('甄試說明', d.iv);
     return h + '</section>';
   }
   function entranceText(r) {
@@ -738,6 +774,52 @@
       return `<li class="${clash ? 'clash' : ''}${past ? ' past' : ''}"><div class="d">${m}/${d}<small>星期${wd}${clash ? ' · 撞期' : ''}</small></div><div class="evs">${xs.map(x => `<div class="ev"><span class="tag ${x.cls}">${x.kind}</span><span>${esc(x.t)}</span></div>`).join('')}</div></li>`;
     }).join('')}</ol>`;
   }
+  // ------------------------------------------------------------------ 二階準備 (plan page)
+  const kindCls = k => (k === 'sat' ? 'k-sat' : k === 'review' ? 'k-rev' : 'k-exam');
+  const compBar = d => `<div class="cbar" aria-hidden="true">${L.stage2(d).map(x => `<span class="${kindCls(x.kind)}" style="flex-grow:${x.p}"></span>`).join('')}</div>`;
+  const compCap = d => (d.sp ? '' : '<span class="nosat">不計學測</span>') + L.stage2(d).map(x => `<span><i class="sw ${kindCls(x.kind)}"></i>${esc(x.n)} ${x.p}%</span>`).join('');
+  const REVIEW_ORDER = ['修課紀錄', '課程學習成果', '多元表現', '學習歷程自述'];
+  function prepHTML(P) {
+    if (!P.length) return '';
+    const sps = P.map(d => d.sp || 0), lo = Math.min(...sps), hi = Math.max(...sps);
+    const nIv = P.filter(L.hasInterview).length, nWr = P.filter(L.hasWritten).length, nNo = P.filter(L.noVisit).length;
+    const facts = [`學測佔二階 ${lo === hi ? lo : lo + '–' + hi}%`, nIv ? `${nIv} 個要面試` : '都不用面試', nWr ? `${nWr} 個要筆試` : '', nNo ? `${nNo} 個不用到校甄試` : ''].filter(Boolean);
+    const bars = P.map((d, i) => `<li><div class="cb-h"><span class="no">${i + 1}</span><button class="cb-name" type="button" data-open="${d.c}"><span class="sch">${esc(sch(d))}</span>${esc(d.n)}</button></div>${compBar(d)}<div class="cb-cap">${compCap(d)}</div></li>`).join('');
+    const G = P.map(d => L.reviewGroups(d.rv));
+    const codesOf = (gs, g) => (gs.find(x => x.g === g) || { codes: [] }).codes;
+    const cells = has => has.map(x => `<td>${x ? '<span class="dot"></span><span class="sr">要</span>' : '<span class="nil"></span><span class="sr">不用</span>'}</td>`).join('');
+    const groupRow = g => `<tr class="gh"><th scope="colgroup" colspan="${P.length + 2}">${esc(g)}<small>${esc(REVIEW_HOW[g])}</small></th></tr>`;
+    let rows = '';
+    for (const g of REVIEW_ORDER) {
+      const codes = [...new Set(G.flatMap(gs => codesOf(gs, g)))].sort();
+      if (!codes.length) continue;
+      rows += groupRow(g);
+      for (const c of codes) {
+        const has = G.map(gs => codesOf(gs, g).includes(c)), n = has.filter(Boolean).length;
+        rows += `<tr${n === P.length && P.length > 1 ? ' class="all"' : ''}><th scope="row"><b class="cd">${c}</b>${esc(REVIEW[c])}</th>${cells(has)}<td class="cnt">${n}</td></tr>`;
+      }
+    }
+    // 其他: each 系 defines its own R, S, T, so rows are the items themselves.
+    const others = new Map();
+    G.forEach((gs, i) => (gs.find(x => x.g === '其他') || { items: [] }).items.forEach(it => { if (!others.has(it.t)) others.set(it.t, new Set()); others.get(it.t).add(i); }));
+    if (others.size) {
+      rows += groupRow('其他');
+      for (const [t, set] of others) rows += `<tr><th scope="row">${esc(t)}</th>${cells(P.map((_, i) => set.has(i)))}<td class="cnt">${set.size}</td></tr>`;
+    }
+    const used = new Set(G.flatMap(gs => gs.flatMap(x => x.codes)));
+    const unused = Object.keys(REVIEW).filter(c => !used.has(c));
+    const head = `<tr><th scope="col"><span class="sr">審查資料</span></th>${P.map((d, i) => `<th scope="col" title="${esc(sch(d) + ' ' + d.n)}"><span aria-hidden="true">${i + 1}</span><span class="sr">第 ${i + 1} 志願 ${esc(sch(d) + ' ' + d.n)}</span></th>`).join('')}<th scope="col" class="cnt">幾個要</th></tr>`;
+    const notes = P.map((d, i) => (d.rn || d.iv ? `<details class="fold"><summary>${icon('chevR', 'sm')}${i + 1}. ${esc(sch(d) + ' ' + d.n)}</summary>${d.rn ? `<div class="long"><b>審查資料說明</b>\n${esc(d.rn)}</div>` : ''}${d.iv ? `<div class="long"><b>甄試說明</b>\n${esc(d.iv)}</div>` : ''}</details>` : '')).join('');
+    return `<section class="sec prep" id="prep"><h2>二階要準備什麼</h2><p class="sub">過了一階以後，你的志願怎麼算總成績、要交哪些審查資料（116 校系分則）</p>
+      <ul class="facts">${facts.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+      <h3 class="sec-h3">二階總成績怎麼組成</h3><ol class="cbars">${bars}</ol>
+      <h3 class="sec-h3">審查資料：哪幾個志願要</h3>
+      <div class="tablewrap"><table class="rmx"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+      ${unused.length ? `<p class="hint" style="margin-top:10px">你的志願都沒列出：${esc(unused.map(c => c + ' ' + REVIEW[c]).join('、'))}。</p>` : ''}
+      <div style="margin-top:14px">${noteHTML('info', '招聯會的審查原則「三重二不」：不是學系列的每一項都要具備，也不是以量取勝（116 學生手冊）。各系的必備、選備和字數限制，看下面每個志願的說明。')}</div>
+      ${notes ? `<div class="prep-notes">${notes}</div>` : ''}
+    </section>`;
+  }
   function renderPlan() {
     const P = planDepts();
     const favs = st.fav.map(c => BY_CODE[c]).filter(Boolean);
@@ -754,7 +836,7 @@
     const IC = { ok: 'check', warn: 'alert', bad: 'x', info: 'info' };
     const favRows = favs.map(d => {
       const pi = st.plan.indexOf(d.c);
-      return `<li class="fav">${pillHTML(tierOf(d))}<div class="s-main" data-open="${d.c}" role="button" tabindex="0"><div class="s-t"><span class="sch">${esc(sch(d))}</span>${esc(d.n)}</div><div class="s-d"><span>${esc(daysText(d))}</span><span>${esc(stage2Parts(d).map(x => shortItem(x.n) + ' ' + x.p + '%').join(' · '))}</span></div></div>
+      return `<li class="fav">${pillHTML(tierOf(d))}<div class="s-main" data-open="${d.c}" role="button" tabindex="0"><div class="s-t"><span class="sch">${esc(sch(d))}</span>${esc(d.n)}</div><div class="s-d"><span>${esc(daysText(d))}</span><span>${esc(partsLine(d))}</span></div></div>
         <div class="fav-act"><button class="btn sm${pi >= 0 ? '' : ' primary'}" type="button" data-plan="${d.c}">${pi >= 0 ? `移出第 ${pi + 1} 志願` : `${icon('plus', 'sm')}排入志願`}</button><button class="star" type="button" data-fav="${d.c}" aria-pressed="true" aria-label="取消收藏：${esc(sch(d) + d.n)}" title="取消收藏">${icon('star')}</button></div></li>`;
     }).join('');
     const h = `<header class="page-h"><div><h1>我的志願</h1><p>申請入學最多報 6 個校系。報名時沒有順序；這裡的順序是你的偏好，放榜後「登記就讀志願序」時會用到。</p></div>
@@ -766,6 +848,7 @@
         </section>
       </div>
       <section class="sec"><h2>收藏</h2><p class="sub">${favs.length ? `${favs.length} 個 · 從這裡排進志願` : '在「找校系」按星號收藏想考慮的校系'}</p>${favs.length ? `<ol class="favs" id="favList">${favRows}</ol>` : `<div style="margin-top:14px"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}去找校系</button></div>`}</section>
+      ${prepHTML(P)}
       ${P.length ? `<section class="sec"><h2>二階行事曆</h2><p class="sub">你的志願的審查資料截止、甄試和放榜日期（116 校系分則），加上甄選會的統一日期</p>${calendarHTML(P)}</section>` : ''}
       <section class="sec no-print"><h2>備份與換裝置</h2><p class="sub">成績、收藏和志願只存在這台裝置的瀏覽器裡，不會上傳。換手機或電腦前先備份。</p>
         <div class="page-actions" style="margin-top:14px"><button class="btn sm" type="button" data-act="exportState">${icon('download', 'sm')}備份我的資料</button><label class="btn sm">${icon('upload', 'sm')}還原備份<input type="file" id="importState" accept="application/json,.json"></label></div></section>`;
@@ -777,7 +860,7 @@
       `學測：${SCORE_KEYS.map(k => `${subj(k)}${L.val(s, k) ?? '沒考'}`).join(' ')} 英聽${s.聽 || '沒考'}（檢定用 ${st.stdYear} 五標）`, ''];
     const row = (d, i) => {
       const e = EV.get(d.c);
-      return `${i != null ? i + 1 + '. ' : '- '}${sch(d)} ${d.n}（${d.c}）【${e ? e.tier : '—'}】${e ? e.reasons.join('；') : ''}${e && e.warnings.length ? '；' + e.warnings.join('；') : ''}\n   ${requirementLine(d)}\n   二階：${stage2Parts(d).map(x => x.n + ' ' + x.p + '%').join('・')}；甄試 ${d.idays.length ? rocText(d.idate) : '不用到校'}；資料截止 ${rocDate(d.dd)}`;
+      return `${i != null ? i + 1 + '. ' : '- '}${sch(d)} ${d.n}（${d.c}）【${e ? e.tier : '—'}】${e ? e.reasons.join('；') : ''}${e && e.warnings.length ? '；' + e.warnings.join('；') : ''}\n   ${requirementLine(d)}\n   二階：${partsLine(d, true)}；甄試 ${d.idays.length ? rocText(d.idate) : '不用到校'}；資料截止 ${rocDate(d.dd)}${d.rv ? `\n   審查資料：${d.rv}` : ''}`;
     };
     lines.push('【六個志願】');
     P.forEach((d, i) => lines.push(row(d, i)));
@@ -796,13 +879,13 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
   function csv() {
-    const rows = [['志願', '校系代碼', '學校', '校系', '落點', '理由', '檢定', '115一階', '二階', '審查資料截止', '甄試日期', '放榜', '甄試費', '官方網址']];
+    const rows = [['志願', '校系代碼', '學校', '校系', '落點', '理由', '檢定', '115一階', '二階', '審查資料', '審查資料截止', '甄試日期', '放榜', '甄試費', '官方網址']];
     [...st.plan, ...st.fav.filter(c => !st.plan.includes(c))].forEach(c => {
       const d = BY_CODE[c];
       if (!d) return;
       const e = EV.get(c), i = st.plan.indexOf(c);
       const req = requirementLine(d).split('　|　');
-      rows.push([i >= 0 ? i + 1 : '收藏', d.c, sch(d), d.n, e ? e.tier : '', e ? e.reasons.join('；') : '', req[0], req[1].replace('115 一階 ', ''), stage2Parts(d).map(x => x.n + ' ' + x.p + '%').join('・'), rocDate(d.dd), d.idays.length ? rocText(d.idate) : '不用到校甄試', rocDate(d.rd), d.fee || '', d.url]);
+      rows.push([i >= 0 ? i + 1 : '收藏', d.c, sch(d), d.n, e ? e.tier : '', e ? e.reasons.join('；') : '', req[0], req[1].replace('115 一階 ', ''), partsLine(d, true), d.rv || '', rocDate(d.dd), d.idays.length ? rocText(d.idate) : '不用到校甄試', rocDate(d.rd), d.fee || '', d.url]);
     });
     return '﻿' + rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   }
@@ -965,7 +1048,7 @@
         <li><div><b>一階 = 檢定 → 倍率篩選 → 同級分超額篩選。</b>檢定沒過，連篩選都不能參加。倍率從大到小一關一關篩，同一關同級分的人一起過；只有最後一關同分才比超額篩選的科目順序。</div></li>
         <li><div><b>每一關都要過。</b>只看第一關、或只看總級分都會判錯（這個工具的舊版就犯過這個錯）。</div></li>
         <li><div><b>數A、數B 同時列為檢定時，過一科就好。</b>只考數B 的人不會因為數A 沒考被擋。</div></li>
-        <li><div><b>二階通常是學測＋審查資料＋面試或筆試，各系比例差很多。</b>學測佔比高的系，學測好的人比較有利；審查和面試佔比高的系，學習歷程和準備最重要。</div></li>
+        <li><div><b>二階通常是學測＋審查資料＋面試或筆試，各系比例差很多。</b>學測佔比高的系，學測好的人比較有利；審查和面試佔比高的系，學習歷程和準備最重要。有 ${fmtN(D.depts.filter(d => !d.sp).length)} 個校系的二階完全不計學測。「找校系」可以依學測佔二階的比例篩選，「我的志願」會整理你的志願要交哪些審查資料。</div></li>
         <li><div><b>撞期很常見。</b>一階過了兩個同一天甄試的系，只能去一個。排志願時就先看甄試日期。</div></li>
         <li><div><b>放榜後要登記就讀志願序（6/3–6/4）。</b>正取、備取都要登記，沒登記等於放棄。甄選會依志願序和名次統一分發，每人只會分到 1 個。</div></li>
         <li><div><b>繁星第 1–7 類錄取的人不能報申請入學。</b>就算放棄繁星的錄取也一樣。</div></li>
@@ -1163,6 +1246,7 @@
       if (ds.region) { toggle(f.regions, ds.region); ui.shown = PAGE; render(); return; }
       if (ds.own) { f.own = ds.own; ui.shown = PAGE; render(); return; }
       if (ds.cat) { toggle(f.cats, ds.cat); ui.shown = PAGE; render(); return; }
+      if (ds.sat) { f.sat = ds.sat === f.sat ? 'all' : ds.sat; ui.shown = PAGE; render(); return; }
       if (ds.st2) { toggle(f.st2, ds.st2); ui.shown = PAGE; render(); return; }
       if (ds.listen) { keepEditorOpen(); st.scores.聽 = ds.listen === 'none' ? '' : ds.listen; render(); return; }
       if (ds.clear) {

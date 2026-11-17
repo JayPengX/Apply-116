@@ -80,6 +80,29 @@ try {
     ok(pills.length > 10 && !pills.includes('不符'), '不符 hidden by default');
     ok(pills.every((b, i) => i === 0 || TIER_ORDER.indexOf(pills[i - 1]) <= TIER_ORDER.indexOf(b)), 'sorted by tier');
 
+    // 第二階段 filters: one 學測-share choice at a time, plus 甄試 chips whose counts match the list they produce
+    const spOf = await page.evaluate(() => Object.fromEntries(JSON.parse(document.getElementById('app-data').textContent).depts.map(d => [d.c, d.sp])));
+    const listed = () => page.locator('#list .row[data-code]').evaluateAll(els => els.map(e => e.dataset.code));
+    const ovCount = async () => Number((await page.locator('#overview h2 b').innerText()).replace(/,/g, ''));
+    await page.click('#filterPanel [data-sat="light"]');
+    let shown = await listed();
+    ok(shown.length > 0 && shown.every(c => spOf[c] <= 20), `學測佔二階 20% 以下 keeps only those (${shown.length})`);
+    ok((await page.locator('#activeFilters').innerText()).includes('學測佔二階 20% 以下'), 'the 學測-share choice shows as an active filter');
+    await page.click('#filterPanel [data-sat="none"]');
+    ok((await page.locator('#filterPanel [data-sat="light"]').getAttribute('aria-pressed')) === 'false', 'only one 學測-share choice at a time');
+    shown = await listed();
+    ok(shown.length > 0 && shown.every(c => spOf[c] === 0) && (await page.locator('#list .row .r-meta').first().innerText()).includes('不計學測'), '不計學測 rows say so');
+    await page.click('#filterPanel [data-sat="none"]');
+    ok((await page.evaluate(() => window.__app.st().f.sat)) === 'all', 'pressing the chosen share again clears it');
+    for (const k of ['noVisit', 'noInterview']) {
+      const n = Number(await page.locator(`#filterPanel [data-st2="${k}"] .n`).innerText());
+      await page.click(`#filterPanel [data-st2="${k}"]`);
+      ok(n > 0 && (await ovCount()) === n, `${k} chip count matches the result (${n})`);
+    }
+    await page.click('#filterPanel [data-st2="noVisit"]');
+    await page.click('#filterPanel [data-st2="noInterview"]');
+    ok((await page.evaluate(() => window.__app.st().f.st2.length)) === 0, '甄試 chips toggle off');
+
     // show 不符 and check NTU law is blocked by 數B 檢定
     await page.click('#overview [data-tier="不符"]');
     ok((await page.locator('#overview [data-tier="不符"]').getAttribute('aria-pressed')) === 'true', 'legend toggles a tier');
@@ -96,6 +119,9 @@ try {
     const dtxt = await page.locator('#dBody').innerText();
     ok(dtxt.includes('第一階段') && dtxt.includes('第二階段'), 'detail shows both stages');
     ok(dtxt.includes('115'), 'detail labels the 115 reference year');
+    const lead = (await page.locator('#dBody .s2lead').innerText()).replace(/\u00a0/g, ' ');
+    ok(/學測佔二階總成績 [\d.]+%|二階總成績不計學測/.test(lead) && /約 [\d.]+ 取 1/.test(lead), 'detail sums up the 二階 total and people per seat: ' + lead.slice(0, 40));
+    ok((await page.locator('#dBody .rg').count()) >= 3, '審查資料 grouped by type');
     await page.screenshot({ path: join(SHOTS, 'desktop-detail.png') });
     await page.click('#dClose');
     await page.waitForFunction(() => !document.querySelector('#detail').open);
@@ -117,6 +143,18 @@ try {
     ok((await page.locator('#planList li[data-code]').count()) === 6, 'plan tab lists 6');
     ok((await page.locator('#plan .cal > li').count()) > 3, 'plan calendar rendered');
     ok((await page.locator('#plan .check').count()) > 2, 'plan checks rendered');
+    ok((await page.locator('#prep .cbars li').count()) === 6, '二階準備 shows a score-mix bar per 志願');
+    // each matrix row's count matches its dots, and the P row agrees with the 系' own 審查資料 lists
+    const mx = await page.evaluate(() => {
+      const D = JSON.parse(document.getElementById('app-data').textContent);
+      const by = Object.fromEntries(D.depts.map(d => [d.c, d]));
+      const rows = [...document.querySelectorAll('#prep .rmx tbody tr:not(.gh)')];
+      const pRow = rows.find(r => r.querySelector('.cd') && r.querySelector('.cd').textContent === 'P');
+      const wantP = window.__app.st().plan.filter(c => /學習歷程自述\([^)]*P/.test(by[c].rv || '')).length;
+      return { rows: rows.length, consistent: rows.every(r => +r.querySelector('.cnt').textContent === r.querySelectorAll('.dot').length), p: pRow ? +pRow.querySelector('.cnt').textContent : -1, wantP };
+    });
+    ok(mx.rows > 5 && mx.consistent, `審查資料 matrix counts match its dots (${mx.rows} rows)`);
+    ok(mx.p === mx.wantP, `P 就讀動機 row matches the 系 lists (${mx.p} of 6)`);
     const first = await page.locator('#planList li[data-code]').first().getAttribute('data-code');
     await page.click(`#planList [data-down="${first}"]`);
     ok((await page.locator('#planList li[data-code]').nth(1).getAttribute('data-code')) === first, 'move down works');
@@ -194,8 +232,11 @@ try {
     await page.click('#dClose');
     await page.waitForFunction(() => !document.querySelector('#detail').open);
 
+    // a full plan, so the 二階準備 matrix is on the page for the overflow check
+    await page.evaluate(() => { const D = JSON.parse(document.getElementById('app-data').textContent); window.__app.st().plan = D.depts.filter(d => d.g.includes('法政')).slice(0, 6).map(d => d.c); window.__app.render(); });
     for (const tab of ['explore', 'plan', 'boost', 'guide']) {
       await page.click(`#bottomnav [data-tab="${tab}"]`);
+      if (tab === 'plan') ok((await page.locator('#prep .rmx').count()) === 1, '二階準備 matrix on phone');
       if (tab === 'boost') await page.waitForSelector('#boost .heat');
       const sw = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok(sw <= 0, `no horizontal scroll on phone: ${tab} (overflow ${sw})`);
@@ -215,6 +256,19 @@ try {
     const bg2 = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     ok(bg2 !== bg, 'theme button switches to light ' + bg2);
     await page.screenshot({ path: join(SHOTS, 'dark.png') });
+    await ctx.close();
+  }
+
+  console.log('saved filters from the previous version');
+  {
+    const { ctx, page, errors } = await newPage(browser);
+    await page.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1'); localStorage.setItem('apply116-v1', JSON.stringify({ v: 1, scores: { 國: '12' }, f: { st2: ['satHeavy', 'noInterview'] }, fav: [], plan: [] })); } });
+    await page.goto(URL_);
+    await page.waitForSelector('.row');
+    const f = await page.evaluate(() => window.__app.st().f);
+    ok(f.sat === 'heavy' && JSON.stringify(f.st2) === '["noInterview"]', 'old「學測佔 50% 以上」chip becomes the 50% 以上 choice: ' + JSON.stringify({ sat: f.sat, st2: f.st2 }));
+    ok((await page.locator('#filterPanel [data-sat="heavy"]').getAttribute('aria-pressed')) === 'true', 'and shows as chosen');
+    ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
     await ctx.close();
   }
 

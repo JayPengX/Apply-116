@@ -343,9 +343,60 @@
     return `${m}/${d}(${wd})`;
   }
 
+  // ---------------------------------------------------------------- 第二階段 (116 校系分則)
+  /** Split at top-level 、 only (the 分則's list separator), so "其他(R.推薦函2封(含導師)、S.小論文)" keeps its inner parentheses. */
+  function splitTop(s) {
+    const out = [];
+    let depth = 0, cur = '';
+    for (const ch of s) {
+      if (ch === '(' || ch === '（') depth++;
+      else if (ch === ')' || ch === '）') depth = Math.max(0, depth - 1);
+      else if (depth === 0 && ch === '、') { if (cur.trim()) out.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    if (cur.trim()) out.push(cur.trim());
+    return out;
+  }
+  /** 審查資料 as the 分則 lists it, e.g. "修課紀錄(A)、課程學習成果(B、C)、…、其他(R.自傳(限一頁)、S.小論文)"
+   *  → [{ g: '修課紀錄', codes: ['A'] }, …, { g: '其他', codes: [], items: [{ c: 'R', t: '自傳(限一頁)' }, …] }]. */
+  function reviewGroups(rv) {
+    if (!rv) return [];
+    return splitTop(rv).map(seg => {
+      const m = /^([^(（]+)[(（]([\s\S]*)[)）]$/.exec(seg);
+      if (!m) return { g: seg, codes: [], items: [] };
+      const g = m[1].trim(), inner = splitTop(m[2]);
+      if (g === '其他') {
+        return { g, codes: [], items: inner.map(p => { const x = /^([A-Z])[.．]\s*([\s\S]+)$/.exec(p); return x ? { c: x[1], t: x[2].trim() } : { c: '', t: p }; }) };
+      }
+      return { g, codes: inner, items: [] };
+    });
+  }
+  const INTERVIEW_RE = /面試|口試|面談|座談|晤談|訪談/;
+  const WRITTEN_RE = /筆試|測驗|小論文|寫作|作文/;
+  /** What an 二階 item is: review (審查資料), interview, written (筆試、測驗), or other (實作、術科、心得報告 …). */
+  function stage2Kind(name) {
+    if (/^審查資料/.test(name)) return 'review';
+    if (INTERVIEW_RE.test(name)) return 'interview';
+    if (WRITTEN_RE.test(name)) return 'written';
+    return 'other';
+  }
+  /** The 二階 總成績 in the 分則's order: 學測, 術科, then each 指定項目. Items with 0% are left out. */
+  function stage2(d) {
+    const out = [];
+    if (d.sp) out.push({ n: '學測', p: d.sp, kind: 'sat' });
+    if (d.arts && d.arts.p) out.push({ n: '術科', p: d.arts.p, kind: 'arts' });
+    for (const x of d.st2 || []) if (x.p) out.push({ n: x.i.replace(/^指定項目甄試[:：]?/, ''), p: x.p, t: x.t, kind: stage2Kind(x.i) });
+    return out;
+  }
+  const hasInterview = d => (d.st2 || []).some(x => INTERVIEW_RE.test(x.i));
+  const hasWritten = d => (d.st2 || []).some(x => WRITTEN_RE.test(x.i));
+  /** 不用到校甄試: the 分則 gives no 甄試 date ("--"); every such 系 is judged on 審查資料 (and 學測 or APCS) only. */
+  const noVisit = d => !(d.idays && d.idays.length);
+
   return {
     SUBJ, SUBJ_NAME, LEVELS, TIERS, SAFE_RATIO, REACH_RATIO,
     val, sumOf, checkThreshold, countAtOrAbove, topPercent, compareCuts, screenPlan, missingUse,
     expected115, thresholdRisk, evaluate, chanceKey, selectivity, satShare, targets, conflicts, fmtDay,
+    splitTop, reviewGroups, stage2Kind, stage2, hasInterview, hasWritten, noVisit,
   };
 });

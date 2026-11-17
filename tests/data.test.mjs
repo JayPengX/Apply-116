@@ -112,3 +112,46 @@ test('115 分發 depth is attached for matched departments', () => {
   assert.ok(withEntr.length > 2000);
   for (const d of withEntr) for (const x of d.r115.entr) assert.match(x.s, /^(正取|無|備\d+)$/);
 });
+
+// 116 簡章總則「審查資料項目內容對照表」: A 修課紀錄; B–E 課程學習成果; F–N 多元表現; O–Q 學習歷程自述; R–T 其他.
+const REVIEW_GROUP = { A: '修課紀錄' };
+for (const c of 'BCDE') REVIEW_GROUP[c] = '課程學習成果';
+for (const c of 'FGHIJKLMN') REVIEW_GROUP[c] = '多元表現';
+for (const c of 'OPQ') REVIEW_GROUP[c] = '學習歷程自述';
+
+test('every department\'s 審查資料 list parses into the official groups and codes', () => {
+  for (const d of D.depts) {
+    const gs = L.reviewGroups(d.rv);
+    assert.ok(gs.length >= 1, d.c);
+    for (const g of gs) {
+      assert.ok(['修課紀錄', '課程學習成果', '多元表現', '學習歷程自述', '其他'].includes(g.g), d.c + ' group ' + g.g);
+      if (g.g === '其他') for (const it of g.items) { assert.match(it.c, /^[RST]$/, d.c); assert.ok(it.t.length > 0, d.c); }
+      else for (const c of g.codes) assert.equal(REVIEW_GROUP[c], g.g, `${d.c} ${c} in ${g.g}`);
+    }
+  }
+});
+
+test('二階 parts add up to 100% for every department', () => {
+  for (const d of D.depts) {
+    const parts = L.stage2(d);
+    const total = parts.reduce((a, x) => a + x.p, 0);
+    assert.ok(Math.abs(total - 100) < 0.01, `${d.c} sums to ${total}`);
+    assert.ok(parts.some(x => x.kind === 'review'), d.c + ' has 審查資料');
+  }
+});
+
+test('不用到校甄試 departments have no interview or written test', () => {
+  const none = D.depts.filter(L.noVisit);
+  assert.ok(none.length > 300);
+  for (const d of none) { assert.ok(!L.hasInterview(d), d.c); assert.ok(!L.hasWritten(d), d.c); }
+});
+
+test('二階 spot checks against the official 116 校系分則', () => {
+  const by = Object.fromEntries(D.depts.map(d => [d.c, d]));
+  // 臺大中文: 學測 40%, 審查資料 25%, 語文測驗筆試 20%, 寫作筆試 15%
+  assert.deepEqual(L.stage2(by['001012']).map(x => [x.n, x.p, x.kind]), [['學測', 40, 'sat'], ['審查資料', 25, 'review'], ['語文測驗筆試', 20, 'written'], ['寫作筆試', 15, 'written']]);
+  // 臺大數學: 二階不計學測 (審查資料 45%, 數學筆試 55%)
+  assert.equal(by['001092'].sp, 0);
+  assert.deepEqual(L.stage2(by['001092']).map(x => x.kind), ['review', 'written']);
+  assert.deepEqual(L.reviewGroups(by['001012'].rv).map(g => [g.g, g.codes.join('')]), [['修課紀錄', 'A'], ['課程學習成果', 'BC'], ['多元表現', 'FJKN'], ['學習歷程自述', 'OPQ']]);
+});

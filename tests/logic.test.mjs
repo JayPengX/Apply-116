@@ -156,3 +156,23 @@ test('fmtDay gives 2027 weekdays', () => {
   assert.equal(L.fmtDay('05-14'), '5/14(五)'); // 116.5.14 is a Friday per 校系分則 text
   assert.equal(L.fmtDay('01-22'), '1/22(五)'); // 學測 1/22（五）
 });
+
+test('審查資料 parsing keeps nested parentheses and commas inside 其他', () => {
+  const gs = L.reviewGroups('修課紀錄(A)、課程學習成果(B、D)、多元表現(F、H、K、M、N)、學習歷程自述(O、P、Q)、其他(R.經濟與文化不利證明、S.推薦函2封(含導師)、T.學系志願表(B組))');
+  assert.deepEqual(gs.map(g => g.g), ['修課紀錄', '課程學習成果', '多元表現', '學習歷程自述', '其他']);
+  assert.deepEqual(gs[1].codes, ['B', 'D']);
+  assert.deepEqual(gs[4].items, [{ c: 'R', t: '經濟與文化不利證明' }, { c: 'S', t: '推薦函2封(含導師)' }, { c: 'T', t: '學系志願表(B組)' }]);
+  assert.deepEqual(L.reviewGroups('其他(R.作品集，須附說明。)')[0].items, [{ c: 'R', t: '作品集，須附說明。' }]);
+  assert.deepEqual(L.reviewGroups(''), []);
+});
+
+test('二階 items are sorted into kinds', () => {
+  const kinds = ['審查資料', '面試', '團體訪談', '英文口試', '語文測驗筆試', '小論文', '術科：創意設計', '認識本系與心得報告'].map(L.stage2Kind);
+  assert.deepEqual(kinds, ['review', 'interview', 'interview', 'interview', 'written', 'written', 'other', 'other']);
+  const d = { sp: 0, st2: [{ i: '審查資料', p: 45 }, { i: '數學筆試', p: 55 }], idays: ['05-14'] };
+  assert.deepEqual(L.stage2(d).map(x => x.n), ['審查資料', '數學筆試']);
+  assert.equal(L.hasWritten(d), true);
+  assert.equal(L.hasInterview(d), false);
+  assert.equal(L.noVisit(d), false);
+  assert.equal(L.noVisit({ idays: [] }), true);
+});
