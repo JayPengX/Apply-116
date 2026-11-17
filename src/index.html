@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>116 申請入學選系</title>
+<meta name="description" content="116 學年度大學個人申請：輸入學測級分，查檢定、對照 115 一階篩選結果、排六個志願、檢查撞期。離線可用。">
+<meta name="theme-color" content="#1f5f8b">
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到內容</a>
+<header class="top">
+  <div class="brand">
+    <svg class="logo" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Zm-6 8v4.5c0 1.7 2.7 3.5 6 3.5s6-1.8 6-3.5V11l-6 3-6-3Z" fill="currentColor"/></svg>
+    <div><h1>116 申請入學選系</h1><p class="sub">64 校 · 2,240 校系 · 離線可用</p></div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="主要功能">
+    <button role="tab" data-tab="explore" aria-selected="true">找校系</button>
+    <button role="tab" data-tab="plan">我的志願 <span class="count" id="planCount"></span></button>
+    <button role="tab" data-tab="boost">怎麼進步</button>
+    <button role="tab" data-tab="guide">時程與規則</button>
+  </nav>
+  <button class="icon-btn" id="themeBtn" title="切換深色／淺色" aria-label="切換深色／淺色"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
+</header>
+
+<main id="main">
+  <!-- 找校系 -->
+  <section class="tab-panel" id="tab-explore" role="tabpanel">
+    <div class="layout">
+      <aside class="side" id="side">
+        <div class="card scores" id="scoresCard">
+          <div class="card-h"><h2>我的學測級分</h2><button class="link" id="clearScores">清除</button></div>
+          <div class="score-grid" id="scoreGrid"></div>
+          <details class="adv">
+            <summary>APCS、五標年份</summary>
+            <div class="score-grid small" id="scoreGrid2"></div>
+            <label class="row">檢定用五標
+              <select id="stdYear"></select>
+            </label>
+            <p class="hint" id="stdHint"></p>
+          </details>
+          <p class="hint">空白或 0 = 沒考。數學 A／B 只要有一科過檢定就行（甄選會規定）。</p>
+        </div>
+
+        <details class="card filters" id="filtersBox" open>
+          <summary class="card-h"><h2>篩選 <span class="hint inline" id="filterSum"></span></h2><button class="link" id="resetFilters">重設</button></summary>
+          <label class="search"><span class="sr">搜尋</span>
+            <input id="q" type="search" placeholder="搜尋學校、科系、審查或面試關鍵字" autocomplete="off">
+          </label>
+          <div class="fgroup"><div class="flabel">落點</div><div class="chips" id="tierChips"></div></div>
+          <div class="fgroup"><div class="flabel">學群 <button class="link small" id="groupsNone">全部</button></div><div class="chips" id="groupChips"></div></div>
+          <div class="fgroup"><div class="flabel">地區</div><div class="chips" id="regionChips"></div></div>
+          <div class="fgroup"><div class="flabel">學校</div><div class="chips" id="ownChips"></div></div>
+          <div class="fgroup"><div class="flabel">特殊組別 <span class="hint inline">（多數限特定身分，預設隱藏）</span></div><div class="chips" id="catChips"></div></div>
+          <div class="fgroup"><div class="flabel">二階</div><div class="chips" id="st2Chips"></div></div>
+        </details>
+      </aside>
+
+      <div class="results">
+        <div class="results-h">
+          <div id="summary" class="summary" aria-live="polite"></div>
+          <label class="sort">排序
+            <select id="sort">
+              <option value="chance">機會（高→低）</option>
+              <option value="select">去年門檻（高→低）</option>
+              <option value="sat">學測佔比（高→低）</option>
+              <option value="date">甄試日期（早→晚）</option>
+              <option value="quota">名額（多→少）</option>
+              <option value="code">校系代碼</option>
+            </select>
+          </label>
+        </div>
+        <div id="banner"></div>
+        <ol class="list" id="list"></ol>
+        <div id="more"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 我的志願 -->
+  <section class="tab-panel" id="tab-plan" role="tabpanel" hidden>
+    <div class="narrow">
+      <div class="card">
+        <div class="card-h"><h2>六個志願</h2><span class="hint inline">申請入學每人最多 6 個校系（116 學生手冊）</span></div>
+        <ol class="plan" id="planList"></ol>
+        <div id="planAnalysis"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>候選清單</h2><span class="hint inline">在「找校系」按 ☆ 加入；按「排入志願」放進上面六格</span></div>
+        <ol class="list compact" id="favList"></ol>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>匯出與備份</h2></div>
+        <div class="btns">
+          <button class="btn" id="copyPlan">複製文字（貼給老師或 AI）</button>
+          <button class="btn" id="csvPlan">下載 CSV</button>
+          <button class="btn" id="printPlan">列印志願表</button>
+          <button class="btn ghost" id="exportState">備份我的資料</button>
+          <label class="btn ghost file">還原備份<input type="file" id="importState" accept="application/json"></label>
+        </div>
+        <p class="hint">資料只存在這台裝置的瀏覽器裡，不會上傳。換手機或電腦前先「備份我的資料」。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 怎麼進步 -->
+  <section class="tab-panel" id="tab-boost" role="tabpanel" hidden>
+    <div class="narrow" id="boost"></div>
+  </section>
+
+  <!-- 時程與規則 -->
+  <section class="tab-panel" id="tab-guide" role="tabpanel" hidden>
+    <div class="narrow" id="guide"></div>
+  </section>
+</main>
+
+<dialog id="detail" aria-labelledby="dTitle">
+  <div class="d-head">
+    <div><p class="d-school" id="dSchool"></p><h2 id="dTitle"></h2></div>
+    <button class="icon-btn" id="dClose" aria-label="關閉">✕</button>
+  </div>
+  <div class="d-body" id="dBody"></div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script type="application/json" id="app-data">/*__DATA__*/</script>
+<script>/*__LOGIC__*/</script>
+<script>/*__APP__*/</script>
+</body>
+</html>
