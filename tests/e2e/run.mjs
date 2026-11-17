@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const { chromium, devices } = require('playwright');
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const URL_ = pathToFileURL(join(root, 'dist', 'index.html')).href;
+const URL_ = process.env.URL || pathToFileURL(join(root, 'dist', 'index.html')).href;
 const SHOTS = process.env.SHOTS || join(root, 'build', 'shots');
 mkdirSync(SHOTS, { recursive: true });
 let failures = 0;
@@ -17,7 +17,7 @@ const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { failur
 async function newPage(browser, ctxOpts = {}) {
   const ctx = await browser.newContext({ acceptDownloads: true, ...ctxOpts });
   const external = [];
-  await ctx.route(/^https?:/, r => { external.push(r.request().url()); r.abort(); });
+  if (!process.env.URL) await ctx.route(/^https?:/, r => { external.push(r.request().url()); r.abort(); });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
