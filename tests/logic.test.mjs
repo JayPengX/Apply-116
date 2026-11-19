@@ -298,3 +298,17 @@ test('an untaken subject used only for 二階 採計 shows up in miss.weight', (
   assert.notEqual(e.tier, '不符');
   assert.deepEqual(e.miss.weight, ['自']);
 });
+
+test('comboKey: all 倍率 subjects together, in fixed order; 檢定-only and 採計-only subjects left out', () => {
+  const d = dept({ sub: [sub('社', null, 3), sub('國', '均標', 5), sub('英', null, 5), sub('數A', '均標'), sub('自', null, null, 1)] });
+  assert.deepEqual(L.screenSubjects(d), ['國', '英', '社']);
+  assert.equal(L.comboKey(d), '國+英+社');
+  assert.equal(L.comboKey(dept({ sub: [sub('國', '均標')] })), '');
+});
+
+test('comboRank: total and 115 rank on a combination; null when a subject was not taken', () => {
+  const rk = L.comboRank(['國', '英', '社'], S({ 國: 13, 英: 12, 社: 13 }), D.pct);
+  assert.equal(rk.sum, 38);
+  assert.ok(rk.top > 0 && rk.top < 20, 'about the top fifth');
+  assert.equal(L.comboRank(['國', '數A'], S({ 國: 13 }), D.pct), null);
+});

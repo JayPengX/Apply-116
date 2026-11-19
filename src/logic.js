@@ -394,6 +394,20 @@
     return stage1Groups(d).some(g => g.every(k => subjects.includes(k)));
   }
 
+  /** The subjects a 系 screens on by 倍率 in 一階 (all stages together), in fixed order; [] when it has no 倍率篩選. */
+  function screenSubjects(d) {
+    const ps = new Set(d.sub.filter(s => s.m != null && s.k !== '聽').flatMap(s => s.p || []));
+    return STAGE_SUBJ.filter(s => ps.has(s));
+  }
+  /** Key of that combination, e.g. "國+英+社" ('' when none). */
+  const comboKey = d => screenSubjects(d).join('+');
+  /** Your 級分 total and 115 rank on a combination ({sum, top} or null when you did not take one of them). */
+  function comboRank(parts, S, pct) {
+    const { v } = sumOf(parts, S);
+    if (v == null) return null;
+    return { sum: v, top: topPercent(pct, parts, v), max: 15 * parts.length };
+  }
+
   /** 115 expected interviewees ≈ quota × lowest multiple. */
   function expected115(r) {
     const ms = Object.values(r.mult || {}).filter(v => typeof v === 'number');
@@ -640,6 +654,7 @@
   return {
     SUBJ, SUBJ_NAME, LEVELS, TIERS, SAFE_RATIO, REACH_RATIO,
     val, sumOf, checkThreshold, countAtOrAbove, topPercent, compareCuts, screenPlan, missingUse, stage1Groups, stage1Uses,
+    screenSubjects, comboKey, comboRank,
     partsText, align116, compare116, screenChanges, unknownText, cutReason, flowText,
     expected115, thresholdRisk, evaluate, chanceKey, selectivity, satShare, targets, conflicts, fmtDay,
     splitTop, reviewGroups, stage2Kind, stage2, hasInterview, hasWritten, noVisit,

@@ -230,6 +230,10 @@ details.more>summary:hover{color:var(--text)}
 .fcheck{display:flex;align-items:flex-start;gap:8px;margin-top:12px;font-size:13.5px;line-height:1.5;cursor:pointer}
 .fcheck input{width:18px;height:18px;margin:1px 0 0;flex:none;accent-color:var(--ink,currentColor)}
 .listbar .textbtn{font-size:inherit}
+.chip .rk{font-size:11.5px;color:var(--ok);font-weight:600;font-variant-numeric:tabular-nums;padding-left:5px;border-left:1px solid var(--line)}
+.chip[aria-pressed="true"] .rk{color:var(--on-ink-2);border-color:var(--on-ink-2)}
+.hint+.fsub,.chips+.fsub{margin-top:12px}
+.combomore{margin-top:8px}
 
 /* ---------- toolbar */
 .toolbar{display:flex;gap:10px;align-items:center}
@@ -718,6 +722,73 @@ details.fold>summary:hover{color:var(--text)}
   .k-exam{background:#c5ccd8!important}
   .wrap{padding:0}
 }
+
+/* ---------- 自訂五標 */
+.stdgrid{display:grid;grid-template-columns:auto repeat(5,minmax(0,1fr));gap:4px 6px;align-items:center;margin-top:12px;font-size:12.5px}
+.stdgrid [role="columnheader"]{color:var(--text-3);text-align:center;font-weight:600}
+.stdgrid [role="rowheader"]{color:var(--text-2);white-space:nowrap;padding-right:4px}
+.stdgrid input{width:100%;min-width:0;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);text-align:center;font:inherit;font-size:14px;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.stdgrid input::-webkit-inner-spin-button,.stdgrid input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.stdgrid input:focus{outline:2px solid var(--focus);outline-offset:1px}
+.stdgrid-f{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:12.5px}
+.warn-t{color:var(--warn)}
+
+/* ---------- 模考紀錄 & 趨勢 (one series hue: reference palette blue, stepped for dark) */
+:root{--series-1:#2a78d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--series-1:#3987e5}}
+:root[data-theme="dark"]{--series-1:#3987e5}
+.delta.flat{background:var(--surface-3);color:var(--text-2)}
+.mockform{display:grid;gap:8px;margin-top:10px}
+.mockform .mf{display:grid;grid-template-columns:3.6em minmax(0,1fr);align-items:center;gap:8px;font-size:13.5px;color:var(--text-2)}
+.mockform .mf .selectbox{min-width:0}
+.mockform .mf select{width:100%;min-width:0}
+.mockform input[type=text],.mockform input[type=date]{width:100%;min-width:0;height:36px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;padding:0 10px}
+.mockform .btn{justify-self:start}
+.mocklist{list-style:none;padding:0;margin:12px 0 8px;display:grid;gap:2px}
+.mocklist li{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
+.mocklist .md{color:var(--text-3);font-variant-numeric:tabular-nums}
+.mocklist .mn{min-width:0}
+.mocklist .mn b{display:block;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mocklist .mn small{color:var(--text-3);font-size:12px}
+.textbtn.danger{color:var(--bad)}
+.trendnotes{margin:12px 0 0;padding-left:1.2em;font-size:14px;line-height:1.7}
+.sparks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:14px}
+.spark{margin:0;border:1px solid var(--line);border-radius:12px;padding:10px 10px 8px;min-width:0}
+.spark figcaption{display:flex;align-items:baseline;gap:8px}
+.spark .sk{font-size:13px;color:var(--text-2);font-weight:650}
+.spark .sv{font-size:20px;font-weight:750;color:var(--text);margin-left:auto}
+.spark svg{display:block;width:100%;height:auto;margin-top:4px;overflow:visible}
+.spark .base{stroke:var(--line-2);stroke-width:1}
+.spark .ref{stroke:var(--line-2);stroke-width:1;stroke-dasharray:3 3}
+.spark .reft{fill:var(--text-3);font-size:10px}
+.spark .ln{fill:none;stroke:var(--series-1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.spark .pt{fill:var(--series-1);stroke:var(--surface);stroke-width:2}
+.spark .vlab{fill:var(--text);font-size:12px;font-weight:700}
+.spark .hit{fill:transparent;cursor:pointer;outline:none}
+.spark .hit:focus-visible{stroke:var(--focus);stroke-width:2}
+.spark .sx{display:block;font-size:11.5px;color:var(--text-3);margin-top:2px}
+.sec-h3{font-size:15px;margin-top:22px}
+.mtiers{display:grid;gap:10px;margin-top:10px}
+.mt-row{display:grid;grid-template-columns:minmax(7em,10em) minmax(0,1fr) auto;gap:12px;align-items:center;font-size:13px}
+.mt-l b{display:block;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt-l small{color:var(--text-3)}
+.mt-n{color:var(--text-2);white-space:nowrap}
+.tablewrap{overflow-x:auto;margin-top:10px;-webkit-overflow-scrolling:touch}
+.reftable{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+.reftable th,.reftable td{text-align:left;padding:7px 8px;border-top:1px solid var(--line);vertical-align:top}
+.reftable thead th{color:var(--text-3);font-weight:650;font-size:12px;border-top:0}
+.reftable tbody th{font-weight:650;white-space:nowrap}
+.reftable tbody th small{display:block;color:var(--text-3);font-weight:400}
+.mockref{margin-top:18px}
+.mockref>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:650;color:var(--text-2)}
+.mockref>summary::-webkit-details-marker{display:none}
+.mockref[open]>summary .i{transform:rotate(90deg)}
+.mockref .hint{margin-top:8px}
+.charttip{position:fixed;z-index:60;max-width:260px;background:var(--ink);color:var(--on-ink);font-size:12.5px;line-height:1.45;padding:6px 9px;border-radius:8px;pointer-events:none;box-shadow:var(--shadow-1)}
+@media (max-width:600px){
+  .mt-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
+  .mt-row .tierbar{grid-column:1/-1;grid-row:2}
+}
 </style>
 </head>
 <body>
@@ -1193,6 +1264,20 @@ details.fold>summary:hover{color:var(--text)}
     return stage1Groups(d).some(g => g.every(k => subjects.includes(k)));
   }
 
+  /** The subjects a 系 screens on by 倍率 in 一階 (all stages together), in fixed order; [] when it has no 倍率篩選. */
+  function screenSubjects(d) {
+    const ps = new Set(d.sub.filter(s => s.m != null && s.k !== '聽').flatMap(s => s.p || []));
+    return STAGE_SUBJ.filter(s => ps.has(s));
+  }
+  /** Key of that combination, e.g. "國+英+社" ('' when none). */
+  const comboKey = d => screenSubjects(d).join('+');
+  /** Your 級分 total and 115 rank on a combination ({sum, top} or null when you did not take one of them). */
+  function comboRank(parts, S, pct) {
+    const { v } = sumOf(parts, S);
+    if (v == null) return null;
+    return { sum: v, top: topPercent(pct, parts, v), max: 15 * parts.length };
+  }
+
   /** 115 expected interviewees ≈ quota × lowest multiple. */
   function expected115(r) {
     const ms = Object.values(r.mult || {}).filter(v => typeof v === 'number');
@@ -1439,6 +1524,7 @@ details.fold>summary:hover{color:var(--text)}
   return {
     SUBJ, SUBJ_NAME, LEVELS, TIERS, SAFE_RATIO, REACH_RATIO,
     val, sumOf, checkThreshold, countAtOrAbove, topPercent, compareCuts, screenPlan, missingUse, stage1Groups, stage1Uses,
+    screenSubjects, comboKey, comboRank,
     partsText, align116, compare116, screenChanges, unknownText, cutReason, flowText,
     expected115, thresholdRisk, evaluate, chanceKey, selectivity, satShare, targets, conflicts, fmtDay,
     splitTop, reviewGroups, stage2Kind, stage2, hasInterview, hasWritten, noVisit,
@@ -1472,6 +1558,10 @@ details.fold>summary:hover{color:var(--text)}
   const ST2 = [['noInterview', '不用面試'], ['noWritten', '不用筆試'], ['noVisit', '不用到校甄試']];
   const SAT = [['none', '不計學測', '二階不計學測', d => !d.sp], ['light', '20% 以下', '學測佔二階 20% 以下', d => (d.sp || 0) <= 20], ['heavy', '50% 以上', '學測佔二階 50% 以上', d => (d.sp || 0) >= 50]];
   const SAT_BY = Object.fromEntries(SAT.map(x => [x[0], x]));
+  // 一階組合 filter: only 系 whose 倍率篩選 uses exactly this set of subjects (all stages together).
+  const COMBO_OF = Object.fromEntries(D.depts.map(d => [d.c, L.comboKey(d)]));
+  const COMBO_KEYS = new Set(Object.values(COMBO_OF).filter(Boolean));
+  const COMBO_TOP = 10; // chips shown before「更多組合」
   // 一階科目 filter: hide 系 that need any of these subjects for 檢定 or 倍率篩選.
   const SKIP_SUBJ = [['國', '國文'], ['英', '英文'], ['數A', '數A'], ['數B', '數B'], ['社', '社會'], ['自', '自然'], ['聽', '英聽']];
   const ST2_TEST = { noInterview: d => !L.hasInterview(d), noWritten: d => !L.hasWritten(d), noVisit: L.noVisit };
@@ -1486,6 +1576,16 @@ details.fold>summary:hover{color:var(--text)}
     不符: '檢定沒過，或沒考 116 要篩選的科目：一定進不了一階',
     無資料: '沒有可以比的 115 門檻：116 改用 115 沒篩過的科目、116 新設或改名，或只用術科篩選（都會寫原因）',
   };
+  // 116 學測模擬考 (115 學年度高三): dates and 範圍 from several high schools' 115 學年度 notices (台南、高雄、新竹).
+  // Schools sit the same papers on nearby days, so a school's own notice wins.
+  const MOCK_REF = [
+    { n: '第一次學測模擬考', d: '2026-07-29', when: '7/29–7/30', r: { 國文: '第 1–2 冊', 英文: '第 1–2 冊', 數學: '第 1 冊（數A、數B 不分卷）', 社會: '歷史、地理第 1 冊；公民：社會政治', 自然: '物理、化學、生物、地科必修上半冊' } },
+    { n: '第二次學測模擬考', d: '2026-09-02', when: '9/2–9/3（有的學校 9/9–9/10）', r: { 國文: '第 1–3 冊', 英文: '第 1–3 冊', 數學: '第 1–2 冊（不分卷）', 社會: '第 1–2 冊；公民：社會政治、法律', 自然: '物化生地必修全（含探究與實作）', 英聽: '英文必修第 1–4 學期' } },
+    { n: '第三次學測模擬考', d: '2026-10-28', when: '10/28–10/29', r: { 國文: '第 1–4 冊', 英文: '第 1–4 冊', 數學: '第 1–2 冊＋數A 或數B 第 3 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
+    { n: '第四次學測模擬考', d: '2026-12-08', when: '12/8–12/9', r: { 國文: '第 1–5 冊', 英文: '第 1–5 冊', 數學: '第 1–2 冊＋數A 或數B 第 3–4 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
+    { n: '116 學測', d: '2027-01-22', when: '2027/1/22–1/24', r: null },
+  ];
+  const MOCK_MAX = 30;
   const REVIEW = { A: '修課紀錄', B: '書面報告', C: '實作作品', D: '自然科學探究與實作成果', E: '社會領域探究活動成果', F: '自主學習計畫與成果', G: '社團活動經驗', H: '擔任幹部經驗', I: '服務學習經驗', J: '競賽表現', K: '非修課紀錄之成果作品', L: '檢定證照', M: '特殊優良表現證明', N: '多元表現綜整心得', O: '高中學習歷程反思', P: '就讀動機', Q: '未來學習計畫與生涯規劃' };
   const SCORE_KEYS = ['國', '英', '數A', '數B', '社', '自'];
   const ABBR = { 國: '國', 英: '英', 數A: '數A', 數B: '數B', 社: '社', 自: '自', 識: 'APCS觀念', 實: 'APCS實作' };
@@ -1528,20 +1628,43 @@ details.fold>summary:hover{color:var(--text)}
     v: 1,
     scores: { 國: '', 英: '', 數A: '', 數B: '', 社: '', 自: '', 聽: '', 識: '', 實: '' },
     stdYear: '115',
-    f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', skip: [], untaken: false, sort: 'chance' },
-    fav: [], plan: [], theme: '',
+    stdCustom: copyStd(D.std['115']),
+    f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', skip: [], combos: [], untaken: false, sort: 'chance' },
+    fav: [], plan: [], mocks: [], theme: '',
   });
+  /** 五標 tables: {國: {頂標: 13, …}, …}. A custom one (e.g. a 模考's) must have every level as 1–15 級分. */
+  function copyStd(x) { return JSON.parse(JSON.stringify(x)); }
+  function cleanStd(x) {
+    if (!x || typeof x !== 'object') return null;
+    const out = {};
+    for (const k of SCORE_KEYS) {
+      out[k] = {};
+      for (const l of L.LEVELS) {
+        const n = Number(x[k] && x[k][l]);
+        if (!Number.isInteger(n) || n < 1 || n > 15) return null;
+        out[k][l] = n;
+      }
+    }
+    return out;
+  }
+  const todayISO = () => { const t = new Date(); return new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  function cleanScores(x) {
+    const out = DEFAULT().scores;
+    for (const k of Object.keys(out)) {
+      const v = x ? x[k] : '';
+      if (k === '聽') out[k] = ['A', 'B', 'C', 'F'].includes(String(v).toUpperCase()) ? String(v).toUpperCase() : '';
+      else { const n = Number(v); out[k] = v !== '' && v != null && Number.isInteger(n) && n > 0 && n <= (k === '識' || k === '實' ? 5 : 15) ? String(n) : ''; }
+    }
+    return out;
+  }
   function sanitize(s) {
     const d = DEFAULT();
     if (!s || typeof s !== 'object' || s.v !== 1) return d;
     const arr = (x, ok) => (Array.isArray(x) ? x.filter(ok) : []);
     const f = { ...d.f, ...(s.f && typeof s.f === 'object' ? s.f : {}) };
-    const out = { ...d, theme: ['light', 'dark'].includes(s.theme) ? s.theme : '', stdYear: D.std[s.stdYear] ? String(s.stdYear) : d.stdYear, f };
-    for (const k of Object.keys(d.scores)) {
-      const v = s.scores ? s.scores[k] : '';
-      if (k === '聽') out.scores[k] = ['A', 'B', 'C', 'F'].includes(String(v).toUpperCase()) ? String(v).toUpperCase() : '';
-      else { const n = Number(v); out.scores[k] = v !== '' && v != null && Number.isInteger(n) && n > 0 && n <= (k === '識' || k === '實' ? 5 : 15) ? String(n) : ''; }
-    }
+    const out = { ...d, theme: ['light', 'dark'].includes(s.theme) ? s.theme : '', stdYear: D.std[s.stdYear] || s.stdYear === 'custom' ? String(s.stdYear) : d.stdYear, f };
+    out.stdCustom = cleanStd(s.stdCustom) || d.stdCustom;
+    out.scores = cleanScores(s.scores);
     f.q = typeof f.q === 'string' ? f.q : '';
     f.groups = arr(f.groups, g => GROUPS.includes(g));
     f.regions = arr(f.regions, r => REGIONS.includes(r));
@@ -1553,9 +1676,17 @@ details.fold>summary:hover{color:var(--text)}
     if (!SAT_BY[f.sat]) f.sat = 'all';
     f.skip = arr(f.skip, k => SKIP_SUBJ.some(x => x[0] === k));
     f.untaken = f.untaken === true;
+    f.combos = arr(f.combos, k => typeof k === 'string' && COMBO_KEYS.has(k));
     if (!['all', 'pub', 'pri'].includes(f.own)) f.own = 'all';
     if (!SORTS.includes(f.sort)) f.sort = 'chance';
     out.fav = [...new Set(arr(s.fav, c => BY_CODE[c]))];
+    out.mocks = arr(s.mocks, m => m && typeof m === 'object').map(m => ({
+      id: typeof m.id === 'string' ? m.id.slice(0, 20) : Math.random().toString(36).slice(2, 10),
+      n: String(m.n || '模考').slice(0, 30),
+      d: /^\d{4}-\d{2}-\d{2}$/.test(m.d) ? m.d : todayISO(),
+      s: cleanScores(m.s),
+      std: cleanStd(m.std),
+    })).filter(m => SCORE_KEYS.some(k => L.val(m.s, k) != null)).slice(0, MOCK_MAX);
     out.plan = [...new Set(arr(s.plan, c => BY_CODE[c]))].slice(0, 6);
     return out;
   }
@@ -1575,9 +1706,12 @@ details.fold>summary:hover{color:var(--text)}
   // ------------------------------------------------------------------ evaluation (cached until scores or 五標 year change)
   let EV = new Map(), evSig = null;
   const hasScores = S => SCORE_KEYS.some(k => L.val(S || st.scores, k) != null);
-  const opts = () => ({ std: D.std[st.stdYear], stdByYear: D.std, stdYear: st.stdYear, pct: D.pct });
+  /** The 五標 used for 檢定: a 學年度's, or the user's own (自訂, e.g. from a 模考). */
+  const STD = () => (st.stdYear === 'custom' ? st.stdCustom : D.std[st.stdYear]);
+  const stdName = () => (st.stdYear === 'custom' ? '自訂五標' : `${st.stdYear} 學年度五標`);
+  const opts = () => ({ std: STD(), stdByYear: D.std, stdYear: st.stdYear, pct: D.pct });
   function ensureEval() {
-    const sig = JSON.stringify(st.scores) + '|' + st.stdYear;
+    const sig = JSON.stringify(st.scores) + '|' + st.stdYear + '|' + (st.stdYear === 'custom' ? JSON.stringify(st.stdCustom) : '');
     if (sig === evSig) return;
     evSig = sig;
     EV = new Map();
@@ -1602,7 +1736,7 @@ details.fold>summary:hover{color:var(--text)}
     return '前 ' + Math.round(x) + '%';
   }
   function levelOf(k, v, year) {
-    const s = D.std[year || st.stdYear] && D.std[year || st.stdYear][k];
+    const t = year ? D.std[year] : STD(), s = t && t[k];
     if (!s || !v) return '';
     for (const l of L.LEVELS) if (v >= s[l]) return l;
     return '未達底標';
@@ -1675,7 +1809,6 @@ details.fold>summary:hover{color:var(--text)}
     if (!h) { h = [sch(d), d.n, d.c, d.g.join(' '), d.rv || '', d.rn || '', d.iv || '', d.notes || '', d.city, d.st2.map(x => x.i).join(' ')].join(' ').toLowerCase(); hayCache.set(d.c, h); }
     return h;
   }
-  const todayISO = () => { const t = new Date(); return new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
   const daysUntil = iso => Math.round((new Date(iso + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 864e5);
 
   // ------------------------------------------------------------------ filtering
@@ -1694,13 +1827,32 @@ details.fold>summary:hover{color:var(--text)}
     if (skip !== 'sat' && f.sat !== 'all' && !SAT_BY[f.sat][3](d)) return false;
     if (skip !== 'st2' && f.st2.some(k => !ST2_TEST[k](d))) return false;
     if (skip !== 'skip' && L.stage1Uses(d, f.skip)) return false;
+    if (skip !== 'combos' && f.combos.length && !f.combos.includes(COMBO_OF[d.c])) return false;
     if (skip !== 'untaken' && !f.untaken && usesUntaken(d)) return false;
     if (qTerms.length) { const h = hay(d); if (!qTerms.every(t => h.includes(t))) return false; }
     return true;
   }
   const baseFiltered = skip => D.depts.filter(d => passes(d, skip));
-  const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + (st.f.sat !== 'all' ? 1 : 0) + st.f.st2.length + st.f.skip.length + (st.f.untaken ? 1 : 0) + (catsChanged() ? 1 : 0);
+  const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + (st.f.sat !== 'all' ? 1 : 0) + st.f.st2.length + st.f.skip.length + st.f.combos.length + (st.f.untaken ? 1 : 0) + (catsChanged() ? 1 : 0);
   const skipName = k => SKIP_SUBJ.find(x => x[0] === k)[1];
+  const comboParts = k => k.split('+');
+  const comboName = k => { const ps = comboParts(k); return ps.length === 1 ? subj(ps[0]) : ps.map(p => ABBR[p] || p).join(''); };
+  /** Combination chips: how many 系 screen on each, and your 115 rank on it; strongest first once you have scores. */
+  function comboChips() {
+    const f = st.f, has = hasScores(), c = {};
+    for (const d of baseFiltered('combos')) { const k = COMBO_OF[d.c]; if (k) c[k] = (c[k] || 0) + 1; }
+    const rows = [...new Set([...Object.keys(c), ...f.combos])].map(k => {
+      const rk = has ? L.comboRank(comboParts(k), st.scores, D.pct) : null;
+      return { k, n: c[k] || 0, rk };
+    });
+    // With scores: combinations you rank best on come first (only those with 5+ 系, so rare ones do not crowd the top).
+    const strength = x => (has && x.n >= 5 && x.rk && x.rk.top != null ? x.rk.top : Infinity);
+    rows.sort((a, b) => (strength(a) - strength(b)) || (b.n - a.n) || (a.k < b.k ? -1 : 1));
+    const chipC = x => `<button type="button" class="chip combo${x.n === 0 ? ' zero' : ''}" aria-pressed="${f.combos.includes(x.k)}" data-combo="${esc(x.k)}" title="${esc(comboParts(x.k).map(subj).join('＋'))}">${esc(comboName(x.k))}<span class="n">${x.n}</span>${has ? `<span class="rk">${x.rk ? (x.rk.top != null ? fmtTop(x.rk.top) : x.rk.sum + ' 級分') : '沒考'}</span>` : ''}</button>`;
+    const head = rows.slice(0, COMBO_TOP), rest = rows.slice(COMBO_TOP);
+    const restOn = rest.some(x => f.combos.includes(x.k));
+    return `<div class="chips" role="group" aria-labelledby="comboLab">${head.map(chipC).join('')}</div>${rest.length ? `<details class="combomore" id="comboMore" ${ui.comboOpen || restOn ? 'open' : ''}><summary>${icon('chevR', 'sm')}其他 ${rest.length} 種組合</summary><div class="chips">${rest.map(chipC).join('')}</div></details>` : ''}`;
+  }
   function scopeLabel() {
     const f = st.f, p = [];
     if (f.groups.length) p.push(f.groups.join('、'));
@@ -1709,6 +1861,7 @@ details.fold>summary:hover{color:var(--text)}
     if (f.sat !== 'all') p.push(SAT_BY[f.sat][2]);
     f.st2.forEach(k => p.push(ST2.find(x => x[0] === k)[1]));
     if (f.skip.length) p.push('一階不用' + f.skip.map(skipName).join('、'));
+    if (f.combos.length) p.push('一階篩 ' + f.combos.map(comboName).join('／'));
     if (f.q.trim()) p.push('「' + f.q.trim() + '」');
     return p.join(' · ');
   }
@@ -1770,7 +1923,7 @@ details.fold>summary:hover{color:var(--text)}
   }
   const valueText = (k, v, max) => (!v ? '沒考' : max === 15 ? `${v} 級分${levelOf(k, v) ? '，' + levelOf(k, v) : ''}` : `${v} 級`);
   function marksHTML(k, max, v) {
-    const std = max === 15 && D.std[st.stdYear] ? D.std[st.stdYear][k] : null;
+    const std = max === 15 && STD() ? STD()[k] : null;
     if (!std) return '';
     const lv = v ? levelOf(k, v) : '';
     const byV = new Map();
@@ -1815,19 +1968,75 @@ details.fold>summary:hover{color:var(--text)}
     tiles.push(`<button class="tile edit" type="button" data-act="editScores">${icon('edit', 'sm')}<span>修改</span></button>`);
     return `<div class="panel-h"><h2>我的學測級分</h2><span class="hint">百分比是 115 考生排名</span></div><div class="tiles">${tiles.join('')}</div>`;
   }
+  // ------------------------------------------------------------------ 模考紀錄
+  const mocksByDate = () => st.mocks.slice().sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+  const mdText = iso => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}`;
+  const mockTotal = m => SCORE_KEYS.reduce((t, k) => t + (L.val(m.s, k) || 0), 0);
+  const scoreLine = sc => SCORE_KEYS.map(k => L.val(sc, k)).map((v, i) => (v == null ? null : `${ABBR[SCORE_KEYS[i]]}${v}`)).filter(Boolean).join(' ') + (sc.聽 ? ` 聽${sc.聽}` : '');
+  function mockBoxHTML() {
+    const ms = mocksByDate(), any = hasScores();
+    const preset = MOCK_REF.find(x => !st.mocks.some(m => m.n === x.n)) || MOCK_REF[0];
+    return `<details class="more" id="mockBox" ${ui.mockOpen ? 'open' : ''}><summary>${icon('chevR', 'sm')}模考紀錄${ms.length ? `（${ms.length} 次）` : ''}</summary><div class="more-b">
+      <p class="hint">每次模考成績存一筆，「怎麼進步」會畫出每科的趨勢、每次的落點。也可以套用某一次的成績來看當時的落點。</p>
+      ${any ? `<div class="mockform">
+        <label class="mf">哪一次<span class="selectbox"><select id="mockPreset">${MOCK_REF.map(x => `<option value="${esc(x.n)}" ${x === preset ? 'selected' : ''}>${esc(x.n)}（${esc(x.when)}）</option>`).join('')}<option value="">其他</option></select>${icon('chevD', 'sm')}</span></label>
+        <label class="mf">名稱<input id="mockName" type="text" maxlength="30" value="${esc(preset.n)}"></label>
+        <label class="mf">日期<input id="mockDate" type="date" value="${preset.d}"></label>
+        ${st.stdYear === 'custom' ? '<label class="fcheck"><input type="checkbox" id="mockStd" checked> 一起存我填的自訂五標</label>' : ''}
+        <button class="btn sm" type="button" data-act="saveMock">${icon('check', 'sm')}把現在的成績存成這次模考</button>
+      </div>` : '<p class="hint">先填這次模考的級分，再存起來。</p>'}
+      ${ms.length ? `<ul class="mocklist">${ms.map(m => `<li><span class="md">${mdText(m.d)}</span><span class="mn"><b>${esc(m.n)}</b><small>${esc(scoreLine(m.s))}${m.std ? ' · 有五標' : ''}</small></span><button class="textbtn" type="button" data-mockuse="${m.id}">套用</button><button class="textbtn danger" type="button" data-mockdel="${m.id}" aria-label="刪除 ${esc(m.n)}">刪除</button></li>`).join('')}</ul>
+      <button class="textbtn" type="button" data-tab="boost">${icon('boost', 'sm')}看模考趨勢</button>` : ''}
+    </div></details>`;
+  }
+  function saveMock() {
+    const n = ($('#mockName').value || '').trim().slice(0, 30) || '模考';
+    const d = /^\d{4}-\d{2}-\d{2}$/.test($('#mockDate').value) ? $('#mockDate').value : todayISO();
+    const box = $('#mockStd');
+    const rec = { id: Math.random().toString(36).slice(2, 10), n, d, s: cleanScores(st.scores), std: box && box.checked ? copyStd(st.stdCustom) : null };
+    const i = st.mocks.findIndex(m => m.n === n && m.d === d);
+    if (i >= 0) { rec.id = st.mocks[i].id; st.mocks[i] = rec; } else {
+      if (st.mocks.length >= MOCK_MAX) { toast(`最多存 ${MOCK_MAX} 次，先刪掉舊的`); return; }
+      st.mocks.push(rec);
+    }
+    ui.mockOpen = true; keepEditorOpen(); render();
+    toast(i >= 0 ? `已更新「${n}」` : `已存成「${n}」`);
+  }
+  function useMock(id) {
+    const m = st.mocks.find(x => x.id === id);
+    if (!m) return;
+    st.scores = { ...cleanScores(m.s), 識: st.scores.識, 實: st.scores.實 };
+    if (m.std) { st.stdYear = 'custom'; st.stdCustom = copyStd(m.std); }
+    ui.shown = PAGE; ui.tryS = null; render();
+    toast(`已套用「${m.n}」的成績${m.std ? '和五標' : ''}`);
+  }
+
+  /** 自訂五標: one row per subject, 頂標 → 底標. */
+  function customStdHTML() {
+    const c = st.stdCustom;
+    const bad = SCORE_KEYS.filter(k => L.LEVELS.some((l, i) => i && c[k][l] > c[k][L.LEVELS[i - 1]]));
+    return `<div class="stdgrid" role="table" aria-label="自訂五標">
+      <span role="columnheader"></span>${L.LEVELS.map(l => `<span role="columnheader">${l.replace('標', '')}</span>`).join('')}
+      ${SCORE_KEYS.map(k => `<span role="rowheader">${subj(k)}</span>${L.LEVELS.map(l => `<input type="number" inputmode="numeric" min="1" max="15" value="${c[k][l]}" data-std="${k}:${l}" aria-label="${subj(k)}${l}">`).join('')}`).join('')}
+    </div>
+    <div class="stdgrid-f">${Object.keys(D.std).sort().reverse().map(y => `<button class="textbtn" type="button" data-stdcopy="${y}">填入 ${y} 五標</button>`).join('')}</div>
+    ${bad.length ? `<p class="hint warn-t">${bad.map(subj).join('、')}的五標沒有由高到低，請檢查。</p>` : ''}`;
+  }
   function scoreEditor() {
     const s = st.scores, any = hasScores();
-    const years = Object.keys(D.std).sort().reverse().map(y => `<option value="${y}" ${y === st.stdYear ? 'selected' : ''}>${y} 學年度學測五標</option>`).join('');
+    const years = Object.keys(D.std).sort().reverse().map(y => `<option value="${y}" ${y === st.stdYear ? 'selected' : ''}>${y} 學年度學測五標</option>`).join('') + `<option value="custom" ${st.stdYear === 'custom' ? 'selected' : ''}>自訂（例如模考的五標）</option>`;
     return `<div class="panel-h"><h2>我的學測級分</h2>${any || s.聽 ? '<button class="textbtn" type="button" data-act="clearScores">全部清除</button>' : ''}</div>
-      <p class="panel-note">${any ? '點或拖曳格子改級分（鍵盤用方向鍵）。' : '還沒考也可以先填模考或目標分數，點格子就好。'}格子下方是 ${st.stdYear} 學年度五標。成績只存在這台裝置。</p>
+      <p class="panel-note">${any ? '點或拖曳格子改級分（鍵盤用方向鍵）。' : '還沒考也可以先填模考或目標分數，點格子就好。'}格子下方是${stdName()}。成績只存在這台裝置。</p>
       <div class="sliders">${SCORE_KEYS.map(k => sliderHTML('slider', k, subj(k), L.val(s, k) || 0, 15)).join('')}
         <div class="srow listen-row"><span class="srow-l" id="lab-listen">英聽</span>${listenHTML(s.聽)}</div>
       </div>
+ ${mockBoxHTML()}
       <details class="more" id="moreScores" ${ui.more ? 'open' : ''}><summary>${icon('chevR', 'sm')}APCS、檢定用五標年份</summary><div class="more-b">
         ${sliderHTML('slider', '識', 'APCS 觀念', L.val(s, '識') || 0, 5)}
         ${sliderHTML('slider', '實', 'APCS 實作', L.val(s, '實') || 0, 5)}
         <label class="field">檢定用五標<span class="selectbox"><select id="stdYear">${years}</select>${icon('chevD', 'sm')}</span></label>
-        <p class="hint">116 學測五標 2027/2/25 才公布，先用 ${st.stdYear} 年的。數學 A、B 都列為檢定時，過一科就好（甄選會規定）。</p>
+        ${st.stdYear === 'custom' ? customStdHTML() : ''}
+        <p class="hint">116 學測五標 2027/2/25 才公布，${st.stdYear === 'custom' ? '這裡用你自己填的五標。用模考成績的話，填那次模考公布的五標比較準' : `先用 ${st.stdYear} 年的。也可以選「自訂」填模考公布的五標`}。數學 A、B 都列為檢定時，過一科就好（甄選會規定）。</p>
       </div></details>
       ${any ? `<div class="panel-f"><button class="btn primary" type="button" data-act="doneScores">${icon('check', 'sm')}完成，看落點</button></div>` : ''}`;
   }
@@ -1868,6 +2077,8 @@ details.fold>summary:hover{color:var(--text)}
       <div class="fsec"><h3>一階科目</h3>
         <p class="fsub" id="skipLab">不要檢定或倍率篩選用到這些科目的校系</p><div class="chips" role="group" aria-labelledby="skipLab">${SKIP_SUBJ.map(([k, l]) => chip(l, f.skip.includes(k), `data-skip="${k}"`, kc[k])).join('')}</div>
         <p class="hint">數A、數B 檢定「擇一」的校系，兩科都選才會隱藏。</p>
+        <p class="fsub" id="comboLab">只看一階用這個組合篩選的校系</p>${comboChips()}
+        <p class="hint">${hasScores() ? '旁邊是你這個組合的總級分在 115 考生排前幾 %，越前面越強；照強弱排（5 個系以上的組合）。' : '輸入成績後會顯示你在每個組合排前幾 %。'}組合是一階所有倍率篩選科目合起來，例如國文 ×3、英文 ×5 算「國英」。</p>
         ${hasScores() ? `<label class="fcheck"><input type="checkbox" id="untakenBox" ${f.untaken ? 'checked' : ''}> 也顯示二階採計我沒考科目的校系<span class="muted num"> ${nUntaken}</span></label><p class="hint">沒考的科目二階學測成績以 0 計，所以預設隱藏。檢定或篩選用到沒考的科目一定是「不符」。</p>` : ''}</div>
       <div class="fsec"><h3>第二階段</h3>
         <p class="fsub" id="satLab">學測佔二階總成績</p><div class="chips" role="group" aria-labelledby="satLab">${SAT.map(([k, l]) => chip(l, f.sat === k, `data-sat="${k}"`, sc[k] || 0)).join('')}</div>
@@ -1887,6 +2098,7 @@ details.fold>summary:hover{color:var(--text)}
     if (f.sat !== 'all') out.push(af(SAT_BY[f.sat][2], 'data-sat="all"'));
     f.st2.forEach(k => out.push(af(ST2.find(x => x[0] === k)[1], `data-st2="${k}"`)));
     f.skip.forEach(k => out.push(af('一階不用' + skipName(k), `data-skip="${k}"`)));
+    f.combos.forEach(k => out.push(af('一階篩 ' + comboName(k), `data-combo="${esc(k)}"`)));
     if (f.untaken && hasScores()) out.push(af('含採計沒考科目', 'data-act="hideUntaken"'));
     if (catsChanged()) out.push(af('特殊組別已變更', 'data-act="resetCats"'));
     if (out.length > 1) out.push('<button class="textbtn" type="button" data-act="resetAll">全部清除</button>');
@@ -2041,7 +2253,7 @@ details.fold>summary:hover{color:var(--text)}
     return `<li class="step"><span class="dot ${cls}">${mark}</span><div><div class="step-t">${title}</div>${body}</div></li>`;
   }
   function thresholdStep(d, e) {
-    const th = L.checkThreshold(d, st.scores, D.std[st.stdYear]);
+    const th = L.checkThreshold(d, st.scores, STD());
     if (!th.items.length) return stepHTML('', '檢', '檢定', '<p class="step-d">不設檢定。</p>');
     const has = hasScores() || !!st.scores.聽;
     const rows = [];
@@ -2056,7 +2268,7 @@ details.fold>summary:hover{color:var(--text)}
     });
     const cls = has ? (th.ok ? 'ok' : 'bad') : '';
     const risk = e && e.thRisk ? `<p class="step-d" style="color:var(--warn)">${esc(e.warnings.find(w => w.startsWith('檢定邊緣')) || '')}</p>` : '';
-    return stepHTML(cls, has ? icon(th.ok ? 'check' : 'x') : '檢', `檢定<small>用 ${st.stdYear} 學年度五標換算</small>`, `<div class="reqs">${rows.join('')}</div>${risk}`);
+    return stepHTML(cls, has ? icon(th.ok ? 'check' : 'x') : '檢', `檢定<small>用${stdName()}換算</small>`, `<div class="reqs">${rows.join('')}</div>${risk}`);
   }
   /** How many people a stage lets through in 115 and 116 (倍率 × 名額), what that does to the cut, and where you land. */
   function flowNote(s, has) {
@@ -2409,7 +2621,7 @@ details.fold>summary:hover{color:var(--text)}
   function planText() {
     const P = planDepts(), s = st.scores;
     const lines = [`116 申請入學志願（${new Date().toLocaleDateString('zh-TW')}）`,
-      `學測：${SCORE_KEYS.map(k => `${subj(k)}${L.val(s, k) ?? '沒考'}`).join(' ')} 英聽${s.聽 || '沒考'}（檢定用 ${st.stdYear} 五標）`, ''];
+      `學測：${SCORE_KEYS.map(k => `${subj(k)}${L.val(s, k) ?? '沒考'}`).join(' ')} 英聽${s.聽 || '沒考'}（檢定用${stdName()}）`, ''];
     const row = (d, i) => {
       const e = EV.get(d.c);
       return `${i != null ? i + 1 + '. ' : '- '}${sch(d)} ${d.n}（${d.c}）【${e ? e.tier : '—'}】${e ? e.reasons.join('；') : ''}${e && e.warnings.length ? '；' + e.warnings.join('；') : ''}\n   ${requirementLine(d)}\n   二階：${partsLine(d, true)}；甄試 ${d.idays.length ? rocText(d.idate) : '不用到校'}；資料截止 ${rocDate(d.dd)}${d.rv ? `\n   審查資料：${d.rv}` : ''}`;
@@ -2475,11 +2687,90 @@ details.fold>summary:hover{color:var(--text)}
     boostCache = { sig, data };
     return data;
   }
+  // ------------------------------------------------------------------ 模考趨勢
+  const COMBO_N = {};
+  for (const k of Object.values(COMBO_OF)) if (k) COMBO_N[k] = (COMBO_N[k] || 0) + 1;
+  /** The combination (used by 5+ 系) you rank best on, with these scores. */
+  function bestCombo(sc) {
+    let best = null;
+    for (const k of Object.keys(COMBO_N)) {
+      if (COMBO_N[k] < 5) continue;
+      const rk = L.comboRank(comboParts(k), sc, D.pct);
+      if (rk && rk.top != null && (!best || rk.top < best.top)) best = { k, top: rk.top };
+    }
+    return best;
+  }
+  function mockRefHTML() {
+    return `<details class="mockref" id="mockRef" ${ui.mockRefOpen ? 'open' : ''}><summary>${icon('chevR', 'sm')}116 學測模考時程與範圍</summary>
+      <div class="tablewrap"><table class="reftable"><thead><tr><th>次</th><th>日期</th>${['國文', '英文', '數學', '社會', '自然'].map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>
+      ${MOCK_REF.filter(x => x.r).map(x => `<tr><th>${esc(x.n.replace('學測模擬考', ''))}</th><td>${esc(x.when)}</td>${['國文', '英文', '數學', '社會', '自然'].map(k => `<td>${esc(x.r[k] || '—')}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div>
+      <p class="hint">整理自多所高中 115 學年度高三模考公告（台南、高雄、新竹），各校日期可能差幾天，以學校公告為準。第二次起考英聽（英文必修第 1–4 學期）。範圍還沒考完，前幾次分數偏低很正常；跟正式學測最接近的是第四次。另有民間的樂學網「樂模」（9/12–13、11/21–22）。正式學測：2027/1/22–1/24。</p></details>`;
+  }
+  /** One small chart per subject on a shared 級分 scale, plus 落點 per 模考 and a table. */
+  function trendHTML(scope) {
+    const ms = mocksByDate();
+    const intro = `<p class="sub">每次模考存一筆（在成績面板的「模考紀錄」），這裡會畫出每一科的變化和每一次的落點。</p>`;
+    if (!ms.length) return `<section class="sec" id="trendSec"><h2>模考趨勢</h2>${intro}<button class="btn sm" type="button" data-act="goMocks">${icon('plus', 'sm')}存第一次模考</button>${mockRefHTML()}</section>`;
+    const subs = SCORE_KEYS.filter(k => ms.some(m => L.val(m.s, k) != null));
+    const all = ms.flatMap(m => subs.map(k => L.val(m.s, k)).filter(v => v != null));
+    const lo = Math.max(0, Math.min(...all) - 2), hi = 15;
+    const W = 240, H = 104, PL = 6, PR = 38, PT = 16, PB = 8;
+    const X = i => (ms.length === 1 ? (PL + W - PR) / 2 : PL + (i * (W - PL - PR)) / (ms.length - 1));
+    const Y = v => PT + ((hi - v) * (H - PT - PB)) / (hi - lo || 1);
+    const std = STD();
+    const panels = subs.map(k => {
+      const pts = ms.map((m, i) => ({ i, m, v: L.val(m.s, k) })).filter(p => p.v != null);
+      const last = pts[pts.length - 1], prev = pts[pts.length - 2], first = pts[0];
+      const ref = std && std[k] ? [['前標', std[k].前標], ['均標', std[k].均標]].filter(([, v]) => v >= lo && v <= hi) : [];
+      // a 前標 and a 均標 one 級分 apart would collide: label only the upper one then
+      const refs = ref.map(([l, v], j) => `<line class="ref" x1="${PL}" x2="${W - PR}" y1="${Y(v)}" y2="${Y(v)}"/>${j && Math.abs(Y(v) - Y(ref[0][1])) < 11 ? '' : `<text class="reft" x="${W - PR + 4}" y="${Y(v) + 3.5}">${l} ${v}</text>`}`).join('');
+      const path = pts.map((p, j) => `${j ? 'L' : 'M'}${X(p.i).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
+      const tip = p => `${p.m.n}（${mdText(p.m.d)}）：${subj(k)} ${p.v} 級分${levelOf(k, p.v) ? '，' + levelOf(k, p.v) : ''}`;
+      const dots = pts.map(p => `<circle class="pt" cx="${X(p.i)}" cy="${Y(p.v)}" r="4"/>`).join('');
+      const hits = pts.map(p => `<circle class="hit" cx="${X(p.i)}" cy="${Y(p.v)}" r="13" data-tip="${esc(tip(p))}" tabindex="0" aria-label="${esc(tip(p))}"/>`).join('');
+      const lab = pts.length > 1 ? `<text class="vlab" x="${X(last.i) - 7}" y="${Y(last.v) - 7}" text-anchor="end">${last.v}</text>` : '';
+      const d = prev ? last.v - prev.v : null;
+      return `<figure class="spark"><figcaption><span class="sk">${subj(k)}</span><span class="sv num">${last.v}</span>${d == null ? '' : `<span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : 'flat'}">${d > 0 ? '+' + d : d === 0 ? '持平' : d}</span>`}</figcaption>
+        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${subj(k)}：` + pts.map(p => `${p.m.n} ${p.v}`).join('、'))}"><line class="base" x1="${PL}" x2="${W - PR}" y1="${H - PB}" y2="${H - PB}"/>${refs}<path class="ln" d="${path}"/>${dots}${lab}${hits}</svg>
+        <span class="sx">${mdText(first.m.d)}${pts.length > 1 ? ` → ${mdText(last.m.d)}（${pts.length} 次）` : ''}</span></figure>`;
+    }).join('');
+    // 落點 per 模考 in the current 找校系 scope, each judged with its own 五標 when it has one.
+    const base = opts();
+    const tierRows = ms.map(m => {
+      const o = { ...base, std: m.std || base.std, stdYear: m.std ? 'custom' : base.stdYear };
+      const c = {};
+      for (const d of scope) { const t = L.evaluate(d, m.s, o).tier; c[t] = (c[t] || 0) + 1; }
+      return { m, c, good: (c.穩 || 0) + (c.適中 || 0) };
+    });
+    const bars = tierRows.map(x => `<div class="mt-row"><span class="mt-l"><b>${esc(x.m.n)}</b><small>${mdText(x.m.d)}</small></span>${tierBarHTML(x.c, scope.length, { small: true, label: x.m.n })}<span class="mt-n num">穩＋適中 <b>${x.good}</b></span></div>`).join('');
+    // What changed: first vs latest per subject, and the latest 落點 vs the one before.
+    const notes = [];
+    if (ms.length > 1) {
+      const ch = subs.map(k => { const vs = ms.map(m => L.val(m.s, k)).filter(v => v != null); return { k, d: vs.length > 1 ? vs[vs.length - 1] - vs[0] : 0 }; });
+      const up = ch.filter(x => x.d > 0).sort((a, b) => b.d - a.d), dn = ch.filter(x => x.d < 0).sort((a, b) => a.d - b.d);
+      if (up.length) notes.push(`進步：${up.map(x => `${subj(x.k)} +${x.d}`).join('、')}`);
+      if (dn.length) notes.push(`退步：${dn.map(x => `${subj(x.k)} ${x.d}`).join('、')}${dn[0].d <= -2 ? `，${subj(dn[0].k)}要多注意` : ''}`);
+      const a = tierRows[tierRows.length - 2], b = tierRows[tierRows.length - 1];
+      notes.push(`最近一次「穩＋適中」${b.good > a.good ? `多了 ${b.good - a.good} 個` : b.good < a.good ? `少了 ${a.good - b.good} 個` : '一樣'}（${a.good} → ${b.good}）`);
+    }
+    const table = `<div class="tablewrap"><table class="reftable"><thead><tr><th>模考</th>${subs.map(k => `<th>${ABBR[k]}</th>`).join('')}<th>英聽</th><th>總和</th><th>最強組合</th></tr></thead><tbody>
+      ${ms.map(m => { const b = bestCombo(m.s); return `<tr><th>${esc(m.n)}<small>${mdText(m.d)}</small></th>${subs.map(k => `<td class="num">${L.val(m.s, k) ?? '—'}</td>`).join('')}<td>${m.s.聽 || '—'}</td><td class="num">${mockTotal(m)}</td><td>${b ? `${esc(comboName(b.k))} ${fmtTop(b.top)}` : '—'}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
+    return `<section class="sec" id="trendSec"><h2>模考趨勢</h2><p class="sub">${ms.length} 次模考 · 每格同一個級分刻度，虛線是${stdName()}的前標、均標。點一下圓點看那次的級分。</p>
+      ${notes.length ? `<ul class="trendnotes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+      <div class="sparks">${panels}</div>
+      <h3 class="sec-h3">每次模考的落點</h3><p class="sub">用每次的成績算「找校系」目前範圍（${fmtN(scope.length)} 個校系）的落點${ms.some(m => m.std) ? '；有存五標的那次用它自己的五標判斷檢定' : ''}。</p>
+      <div class="mtiers">${bars}</div>
+      <h3 class="sec-h3">成績表</h3>${table}
+      ${mockRefHTML()}</section>`;
+  }
+
   function renderBoost() {
     const el = $('#boost');
     const head = `<header class="page-h"><div><h1>怎麼進步</h1><p>還有時間準備的話，哪一科多考幾級分最划算？用你現在的成績和「找校系」的篩選範圍來算。</p></div></header>`;
     if (!hasScores()) {
-      el.innerHTML = head + `<div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（還沒考可以填模考或目標分數），這裡才能算每一科多考幾級分會多出哪些機會。</div><button class="btn primary" type="button" data-act="goScores">輸入成績</button></div>`;
+      el.innerHTML = head + `<div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（還沒考可以填模考或目標分數），這裡才能算每一科多考幾級分會多出哪些機會。</div><button class="btn primary" type="button" data-act="goScores">輸入成績</button></div>` + trendHTML(baseFiltered());
       return;
     }
     const scope = baseFiltered();
@@ -2494,8 +2785,8 @@ details.fold>summary:hover{color:var(--text)}
       // "6 級分" is above 均標 5, not equal to it: say "達到" unless it is exactly the line.
       const lvSentence = (k, v, lv) => {
         if (!lv || lv === '未達底標') return '';
-        const line = D.std[st.stdYear] && D.std[st.stdYear][k] ? D.std[st.stdYear][k][lv] : null;
-        return line === v ? `${v} 級分剛好是 ${st.stdYear} 學年度${subj(k)}${lv}。` : `${v} 級分已達 ${st.stdYear} 學年度${subj(k)}${lv}（${line} 級分）。`;
+        const line = STD() && STD()[k] ? STD()[k][lv] : null;
+        return line === v ? `${v} 級分剛好是${stdName()}的${subj(k)}${lv}。` : `${v} 級分已達${stdName()}的${subj(k)}${lv}（${line} 級分）。`;
       };
       const bestOf = r => r.cells.filter(Boolean).reduce((a, c) => (c.up > (a ? a.up : 0) ? c : a), null);
       const ranked = rows.map(r => ({ r, b: bestOf(r) })).filter(x => x.b && x.b.up > 0).sort((a, b) => b.b.up - a.b.up || (a.b.to - a.r.cur) - (b.b.to - b.r.cur));
@@ -2510,12 +2801,13 @@ details.fold>summary:hover{color:var(--text)}
       const grid = `<div class="heat" role="table" aria-label="每科多考幾級分，落點變好的校系數"><div role="row" style="display:contents"><span class="hh" role="columnheader">科目</span>${[1, 2, 3, 4, 5].map(i => `<span class="hh" role="columnheader">+${i}</span>`).join('')}</div>
         ${rows.map(r => `<div role="row" style="display:contents"><span class="hs" role="rowheader">${subj(r.k)}<small>現在 ${r.cur || '沒考'}</small></span>${r.cells.map(c => c ? `<span class="hc" role="cell" style="--h:${(c.up / maxUp).toFixed(3)}" title="${subj(r.k)} 考到 ${c.to} 級分：${c.up} 個校系落點變好${c.unlock ? `，${c.unlock} 個從不符變成可以報` : ''}"><span class="to">考到 ${c.to}</span><span class="n">${c.up}</span>${c.unlock ? `<span class="u">解鎖 ${c.unlock}</span>` : ''}</span>` : '<span class="hc na" role="cell">—</span>').join('')}</div>`).join('')}</div>`;
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
-      const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">檢定沒過就不能參加篩選。116 五標 2027/2/25 才公布，這裡用 ${st.stdYear} 學年度五標換算。</p>` : '<p class="hint" style="margin-top:12px">這個範圍裡沒有被檢定或科目擋住的校系。</p>';
+      const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">檢定沒過就不能參加篩選。116 五標 2027/2/25 才公布，這裡用${stdName()}換算。</p>` : '<p class="hint" style="margin-top:12px">這個範圍裡沒有被檢定或科目擋住的校系。</p>';
       if (!ui.tryS) ui.tryS = { ...st.scores };
       const tryGrid = SCORE_KEYS.map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
       el.innerHTML = head + hero +
         `<section class="sec"><h2>每科多考幾級分，會多出多少機會？</h2><p class="sub">格子裡是「落點變好的校系數」，顏色越深越多；「解鎖」是從不符變成可以報的數量。範圍：${esc(sl || '全部（一般組、公費、APCS）')}，${fmtN(scope.length)} 個校系。</p>${grid}</section>
         <section class="sec"><h2>擋住你的檢定</h2><p class="sub">這個範圍裡，因為檢定或沒考的科目而「一定進不了一階」的校系</p>${blockHTML}</section>
+        ${trendHTML(scope)}
         <section class="sec" id="trySec"><h2>試算</h2><p class="sub">暫時改成績看結果，不會改掉你存的成績。<button class="textbtn" type="button" data-act="tryReset">${icon('reset', 'sm')}改回我的成績</button></p><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();
     }, 30);
@@ -2775,6 +3067,8 @@ details.fold>summary:hover{color:var(--text)}
     resetCats: () => { st.f.cats = DEFAULT_CATS.slice(); ui.shown = PAGE; render(); },
     showTiers: () => { st.f.tiers = TIERS.slice(); render(); },
     showUntaken: () => { st.f.untaken = true; render(); },
+    saveMock: () => saveMock(),
+    goMocks: () => { ui.mockOpen = true; goScores(); },
     hideUntaken: () => { st.f.untaken = false; ui.shown = PAGE; render(); },
     groupsAll: () => { st.f.groups = []; ui.shown = PAGE; render(); },
     clearQ: () => { st.f.q = ''; $('#q').value = ''; ui.shown = PAGE; render(); },
@@ -2788,7 +3082,27 @@ details.fold>summary:hover{color:var(--text)}
     exportState: () => download('apply116-backup.json', JSON.stringify(st, null, 1), 'application/json'),
     tryReset: () => { ui.tryS = { ...st.scores }; $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
   };
+  /** Chart tooltips: any element with data-tip, on hover, keyboard focus or tap. */
+  function bindTips() {
+    const tip = document.createElement('div');
+    tip.className = 'charttip'; tip.setAttribute('role', 'status'); tip.hidden = true;
+    document.body.appendChild(tip);
+    let cur = null;
+    const show = el => {
+      cur = el; tip.textContent = el.dataset.tip; tip.hidden = false;
+      const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+      const x = Math.min(window.innerWidth - w - 8, Math.max(8, r.left + r.width / 2 - w / 2));
+      const y = r.top - h - 6 < 8 ? r.bottom + 6 : r.top - h - 6;
+      tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    };
+    const hide = () => { cur = null; tip.hidden = true; };
+    document.addEventListener('pointerover', ev => { const el = ev.target.closest && ev.target.closest('[data-tip]'); if (el) show(el); else if (cur && ev.pointerType === 'mouse') hide(); });
+    document.addEventListener('focusin', ev => { const el = ev.target.closest && ev.target.closest('[data-tip]'); if (el) show(el); else if (cur) hide(); });
+    document.addEventListener('pointerdown', ev => { const el = ev.target.closest && ev.target.closest('[data-tip]'); if (el) show(el); else if (cur) hide(); });
+    window.addEventListener('scroll', hide, { passive: true });
+  }
   function bind() {
+    bindTips();
     document.addEventListener('click', ev => {
       const b = ev.target.closest('button, a, [data-open]');
       if (!b || b.closest('.track')) return;
@@ -2804,6 +3118,14 @@ details.fold>summary:hover{color:var(--text)}
       if (ds.sat) { f.sat = ds.sat === f.sat ? 'all' : ds.sat; ui.shown = PAGE; render(); return; }
       if (ds.st2) { toggle(f.st2, ds.st2); ui.shown = PAGE; render(); return; }
       if (ds.skip) { toggle(f.skip, ds.skip); ui.shown = PAGE; render(); return; }
+      if (ds.mockuse) { useMock(ds.mockuse); return; }
+      if (ds.mockdel) {
+        const m = st.mocks.find(x => x.id === ds.mockdel);
+        if (m && confirm(`刪除「${m.n}」（${mdText(m.d)}）？`)) { st.mocks = st.mocks.filter(x => x !== m); keepEditorOpen(); render(); toast('已刪除'); }
+        return;
+      }
+      if (ds.stdcopy) { st.stdCustom = copyStd(D.std[ds.stdcopy]); keepEditorOpen(); render(); toast(`已填入 ${ds.stdcopy} 學年度五標`); return; }
+      if (ds.combo) { toggle(f.combos, ds.combo); ui.shown = PAGE; render(); return; }
       if (ds.listen) { keepEditorOpen(); st.scores.聽 = ds.listen === 'none' ? '' : ds.listen; render(); return; }
       if (ds.clear) {
         const [kind, k] = ds.clear.split(':');
@@ -2833,7 +3155,20 @@ details.fold>summary:hover{color:var(--text)}
     });
     document.addEventListener('change', ev => {
       const t = ev.target;
+      if (t.id === 'mockPreset') {
+        const x = MOCK_REF.find(m => m.n === t.value);
+        if (x) { $('#mockName').value = x.n; $('#mockDate').value = x.d; } else { $('#mockName').value = ''; $('#mockName').focus(); }
+        return;
+      }
       if (t.id === 'stdYear') { st.stdYear = t.value; render(); return; }
+      if (t.dataset.std) {
+        const [k, l] = t.dataset.std.split(':'), n = Math.round(Number(t.value));
+        keepEditorOpen();
+        if (Number.isFinite(n) && n >= 1 && n <= 15) st.stdCustom[k][l] = n;
+        else toast('五標要填 1–15 級分');
+        render();
+        return;
+      }
       if (t.id === 'untakenBox') { st.f.untaken = t.checked; ui.shown = PAGE; render(); return; }
       if (t.id === 'sort') { st.f.sort = t.value; ui.shown = PAGE; render(); return; }
       if (t.id === 'importState') {
@@ -2855,6 +3190,9 @@ details.fold>summary:hover{color:var(--text)}
       const id = ev.target.id;
       if (id === 'moreScores') ui.more = ev.target.open;
       if (id === 'catsBox') ui.catsOpen = ev.target.open;
+      if (id === 'comboMore') ui.comboOpen = ev.target.open;
+      if (id === 'mockBox') ui.mockOpen = ev.target.open;
+      if (id === 'mockRef') ui.mockRefOpen = ev.target.open;
       if (id === 'tierHelp') ui.helpOpen = ev.target.open;
     }, true);
     document.addEventListener('keydown', ev => {
