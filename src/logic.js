@@ -368,6 +368,32 @@
     return { screen: [...screen], weight: [...weight] };
   }
 
+  /**
+   * 學測 subjects a 系 needs in 一階 (檢定 or 倍率篩選), as groups of alternatives: [['國'], ['數A', '數B'], …].
+   * A group is needed unless one of its subjects is still allowed; 數A and 數B both set as 檢定 = pass either one.
+   */
+  function stage1Groups(d) {
+    const out = [], seen = new Set();
+    const add = g => { const key = g.join('|'); if (!seen.has(key)) { seen.add(key); out.push(g); } };
+    const mathT = d.sub.filter(s => (s.k === '數A' || s.k === '數B') && s.t && !s.apcs);
+    const mathEither = mathT.length === 2;
+    for (const s of d.sub) {
+      if (s.k === '聽') { if (s.t) add(['聽']); continue; }
+      if (!s.p) continue;
+      if (s.m != null) s.p.forEach(k => add([k]));
+      if (s.t) {
+        if (mathEither && (s.k === '數A' || s.k === '數B')) add(['數A', '數B']);
+        else s.p.forEach(k => add([k]));
+      }
+    }
+    return out;
+  }
+  /** True when the 系 needs one of these subjects in 一階 (no alternative left). */
+  function stage1Uses(d, subjects) {
+    if (!subjects || !subjects.length) return false;
+    return stage1Groups(d).some(g => g.every(k => subjects.includes(k)));
+  }
+
   /** 115 expected interviewees ≈ quota × lowest multiple. */
   function expected115(r) {
     const ms = Object.values(r.mult || {}).filter(v => typeof v === 'number');
@@ -613,7 +639,7 @@
 
   return {
     SUBJ, SUBJ_NAME, LEVELS, TIERS, SAFE_RATIO, REACH_RATIO,
-    val, sumOf, checkThreshold, countAtOrAbove, topPercent, compareCuts, screenPlan, missingUse,
+    val, sumOf, checkThreshold, countAtOrAbove, topPercent, compareCuts, screenPlan, missingUse, stage1Groups, stage1Uses,
     partsText, align116, compare116, screenChanges, unknownText, cutReason, flowText,
     expected115, thresholdRisk, evaluate, chanceKey, selectivity, satShare, targets, conflicts, fmtDay,
     splitTop, reviewGroups, stage2Kind, stage2, hasInterview, hasWritten, noVisit,

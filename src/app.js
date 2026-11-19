@@ -25,6 +25,8 @@
   const ST2 = [['noInterview', '不用面試'], ['noWritten', '不用筆試'], ['noVisit', '不用到校甄試']];
   const SAT = [['none', '不計學測', '二階不計學測', d => !d.sp], ['light', '20% 以下', '學測佔二階 20% 以下', d => (d.sp || 0) <= 20], ['heavy', '50% 以上', '學測佔二階 50% 以上', d => (d.sp || 0) >= 50]];
   const SAT_BY = Object.fromEntries(SAT.map(x => [x[0], x]));
+  // 一階科目 filter: hide 系 that need any of these subjects for 檢定 or 倍率篩選.
+  const SKIP_SUBJ = [['國', '國文'], ['英', '英文'], ['數A', '數A'], ['數B', '數B'], ['社', '社會'], ['自', '自然'], ['聽', '英聽']];
   const ST2_TEST = { noInterview: d => !L.hasInterview(d), noWritten: d => !L.hasWritten(d), noVisit: L.noVisit };
   const SORTS = ['chance', 'select', 'sat', 'satLow', 'date', 'quota', 'code'];
   const TIERS = L.TIERS;
@@ -79,7 +81,7 @@
     v: 1,
     scores: { 國: '', 英: '', 數A: '', 數B: '', 社: '', 自: '', 聽: '', 識: '', 實: '' },
     stdYear: '115',
-    f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', sort: 'chance' },
+    f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', skip: [], untaken: false, sort: 'chance' },
     fav: [], plan: [], theme: '',
   });
   function sanitize(s) {
@@ -102,6 +104,8 @@
     if (Array.isArray(f.st2) && f.st2.includes('satHeavy') && !(s.f && s.f.sat)) f.sat = 'heavy';
     f.st2 = arr(f.st2, k => ST2.some(x => x[0] === k));
     if (!SAT_BY[f.sat]) f.sat = 'all';
+    f.skip = arr(f.skip, k => SKIP_SUBJ.some(x => x[0] === k));
+    f.untaken = f.untaken === true;
     if (!['all', 'pub', 'pri'].includes(f.own)) f.own = 'all';
     if (!SORTS.includes(f.sort)) f.sort = 'chance';
     out.fav = [...new Set(arr(s.fav, c => BY_CODE[c]))];
@@ -135,6 +139,8 @@
     for (const d of D.depts) EV.set(d.c, L.evaluate(d, st.scores, o));
   }
   const tierOf = d => { const e = EV.get(d.c); return e ? e.tier : null; };
+  /** 二階 採計 a subject you did not take (it counts as 0). 檢定／篩選 subjects you did not take are already 不符. */
+  const usesUntaken = d => { const e = EV.get(d.c); return !!(e && e.tier !== '不符' && e.miss && e.miss.weight.length); };
 
   // ------------------------------------------------------------------ formatting helpers
   const sch = d => SCHOOL[d.sid].n;
@@ -240,11 +246,14 @@
     }
     if (skip !== 'sat' && f.sat !== 'all' && !SAT_BY[f.sat][3](d)) return false;
     if (skip !== 'st2' && f.st2.some(k => !ST2_TEST[k](d))) return false;
+    if (skip !== 'skip' && L.stage1Uses(d, f.skip)) return false;
+    if (skip !== 'untaken' && !f.untaken && usesUntaken(d)) return false;
     if (qTerms.length) { const h = hay(d); if (!qTerms.every(t => h.includes(t))) return false; }
     return true;
   }
   const baseFiltered = skip => D.depts.filter(d => passes(d, skip));
-  const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + (st.f.sat !== 'all' ? 1 : 0) + st.f.st2.length + (catsChanged() ? 1 : 0);
+  const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + (st.f.sat !== 'all' ? 1 : 0) + st.f.st2.length + st.f.skip.length + (st.f.untaken ? 1 : 0) + (catsChanged() ? 1 : 0);
+  const skipName = k => SKIP_SUBJ.find(x => x[0] === k)[1];
   function scopeLabel() {
     const f = st.f, p = [];
     if (f.groups.length) p.push(f.groups.join('、'));
@@ -252,6 +261,7 @@
     if (f.own !== 'all') p.push(f.own === 'pub' ? '公立' : '私立');
     if (f.sat !== 'all') p.push(SAT_BY[f.sat][2]);
     f.st2.forEach(k => p.push(ST2.find(x => x[0] === k)[1]));
+    if (f.skip.length) p.push('一階不用' + f.skip.map(skipName).join('、'));
     if (f.q.trim()) p.push('「' + f.q.trim() + '」');
     return p.join(' · ');
   }
@@ -399,11 +409,19 @@
     // 甄試 chips combine, so each count is what the list would show with that chip on.
     const pool = baseFiltered('st2'), xc = {};
     for (const [k] of ST2) xc[k] = pool.filter(d => ST2_TEST[k](d) && f.st2.every(x => x === k || ST2_TEST[x](d))).length;
+    // 科目 chips combine too: each count is what the list would show with that subject also left out.
+    const kpool = baseFiltered('skip'), kc = {};
+    for (const [k] of SKIP_SUBJ) { const ks = f.skip.includes(k) ? f.skip : [...f.skip, k]; kc[k] = kpool.filter(d => !L.stage1Uses(d, ks)).length; }
+    const nUntaken = hasScores() ? baseFiltered('untaken').filter(usesUntaken).length : 0;
     const n = filterCount();
     const h = `<div class="filter-h"><h2>篩選</h2><button class="textbtn" type="button" data-act="resetFilters" ${n ? '' : 'hidden'}>${icon('reset', 'sm')}重設</button></div>
       <div class="fsec"><h3>學群${f.groups.length ? '<button class="textbtn" type="button" data-act="groupsAll">全部學群</button>' : ''}</h3><div class="chips">${GROUPS.map(g => chip(g, f.groups.includes(g), `data-group="${g}"`, gc[g] || 0)).join('')}</div></div>
       <div class="fsec"><h3>地區</h3><div class="chips">${REGIONS.map(r => chip(regionLabel(r), f.regions.includes(r), `data-region="${r}"`, rc[r] || 0)).join('')}</div></div>
       <div class="fsec"><h3>公私立</h3><div class="segctl" role="group" aria-label="公私立">${[['all', '全部'], ['pub', '公立'], ['pri', '私立']].map(([k, l]) => `<button type="button" data-own="${k}" aria-pressed="${f.own === k}">${l}${k !== 'all' ? `<span class="muted num"> ${oc[k] || 0}</span>` : ''}</button>`).join('')}</div></div>
+      <div class="fsec"><h3>一階科目</h3>
+        <p class="fsub" id="skipLab">不要檢定或倍率篩選用到這些科目的校系</p><div class="chips" role="group" aria-labelledby="skipLab">${SKIP_SUBJ.map(([k, l]) => chip(l, f.skip.includes(k), `data-skip="${k}"`, kc[k])).join('')}</div>
+        <p class="hint">數A、數B 檢定「擇一」的校系，兩科都選才會隱藏。</p>
+        ${hasScores() ? `<label class="fcheck"><input type="checkbox" id="untakenBox" ${f.untaken ? 'checked' : ''}> 也顯示二階採計我沒考科目的校系<span class="muted num"> ${nUntaken}</span></label><p class="hint">沒考的科目二階學測成績以 0 計，所以預設隱藏。檢定或篩選用到沒考的科目一定是「不符」。</p>` : ''}</div>
       <div class="fsec"><h3>第二階段</h3>
         <p class="fsub" id="satLab">學測佔二階總成績</p><div class="chips" role="group" aria-labelledby="satLab">${SAT.map(([k, l]) => chip(l, f.sat === k, `data-sat="${k}"`, sc[k] || 0)).join('')}</div>
         <p class="fsub" id="ivLab">甄試</p><div class="chips" role="group" aria-labelledby="ivLab">${ST2.map(([k, l]) => chip(l, f.st2.includes(k), `data-st2="${k}"`, xc[k] || 0)).join('')}</div></div>
@@ -421,6 +439,8 @@
     if (f.own !== 'all') out.push(af(f.own === 'pub' ? '公立' : '私立', 'data-own="all"'));
     if (f.sat !== 'all') out.push(af(SAT_BY[f.sat][2], 'data-sat="all"'));
     f.st2.forEach(k => out.push(af(ST2.find(x => x[0] === k)[1], `data-st2="${k}"`)));
+    f.skip.forEach(k => out.push(af('一階不用' + skipName(k), `data-skip="${k}"`)));
+    if (f.untaken && hasScores()) out.push(af('含採計沒考科目', 'data-act="hideUntaken"'));
     if (catsChanged()) out.push(af('特殊組別已變更', 'data-act="resetCats"'));
     if (out.length > 1) out.push('<button class="textbtn" type="button" data-act="resetAll">全部清除</button>');
     $('#activeFilters').innerHTML = out.join('');
@@ -546,7 +566,9 @@
     $('#list').innerHTML = h;
     const sortName = $('#sort').selectedOptions[0] ? $('#sort').selectedOptions[0].textContent : '';
     const hidden = has ? TIERS.filter(t => !st.f.tiers.includes(t)) : [];
-    $('#listbar').innerHTML = `<span>顯示 <b class="num">${fmtN(s.length)}</b> 個${hidden.length ? `（隱藏了${hidden.join('、')}）` : ''}</span><span>${esc(sortName)}</span>`;
+    const nUntaken = has && !st.f.untaken ? baseFiltered('untaken').filter(d => usesUntaken(d) && st.f.tiers.includes(tierOf(d))).length : 0;
+    const untakenNote = nUntaken ? `<button class="textbtn" type="button" data-act="showUntaken">另有 ${fmtN(nUntaken)} 個二階採計你沒考的科目，已隱藏（顯示）</button>` : '';
+    $('#listbar').innerHTML = `<span>顯示 <b class="num">${fmtN(s.length)}</b> 個${hidden.length ? `（隱藏了${hidden.join('、')}）` : ''}${untakenNote ? ' ' + untakenNote : ''}</span><span>${esc(sortName)}</span>`;
     $('#more').innerHTML = s.length > ui.shown ? `<button class="btn" type="button" data-act="more">再顯示 ${Math.min(PAGE, s.length - ui.shown)} 個（還有 ${fmtN(s.length - ui.shown)} 個）</button>` : '';
     if (ui.sheet) $('#sheetDone').textContent = `看 ${fmtN(s.length)} 個結果`;
   }
@@ -1305,6 +1327,8 @@
     resetAll: () => { st.f = { ...DEFAULT().f, sort: st.f.sort }; $('#q').value = ''; ui.shown = PAGE; render(); },
     resetCats: () => { st.f.cats = DEFAULT_CATS.slice(); ui.shown = PAGE; render(); },
     showTiers: () => { st.f.tiers = TIERS.slice(); render(); },
+    showUntaken: () => { st.f.untaken = true; render(); },
+    hideUntaken: () => { st.f.untaken = false; ui.shown = PAGE; render(); },
     groupsAll: () => { st.f.groups = []; ui.shown = PAGE; render(); },
     clearQ: () => { st.f.q = ''; $('#q').value = ''; ui.shown = PAGE; render(); },
     more: () => { ui.shown += PAGE; renderExplore(); },
@@ -1332,6 +1356,7 @@
       if (ds.cat) { toggle(f.cats, ds.cat); ui.shown = PAGE; render(); return; }
       if (ds.sat) { f.sat = ds.sat === f.sat ? 'all' : ds.sat; ui.shown = PAGE; render(); return; }
       if (ds.st2) { toggle(f.st2, ds.st2); ui.shown = PAGE; render(); return; }
+      if (ds.skip) { toggle(f.skip, ds.skip); ui.shown = PAGE; render(); return; }
       if (ds.listen) { keepEditorOpen(); st.scores.聽 = ds.listen === 'none' ? '' : ds.listen; render(); return; }
       if (ds.clear) {
         const [kind, k] = ds.clear.split(':');
@@ -1362,6 +1387,7 @@
     document.addEventListener('change', ev => {
       const t = ev.target;
       if (t.id === 'stdYear') { st.stdYear = t.value; render(); return; }
+      if (t.id === 'untakenBox') { st.f.untaken = t.checked; ui.shown = PAGE; render(); return; }
       if (t.id === 'sort') { st.f.sort = t.value; ui.shown = PAGE; render(); return; }
       if (t.id === 'importState') {
         const file = t.files[0];

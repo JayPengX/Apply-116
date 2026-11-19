@@ -273,3 +273,28 @@ test('115 screened nobody, but 116 screens other subjects or fewer people → �
   assert.deepEqual(ec.cmp.stages.map(s => s.kind), ['open']);
   assert.equal(ec.tier, '適中');
 });
+
+test('stage1Uses: 檢定 and 倍率 subjects count, 採計-only subjects do not', () => {
+  const d = dept({ sub: [sub('國', '均標', 3, 1), sub('英', null, 5, 1), sub('社', null, null, 1), { k: '聽', p: null, t: 'B級', m: null, w: null }] });
+  assert.equal(L.stage1Uses(d, ['國']), true);
+  assert.equal(L.stage1Uses(d, ['英']), true);
+  assert.equal(L.stage1Uses(d, ['聽']), true);
+  assert.equal(L.stage1Uses(d, ['社']), false);
+  assert.equal(L.stage1Uses(d, []), false);
+});
+
+test('stage1Uses: 數A/數B 檢定 擇一 needs both picked to count', () => {
+  const d = dept({ sub: [sub('英', null, 3), sub('數A', '均標'), sub('數B', '均標')] });
+  assert.equal(L.stage1Uses(d, ['數A']), false);
+  assert.equal(L.stage1Uses(d, ['數B']), false);
+  assert.equal(L.stage1Uses(d, ['數A', '數B']), true);
+  const d2 = dept({ sub: [sub('英', null, 3), sub('數A', '均標', 4), sub('數B', '均標')] });
+  assert.equal(L.stage1Uses(d2, ['數A']), true, '數A also screens by 倍率');
+});
+
+test('an untaken subject used only for 二階 採計 shows up in miss.weight', () => {
+  const d = dept({ sub: [sub('國', null, 3, 1), sub('自', null, null, 1)], cut: [{ raw: '國文10', s: ['國'], v: 10 }] });
+  const e = L.evaluate(d, S({ 國: 13 }), O);
+  assert.notEqual(e.tier, '不符');
+  assert.deepEqual(e.miss.weight, ['自']);
+});

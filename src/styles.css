@@ -217,6 +217,9 @@ details.more>summary:hover{color:var(--text)}
 .fsec .hint{margin-top:6px;font-size:12px}
 .fsub{font-size:12px;color:var(--text-3);margin:2px 0 6px}
 .chips+.fsub{margin-top:12px}
+.fcheck{display:flex;align-items:flex-start;gap:8px;margin-top:12px;font-size:13.5px;line-height:1.5;cursor:pointer}
+.fcheck input{width:18px;height:18px;margin:1px 0 0;flex:none;accent-color:var(--ink,currentColor)}
+.listbar .textbtn{font-size:inherit}
 
 /* ---------- toolbar */
 .toolbar{display:flex;gap:10px;align-items:center}
