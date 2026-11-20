@@ -181,6 +181,22 @@ try {
     ok((await scores(page)).數B === '1', 'what-if does not change the saved scores');
     await page.screenshot({ path: join(SHOTS, 'desktop-boost.png'), fullPage: true });
 
+    // 模考: pick 翰林第二次 (its 五標 come built in), type scores, see the 標, save, analysis appears
+    await page.click('#tabs [data-tab="mock"]');
+    await page.waitForSelector('#mockForm');
+    await page.selectOption('#mfPreset', '第二次學測模擬考');
+    await page.fill('[data-mf="國"]', '13');
+    await page.fill('[data-mf="英"]', '9');
+    ok((await page.textContent('[data-mflv="國"]')) === '前標' && (await page.textContent('[data-mflv="英"]')) === '均標', 'typed 模考 scores show 翰林第二次 標 (國 13 前標, 英 9 均標)');
+    await page.click('[data-act="mfSave"]');
+    await page.waitForSelector('.mcard');
+    const saved = await page.evaluate(() => window.__app.st().mocks);
+    ok(saved.length === 1 && saved[0].std && saved[0].std.國.均標 === 12 && saved[0].s.國 === '13', '模考 saved with its own 五標');
+    ok((await page.locator('#trendSec').innerText()).includes('再 1 級分到頂標'), 'analysis says how far the next 標 is');
+    page.once("dialog", d => d.accept());
+    await page.click(`[data-mockdel="${saved[0].id}"]`);
+    ok((await page.evaluate(() => window.__app.st().mocks.length)) === 0, '模考 can be deleted');
+
     // guide
     await page.click('#tabs [data-tab="guide"]');
     ok((await page.locator('#guide').innerText()).includes('登記就讀志願序'), 'guide renders');
