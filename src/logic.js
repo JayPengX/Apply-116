@@ -25,12 +25,13 @@
     return n;
   }
 
-  function sumOf(parts, S) {
+  /** Sum of a stage. `zero` = untaken subjects to count as 0 級分 (official: 缺考、未報考 以零級分計). */
+  function sumOf(parts, S, zero) {
     let t = 0;
     const missing = [];
     for (const k of parts) {
       const v = val(S, k);
-      if (v == null) missing.push(k);
+      if (v == null) { if (!(zero && zero.includes(k))) missing.push(k); }
       else t += v;
     }
     return { v: missing.length ? null : t, missing };
@@ -259,10 +260,10 @@
    * status: free (116 has no 學測 倍率) | arts (116 screens only by 術科) | fail | unknown (a stage has no 115 cut)
    *         | maybe | edge | pass
    */
-  function compare116(d, S, pct) {
+  function compare116(d, S, pct, zero) {
     const A = align116(d);
     const stages = A.stages.map(st => {
-      const { v: mine, missing } = sumOf(st.parts, S);
+      const { v: mine, missing } = sumOf(st.parts, S, zero);
       const o = Object.assign({}, st, { mine, missing });
       if (st.ref) o.v = st.ref.v;
       if (mine == null) return o;
@@ -439,16 +440,20 @@
     const screenMissing = miss.screen.filter(k => !(mathEither && (k === '數A' || k === '數B') && (val(S, '數A') != null || val(S, '數B') != null)));
     const res = { th, miss, plan: screenPlan(d), reasons, warnings };
 
+    // 簡章 九(一)1: 檢定、倍率篩選及採計的學測科目總和為零級分 → 不得參加篩選.
+    const used = [...new Set(d.sub.filter(s => s.k !== '聽' && !s.apcs && s.p && (s.t || s.m != null || s.w != null)).flatMap(s => s.p))].filter(k => SUBJ.includes(k));
+    if (used.length && used.every(k => val(S, k) == null)) {
+      res.tier = '不符';
+      reasons.push('這個系用到的學測科目（' + used.map(k => SUBJ_NAME[k]).join('、') + '）你都沒考，總和 0 級分不能參加篩選');
+      return res;
+    }
     if (!th.ok) {
       res.tier = '不符';
       reasons.push('未通過檢定：' + th.fails.join('、'));
       return res;
     }
-    if (screenMissing.length) {
-      res.tier = '不符';
-      reasons.push('沒考 ' + screenMissing.map(k => SUBJ_NAME[k]).join('、') + '，但 116 用它做倍率篩選');
-      return res;
-    }
+    res.screenZero = screenMissing;
+    if (screenMissing.length) warnings.push('沒考 ' + screenMissing.map(k => SUBJ_NAME[k]).join('、') + '，116 倍率篩選這科以 0 級分計');
     if (miss.weight.length) warnings.push('沒考 ' + miss.weight.map(k => SUBJ_NAME[k]).join('、') + '，二階學測成績這科以 0 計');
 
     const risk = thresholdRisk(d, S, o.stdByYear, o.stdYear);
@@ -458,7 +463,7 @@
     }
 
     // 116 is the rule: its stages decide what is compared, and a 115 cut is used only for the same subjects.
-    const cmp = compare116(d, S, o.pct);
+    const cmp = compare116(d, S, o.pct, screenMissing);
     res.cmp = cmp;
     if (cmp.status === 'free') {
       res.tier = '穩';
@@ -516,6 +521,11 @@
       const robust = withCut.every(s => s.diff >= (s.last ? 2 : 1));
       tier = robust && (cmp.ratio == null || cmp.ratio <= SAFE_RATIO) ? '穩' : '適中';
       reasons.push(cmp.binding ? cutReason(cmp.binding) : '116 的每一關，115 都沒有篩掉人');
+    }
+    if (screenMissing.length && tier === '無資料') {
+      // 115 cannot say, but a stage you enter with 0 級分 puts you at the very bottom.
+      tier = '難';
+      reasons.push('你以 0 級分參加 ' + screenMissing.map(k => SUBJ_NAME[k]).join('、') + ' 的篩選，幾乎一定排在最後');
     }
     if (cmp.arts116.length && tier !== '無資料') warnings.push('116 還有術科篩選，這裡沒算進去');
 

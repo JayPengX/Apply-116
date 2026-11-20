@@ -219,7 +219,7 @@ details.more>summary:hover{color:var(--text)}
 .chips+.fsub{margin-top:12px}
 .fcheck{display:flex;align-items:flex-start;gap:8px;margin-top:12px;font-size:13.5px;line-height:1.5;cursor:pointer}
 .fcheck input{width:18px;height:18px;margin:1px 0 0;flex:none;accent-color:var(--ink,currentColor)}
-.listbar .textbtn{font-size:inherit}
+.listbar .textbtn{font-size:inherit;white-space:normal;display:inline;text-align:left}
 .chip .rk{font-size:11.5px;color:var(--ok);font-weight:600;font-variant-numeric:tabular-nums;padding-left:5px;border-left:1px solid var(--line)}
 .chip[aria-pressed="true"] .rk{color:var(--on-ink-2);border-color:var(--on-ink-2)}
 .hint+.fsub,.chips+.fsub{margin-top:12px}
@@ -277,7 +277,7 @@ details.more>summary:hover{color:var(--text)}
 .cta b{color:var(--text)}
 
 /* ---------- result list */
-.listbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:20px;font-size:13.5px;color:var(--text-3)}
+.listbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 10px;margin-top:20px;font-size:13.5px;color:var(--text-3)}
 .list{list-style:none;margin:8px 0 0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-1)}
 .list>li:first-child{border-top:0;border-radius:15px 15px 0 0}
 .list>li:last-child{border-radius:0 0 15px 15px}

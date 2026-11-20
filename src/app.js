@@ -40,7 +40,7 @@
     適中: '達到 115 的每一關，但差距小，或 116 規則有變',
     衝: '剛好等於 115 最後一關（要看超額篩選）、略低於 115 門檻，或 116 倍率改了而可能差一點',
     難: '明顯低於 115 門檻',
-    不符: '檢定沒過，或沒考 116 要篩選的科目：一定進不了一階',
+    不符: '檢定沒過，或系用到的學測科目你都沒考：一定進不了一階',
     無資料: '沒有可以比的 115 門檻：116 改用 115 沒篩過的科目、116 新設或改名，或只用術科篩選（都會寫原因）',
   };
   // 116 學測模擬考 (115 學年度高三): dates and 範圍 from several high schools' 115 學年度 notices (台南、高雄、新竹).
@@ -188,7 +188,7 @@
   }
   const tierOf = d => { const e = EV.get(d.c); return e ? e.tier : null; };
   /** 二階 採計 a subject you did not take (it counts as 0). 檢定／篩選 subjects you did not take are already 不符. */
-  const usesUntaken = d => { const e = EV.get(d.c); return !!(e && e.tier !== '不符' && e.miss && e.miss.weight.length); };
+  const usesUntaken = d => { const e = EV.get(d.c); return !!(e && e.tier !== '不符' && ((e.miss && e.miss.weight.length) || (e.screenZero && e.screenZero.length))); };
 
   // ------------------------------------------------------------------ formatting helpers
   const sch = d => SCHOOL[d.sid].n;
@@ -546,7 +546,7 @@
         <p class="hint">數A、數B 檢定「擇一」的校系，兩科都選才會隱藏。</p>
         <p class="fsub" id="comboLab">只看一階用這個組合篩選的校系</p>${comboChips()}
         <p class="hint">${hasScores() ? '旁邊是你這個組合的總級分在 115 考生排前幾 %，越前面越強；照強弱排（5 個系以上的組合）。' : '輸入成績後會顯示你在每個組合排前幾 %。'}組合是一階所有倍率篩選科目合起來，例如國文 ×3、英文 ×5 算「國英」。</p>
-        ${hasScores() ? `<label class="fcheck"><input type="checkbox" id="untakenBox" ${f.untaken ? 'checked' : ''}> 也顯示二階採計我沒考科目的校系<span class="muted num"> ${nUntaken}</span></label><p class="hint">沒考的科目二階學測成績以 0 計，所以預設隱藏。檢定或篩選用到沒考的科目一定是「不符」。</p>` : ''}</div>
+        ${hasScores() ? `<label class="fcheck"><input type="checkbox" id="untakenBox" ${f.untaken ? 'checked' : ''}> 也顯示用到我沒考科目的校系<span class="muted num"> ${nUntaken}</span></label><p class="hint">依簡章，沒考的科目以 0 級分計：倍率篩選或二階採計用到它的系，預設隱藏。檢定用到沒考的科目一定是「不符」；系用到的學測科目你全部沒考，也不能參加篩選。</p>` : ''}</div>
       <div class="fsec"><h3>第二階段</h3>
         <p class="fsub" id="satLab">學測佔二階總成績</p><div class="chips" role="group" aria-labelledby="satLab">${SAT.map(([k, l]) => chip(l, f.sat === k, `data-sat="${k}"`, sc[k] || 0)).join('')}</div>
         <p class="fsub" id="ivLab">甄試</p><div class="chips" role="group" aria-labelledby="ivLab">${ST2.map(([k, l]) => chip(l, f.st2.includes(k), `data-st2="${k}"`, xc[k] || 0)).join('')}</div></div>
@@ -566,7 +566,7 @@
     f.st2.forEach(k => out.push(af(ST2.find(x => x[0] === k)[1], `data-st2="${k}"`)));
     f.skip.forEach(k => out.push(af('一階不用' + skipName(k), `data-skip="${k}"`)));
     f.combos.forEach(k => out.push(af('一階篩 ' + comboName(k), `data-combo="${esc(k)}"`)));
-    if (f.untaken && hasScores()) out.push(af('含採計沒考科目', 'data-act="hideUntaken"'));
+    if (f.untaken && hasScores()) out.push(af('含用到沒考科目', 'data-act="hideUntaken"'));
     if (catsChanged()) out.push(af('特殊組別已變更', 'data-act="resetCats"'));
     if (out.length > 1) out.push('<button class="textbtn" type="button" data-act="resetAll">全部清除</button>');
     $('#activeFilters').innerHTML = out.join('');
@@ -693,7 +693,7 @@
     const sortName = $('#sort').selectedOptions[0] ? $('#sort').selectedOptions[0].textContent : '';
     const hidden = has ? TIERS.filter(t => !st.f.tiers.includes(t)) : [];
     const nUntaken = has && !st.f.untaken ? baseFiltered('untaken').filter(d => usesUntaken(d) && st.f.tiers.includes(tierOf(d))).length : 0;
-    const untakenNote = nUntaken ? `<button class="textbtn" type="button" data-act="showUntaken">另有 ${fmtN(nUntaken)} 個二階採計你沒考的科目，已隱藏（顯示）</button>` : '';
+    const untakenNote = nUntaken ? `<button class="textbtn" type="button" data-act="showUntaken">另有 ${fmtN(nUntaken)} 個用到你沒考的科目，已隱藏（顯示）</button>` : '';
     $('#listbar').innerHTML = `<span>顯示 <b class="num">${fmtN(s.length)}</b> 個${hidden.length ? `（隱藏了${hidden.join('、')}）` : ''}${untakenNote ? ' ' + untakenNote : ''}</span><span>${esc(sortName)}</span>`;
     $('#more').innerHTML = s.length > ui.shown ? `<button class="btn" type="button" data-act="more">再顯示 ${Math.min(PAGE, s.length - ui.shown)} 個（還有 ${fmtN(s.length - ui.shown)} 個）</button>` : '';
     if (ui.sheet) $('#sheetDone').textContent = `看 ${fmtN(s.length)} 個結果`;
@@ -962,7 +962,7 @@
     const ck = (state, title, body) => out.push({ state, title, body });
     if (!P.length) return out;
     if (hasScores()) {
-      if (c('不符')) ck('bad', `${c('不符')} 個志願一定進不了一階`, '檢定沒過或沒考篩選科目，等於浪費一個志願和報名費，建議換掉。');
+      if (c('不符')) ck('bad', `${c('不符')} 個志願一定進不了一階`, '檢定沒過或用到的科目都沒考，等於浪費一個志願和報名費，建議換掉。');
       else ck('ok', '沒有一定進不了的志願', '每個志願都通過檢定、也考了要篩選的科目。');
       if (!c('穩') && !c('適中')) ck('bad', '沒有「穩」或「適中」', '如果一階全部沒過，就只剩分科測驗。建議至少放 1–2 個穩的。');
       else if (!c('穩')) ck('warn', '沒有「穩」的志願', '很多學長姐會留 1 個保底，避免一階全落。');
@@ -976,12 +976,16 @@
       const sure = cf.some(x => x.sure);
       ck(sure ? 'bad' : 'warn', sure ? '甄試撞期' : '甄試可能撞期', `<ul>${cf.map(x => `<li>${esc(sch(BY_CODE[x.a]) + BY_CODE[x.a].n)} 和 ${esc(sch(BY_CODE[x.b]) + BY_CODE[x.b].n)}：${x.days.map(L.fmtDay).join('、')}${x.sure ? '，兩系都只有這一天' : '，有一系是多天，通常可以選時段'}</li>`).join('')}</ul><p>一階如果都過，同一天只能去一個。現在就想好哪個比較重要。</p>`);
     } else ck('ok', '甄試日期沒有撞期', '');
-    const bySchool = {};
-    P.forEach(d => { (bySchool[d.sid] = bySchool[d.sid] || []).push(d); });
-    const pick = Object.values(bySchool).filter(a => a.length > 1 && a.some(d => /擇一/.test((d.notes || '') + (d.rn || ''))));
-    if (pick.length) ck('warn', '同校有「擇一報名」規定', '請看備註：' + pick.map(a => a.map(d => esc(sch(d) + d.n)).join('、')).join('；'));
+    // 簡章 五(二)：大學得限制考生可申請該校之學系(組)數，違者取消報名該大學所有校系(組)之申請資格.
+    // In 116 these limits are 「同一系的各組限擇一組報名」 written in the 校系分則 備註.
+    const ONE_OF = /擇一(組|系)?(報名|申請)|限擇一組/;
+    const baseName = n => n.replace(/[（(].*$/, '').replace(/^(.*?(學系|學位學程|學程|系))(.*)$/, '$1');
+    const byDept = {};
+    P.forEach(d => { const k = d.sid + '|' + baseName(d.n); (byDept[k] = byDept[k] || []).push(d); });
+    const pick = Object.values(byDept).filter(a => a.length > 1 && a.some(d => ONE_OF.test((d.notes || '') + (d.rn || ''))));
+    if (pick.length) ck('bad', '同一系的組「限擇一組報名」', '這些組依校系分則只能報一個，違反的話依簡章會被取消報名該大學所有校系的資格：' + pick.map(a => a.map(d => esc(sch(d) + d.n)).join('、')).join('；'));
     const fee2 = P.reduce((a, d) => a + (d.fee || 0), 0);
-    ck('info', `費用約 ${fmtN(P.length * 100 + fee2)} 元`, `一階報名費 ${P.length} × 100 = ${P.length * 100} 元（115 簡章，低收入戶免繳、中低收入戶減免，以 116 簡章為準）；全部進二階的甄試費共 ${fmtN(fee2)} 元（116 校系分則）。`);
+    ck('info', `費用約 ${fmtN(P.length * 100 + fee2)} 元`, `一階報名費 ${P.length} × 100 = ${P.length * 100} 元（116 簡章：低收入戶全免，中低收入戶每校系 40 元）；全部進二階的甄試費共 ${fmtN(fee2)} 元（116 校系分則）。`);
     return out;
   }
   function calendarHTML(P) {
@@ -1303,7 +1307,7 @@
   // ------------------------------------------------------------------ guide
   const TIMELINE = [
     ['準備期', '2026-11-03', '簡章與校系分則公告（甄選會網站可查）'],
-    ['準備期', '2026-12-12', '英聽第二次考試（兩次擇優）'],
+    ['準備期', '2026-12-12', '英聽第二次考試（檢定用 114–116 學年度考過最好的一次）'],
     ['學測與成績', '2027-01-22', '學測（1/22–1/24）'],
     ['學測與成績', '2027-02-25', '學測成績與 116 五標公布：回來把「檢定用五標」改成 116'],
     ['選系與報名', '2027-03-18', '繁星推薦第 1–7 類放榜：錄取者不論放棄與否，都不能報申請入學'],
@@ -1311,7 +1315,9 @@
     ['選系與報名', '2027-03-23', '申請入學報名（3/23–3/24），最多 6 個校系'],
     ['一階篩選', '2027-03-30', '一階篩選結果（9:00）；3/31 中午前可申請複查'],
     ['二階：審查與甄試', '2027-04-01', '學習歷程上傳中央資料庫（約 4/1–4/21，依就讀高中規定）'],
-    ['二階：審查與甄試', '2027-04-29', '二階審查資料上傳／勾選（4/29 起，截止日各校不同）'],
+    ['二階：審查與甄試', '2027-04-09', '審查資料上傳測試版（4/9–4/14）：可先核對中央資料庫的學習歷程，有錯 4/15 中午前向學校反映'],
+    ['二階：審查與甄試', '2027-04-29', '二階審查資料上傳／勾選（4/29 起，截止日各校不同，多數在 5/5 前）'],
+    ['二階：審查與甄試', '2027-05-08', '應屆生確認第 6 學期修課紀錄（5/8 14:00–5/11）'],
     ['二階：審查與甄試', '2027-05-13', '指定項目甄試（5/13–5/30，面試、筆試等）'],
     ['二階：審查與甄試', '2027-05-31', '各校放榜前限（各校自訂日期）'],
     ['放榜與分發', '2027-06-03', '登記就讀志願序（6/3–6/4 9:00–21:00）：正取、備取都要登記，沒登記視同放棄'],
@@ -1355,16 +1361,16 @@
       <section class="count-hero">${hero}</section>
       <section class="sec"><h2>116 個人申請時程</h2><ol class="tl">${tl}</ol></section>
       <section class="sec"><h2>一定要知道的規則</h2><ol class="rules">
-        <li><div><b>最多 6 個校系。</b>報名時一次選好、繳費，送出後不能改。</div></li>
-        <li><div><b>一階 = 檢定 → 倍率篩選 → 同級分超額篩選。</b>檢定沒過，連篩選都不能參加。倍率從大到小一關一關篩，同一關同級分的人一起過；只有最後一關同分才比超額篩選的科目順序。</div></li>
+        <li><div><b>最多 6 個校系。</b>報名費一次繳足（每校系 100 元），報名截止後不能改。有些系的各組「限擇一組報名」，違反的話會被取消報名該大學所有校系的資格，「我的志願」會幫你檢查。</div></li>
+        <li><div><b>一階 = 檢定 → 倍率篩選 → 同級分超額篩選。</b>檢定沒過，連篩選都不能參加。倍率從大到小一關一關篩，同一關同級分的人一起過；只有最後一關同分才比超額篩選的科目順序，比到最後一個科目還同分的人全部通過。</div></li>
         <li><div><b>每一關都要過。</b>只看第一關、或只看總級分都會判錯（這個工具的舊版就犯過這個錯）。</div></li>
         <li><div><b>數A、數B 同時列為檢定時，過一科就好。</b>只考數B 的人不會因為數A 沒考被擋。</div></li>
         <li><div><b>二階通常是學測＋審查資料＋面試或筆試，各系比例差很多。</b>學測佔比高的系，學測好的人比較有利；審查和面試佔比高的系，學習歷程和準備最重要。有 ${fmtN(D.depts.filter(d => !d.sp).length)} 個校系的二階完全不計學測。「找校系」可以依學測佔二階的比例篩選，「我的志願」會整理你的志願要交哪些審查資料。</div></li>
         <li><div><b>撞期很常見。</b>一階過了兩個同一天甄試的系，只能去一個。排志願時就先看甄試日期。</div></li>
         <li><div><b>放榜後要登記就讀志願序（6/3–6/4）。</b>正取、備取都要登記，沒登記等於放棄。甄選會依志願序和名次統一分發，每人只會分到 1 個。</div></li>
-        <li><div><b>繁星第 1–7 類錄取的人不能報申請入學。</b>就算放棄繁星的錄取也一樣。</div></li>
+        <li><div><b>繁星第 1–7 類錄取的人不能報申請入學。</b>就算放棄繁星的錄取也一樣。繁星第八類（醫牙）通過一階的人，不能再報同一所大學的醫學系（牙醫系同理）；第八類錄取的人，不能參加申請入學的統一分發。</div></li>
         <li><div><b>分發到了但想改考分科測驗，要先聲明放棄。</b>6/13 前上網聲明放棄，否則不能參加分發入學。</div></li>
-        <li><div><b>學測有一科 0 級分也能報。</b>只要該系用到的科目加總不是 0 就可以（學生手冊 Q&amp;A）。這個工具把空白和 0 都當「沒考」。</div></li>
+        <li><div><b>沒考的科目以 0 級分計。</b>系用到的學測科目（檢定、倍率篩選、採計）加總不是 0 就能報；全部是 0 不能參加篩選。檢定用到沒考的科目一定不過，倍率篩選用到它就是拿 0 級分去比（簡章 九、十二）。這個工具把空白和 0 都當「沒考」。</div></li>
       </ol></section>
       <section class="sec"><h2>這個工具怎麼判斷落點</h2><ul class="tdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul>
         <div class="prose" style="margin-top:16px"><p><b>以 116 的篩選規則為準</b>：科目、倍率和順序都照 116 校系分則，一關一關看。每一關只拿 <b>115 用同樣科目篩選的最低級分</b>來比（115 一階篩選結果，甄選會只公布圖片，每一格都經兩次獨立判讀核對）：你每一關的級分都要大於或等於 115 最低，最後一關剛好相等要看超額篩選。</p>

@@ -186,7 +186,7 @@ test('no tier is ever decided by a subject the 116 screening does not use', () =
       const e = L.evaluate(d, S, O);
       const screened = new Set(L.screenPlan(d).flatMap(p => p.parts));
       for (const s of (e.cmp && e.cmp.stages) || []) for (const p of s.parts) assert.ok(screened.has(p), `${d.c} judged on ${p}`);
-      if (e.tier === '難' || e.tier === '衝') assert.ok(e.cmp.stages.some(s => s.ref), `${d.c} ${e.tier} without a comparable 115 cut`);
+      if ((e.tier === '難' || e.tier === '衝') && !(e.screenZero && e.screenZero.length)) assert.ok(e.cmp.stages.some(s => s.ref), `${d.c} ${e.tier} without a comparable 115 cut`);
     }
   }
 });

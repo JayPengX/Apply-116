@@ -72,10 +72,21 @@ test('英聽 grade comparison', () => {
   assert.equal(L.checkThreshold(d, S({}), STD).ok, false);
 });
 
-test('116 screens with a subject you did not take → 不符', () => {
+test('116 screens with a subject you did not take → counted as 0 級分, not 不符', () => {
   const d = dept({ sub: [sub('國', null, 3), sub('自', null, 5)], cut: [{ raw: '國文8', s: ['國'], v: 8 }] });
   const e = L.evaluate(d, S({ 國: 15 }), O);
-  assert.equal(e.tier, '不符');
+  assert.equal(e.tier, '難');
+  assert.deepEqual(e.screenZero, ['自']);
+  // a combined stage still sums the subjects you took
+  const d2 = dept({ sub: [sub('國', null, 3), sub('英', null, 3)], cut: [{ raw: '國英10', s: ['國', '英'], v: 10 }] });
+  const e2 = L.evaluate(d2, S({ 國: 15 }), O);
+  assert.notEqual(e2.tier, '不符');
+  assert.equal(e2.cmp.stages[0].mine, 15);
+});
+
+test('every 學測 subject the 系 uses is untaken → 不符 (總和為零級分)', () => {
+  const d = dept({ sub: [sub('自', null, 3, 1)], cut: [{ raw: '自然8', s: ['自'], v: 8 }] });
+  assert.equal(L.evaluate(d, S({ 國: 15 }), O).tier, '不符');
 });
 
 test('weight-only subject not taken → warning, not 不符', () => {
