@@ -2113,7 +2113,10 @@ details.fold>summary:hover{color:var(--text)}
   function stdSource(m) {
     const p = mockPreset(m);
     if (!m.std) return '沒有五標';
-    if (p && p.std && sameStd(m.std, p.std)) return '翰林公布的五標';
+    if (p && p.std && sameStd(m.std, p.std)) {
+      const ks = SCORE_KEYS.filter(k => p.std[k]);
+      return ks.length < SCORE_KEYS.length ? `翰林五標只有${[...new Set(ks.map(k => subj(k).replace(/[AB]$/, '')))].join('、')}，其他科可以按「修改」補上` : '翰林公布的五標';
+    }
     const same = p && p.std ? Object.keys(m.std).filter(k => p.std[k] && L.LEVELS.every(l => p.std[k][l] === m.std[k][l])) : [];
     return same.length ? '翰林五標（有幾科自己改過）' : '自己填的五標';
   }
@@ -2987,7 +2990,8 @@ details.fold>summary:hover{color:var(--text)}
     const lm = ms[ms.length - 1], lt = tierRows[tierRows.length - 1], lb = bestCombo(lm.s);
     const cells = SCORE_KEYS.filter(k => L.val(lm.s, k) != null).map(k => {
       const v = L.val(lm.s, k), lv = lvOf(lm, k, v);
-      let next = '沒有這次的五標';
+      const lp = mockPreset(lm);
+      let next = lp && lp.std && !lp.std[k] ? '翰林沒公開這科五標：按「修改」照成績總覽補上' : '沒有這次的五標';
       if (lv) {
         const i = L.LEVELS.indexOf(lv), up = i === -1 ? '底標' : i > 0 ? L.LEVELS[i - 1] : null;
         next = up ? `再 ${lm.std[k][up] - v} 級分到${up}` : '已到頂標';
