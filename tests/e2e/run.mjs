@@ -184,6 +184,10 @@ try {
     // 模考: pick 翰林第二次 (its 五標 come built in), type scores, see the 標, save, analysis appears
     await page.click('#tabs [data-tab="mock"]');
     await page.waitForSelector('#mockForm');
+    await page.selectOption('#mfPreset', '第三次學測模擬考');
+    await page.fill('[data-mf="社"]', '12');
+    ok((await page.textContent('[data-mflv="社"]')) === '前標', '翰林 10月北北基 五標 built in (社會 12 = 前標, corrected table)');
+    await page.fill('[data-mf="社"]', '');
     await page.selectOption('#mfPreset', '第二次學測模擬考');
     await page.fill('[data-mf="國"]', '13');
     await page.fill('[data-mf="英"]', '9');

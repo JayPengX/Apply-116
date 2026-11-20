@@ -45,18 +45,21 @@
   };
   // 116 學測模擬考 (115 學年度高三): dates and 範圍 from several high schools' 115 學年度 notices (台南、高雄、新竹).
   // Schools sit the same papers on nearby days, so a school's own notice wins.
-  // 翰林 學測模擬考 五標 (頂/前/均/後/底). Only numbers found in two independent published copies are built in;
-  // 第一次 has only 數學, 第三次 and later are filled in by the student from their 成績單.
-  // 第二次 (北北基): seventeen5.co/115-1-mock-test-analysis and xuebago.tw/blog/article/parent/115-trme-analysis.html.
-  // 第一次 數學: 翰林 115E1 (2026/7/30, 約 5.3 萬人).
+  // 翰林 學測模擬考 五標 (頂/前/均/後/底), as 翰林高中試務中心 names them:
+  //   7月全國 (115-E1): only 數學 found (one shared paper, 2026/7/30, 約 5.3 萬人; 翰林115E1 playlist).
+  //   9月北北基 (115-E2): seventeen5.co/115-1-mock-test-analysis and xuebago.tw/blog/article/parent/115-trme-analysis.html agree.
+  //   10月北北基 (115-E3): 原始分數與級分五標對照表 retyped by threads.com/@116_gsat_ (post Df4VMGFAYRh, 2026/11/19),
+  //     with that account's correction for 社會 (post Df6TqE5AW-2): 13、12、10、8、7. 報考人數 數A 59616、數B 55802、社會 56679、自然 49241.
+  // Anything not found is left for the student to copy from their 成績單.
   const lv5 = a => ({ 頂標: a[0], 前標: a[1], 均標: a[2], 後標: a[3], 底標: a[4] });
   const H1M = lv5([13, 11, 7, 4, 3]);
+  const H3 = { 國: lv5([13, 12, 11, 9, 7]), 英: lv5([12, 9, 6, 4, 3]), 數A: lv5([10, 8, 6, 4, 3]), 數B: lv5([12, 10, 6, 4, 3]), 社: lv5([13, 12, 10, 8, 7]), 自: lv5([13, 11, 9, 7, 5]) };
   const H2 = { 國: lv5([14, 13, 12, 10, 9]), 英: lv5([12, 10, 7, 4, 3]), 數A: lv5([11, 9, 6, 4, 3]), 數B: lv5([11, 9, 6, 4, 3]), 社: lv5([13, 11, 10, 8, 7]), 自: lv5([12, 10, 8, 6, 4]) };
   const MOCK_REF = [
-    { n: '第一次學測模擬考', d: '2026-07-29', std: { 數A: H1M, 數B: H1M }, stdNote: '翰林第一次只找到數學的五標（數A、數B 同一份考卷）',  when: '7/29–7/30', r: { 國文: '第 1–2 冊', 英文: '第 1–2 冊', 數學: '第 1 冊（數A、數B 不分卷）', 社會: '歷史、地理第 1 冊；公民：社會政治', 自然: '物理、化學、生物、地科必修上半冊' } },
-    { n: '第二次學測模擬考', d: '2026-09-02', std: H2, stdNote: '翰林第二次模考（北北基）公布的五標，數A、數B 同一份考卷',  when: '9/2–9/3（有的學校 9/9–9/10）', r: { 國文: '第 1–3 冊', 英文: '第 1–3 冊', 數學: '第 1–2 冊（不分卷）', 社會: '第 1–2 冊；公民：社會政治、法律', 自然: '物化生地必修全（含探究與實作）', 英聽: '英文必修第 1–4 學期' } },
-    { n: '第三次學測模擬考', d: '2026-10-28', when: '10/28–10/29', r: { 國文: '第 1–4 冊', 英文: '第 1–4 冊', 數學: '第 1–2 冊＋數A 或數B 第 3 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
-    { n: '第四次學測模擬考', d: '2026-12-08', when: '12/8–12/9', r: { 國文: '第 1–5 冊', 英文: '第 1–5 冊', 數學: '第 1–2 冊＋數A 或數B 第 3–4 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
+    { n: '第一次學測模擬考', d: '2026-07-29', org: '7月全國', std: { 數A: H1M, 數B: H1M }, stdNote: '翰林 7月全國模考只找到數學的五標（數A、數B 同一份考卷）',  when: '7/29–7/30', r: { 國文: '第 1–2 冊', 英文: '第 1–2 冊', 數學: '第 1 冊（數A、數B 不分卷）', 社會: '歷史、地理第 1 冊；公民：社會政治', 自然: '物理、化學、生物、地科必修上半冊' } },
+    { n: '第二次學測模擬考', d: '2026-09-02', org: '9月北北基', std: H2, stdNote: '翰林 9月北北基模考的五標（數A、數B 同一份考卷）',  when: '9/2–9/3（有的學校 9/9–9/10）', r: { 國文: '第 1–3 冊', 英文: '第 1–3 冊', 數學: '第 1–2 冊（不分卷）', 社會: '第 1–2 冊；公民：社會政治、法律', 自然: '物化生地必修全（含探究與實作）', 英聽: '英文必修第 1–4 學期' } },
+    { n: '第三次學測模擬考', d: '2026-10-28', org: '10月北北基', std: H3, stdNote: '翰林 10月北北基模考（115-E3）的五標',  when: '10/28–10/29', r: { 國文: '第 1–4 冊', 英文: '第 1–4 冊', 數學: '第 1–2 冊＋數A 或數B 第 3 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
+    { n: '第四次學測模擬考', d: '2026-12-08', org: '12月', when: '12/8–12/9', r: { 國文: '第 1–5 冊', 英文: '第 1–5 冊', 數學: '第 1–2 冊＋數A 或數B 第 3–4 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
     { n: '116 學測', d: '2027-01-22', when: '2027/1/22–1/24', r: null },
   ];
   const MOCK_MAX = 30;
@@ -501,7 +504,7 @@
       </div><p class="hint">一科五格都填才算。成績單上通常寫「頂標、前標、均標、後標、底標」。${p && p.std ? ' <button class="textbtn" type="button" data-act="mfStdPreset">改回翰林公布的</button>' : ''}</p>`;
     return `<section class="sec mform" id="mockForm"><div class="sec-hh"><h2>${f.id ? '修改模考' : '新增一次模考'}</h2>${st.mocks.length ? '<button class="textbtn" type="button" data-act="mfCancel">取消</button>' : ''}</div>
       <div class="mf-top">
-        <label class="mf-f"><span>哪一次</span><span class="selectbox"><select id="mfPreset">${MOCK_REF.filter(x => x.r).map(x => `<option value="${esc(x.n)}" ${x.n === pick ? 'selected' : ''}>翰林 ${esc(x.n.replace('學測模擬考', ''))}（${esc(x.when.replace(/（.*）/, ''))}）</option>`).join('')}<option value="" ${pick ? '' : 'selected'}>其他模考</option></select>${icon('chevD', 'sm')}</span></label>
+        <label class="mf-f"><span>哪一次</span><span class="selectbox"><select id="mfPreset">${MOCK_REF.filter(x => x.r).map(x => `<option value="${esc(x.n)}" ${x.n === pick ? 'selected' : ''}>翰林 ${esc(x.org)}（${esc(x.n.replace('學測模擬考', ''))}，${esc(x.when.replace(/（.*）/, ''))}）</option>`).join('')}<option value="" ${pick ? '' : 'selected'}>其他模考</option></select>${icon('chevD', 'sm')}</span></label>
         ${pick ? '' : `<label class="mf-f"><span>名稱</span><input id="mfName" type="text" maxlength="30" value="${esc(f.n)}" placeholder="例如：南一第一次、校內模考"></label>`}
         <label class="mf-f"><span>日期</span><input id="mfDate" type="date" value="${f.d}"></label>
       </div>
@@ -1268,7 +1271,7 @@
       <div class="tablewrap"><table class="reftable"><thead><tr><th>次</th><th>日期</th>${['國文', '英文', '數學', '社會', '自然'].map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>
       ${MOCK_REF.filter(x => x.r).map(x => `<tr><th>${esc(x.n.replace('學測模擬考', ''))}</th><td>${esc(x.when)}</td>${['國文', '英文', '數學', '社會', '自然'].map(k => `<td>${esc(x.r[k] || '—')}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
-      <p class="hint">整理自多所高中 115 學年度高三模考公告（台南、高雄、新竹），各校日期可能差幾天，以學校公告為準。第二次起考英聽（英文必修第 1–4 學期）。範圍還沒考完，前幾次分數偏低很正常；跟正式學測最接近的是第四次。另有民間的樂學網「樂模」（9/12–13、11/21–22）。正式學測：2027/1/22–1/24。</p><p class="hint">內建五標：第二次是翰林北北基公布的五標（兩份公開整理一致）；第一次只找到數學（翰林 115E1，約 5.3 萬人）；第三次以後還沒收錄，請照成績單填。學校拿到的若是全國版，數字可能差 1 級分，以成績單為準。</p></details>`;
+      <p class="hint">整理自多所高中 115 學年度高三模考公告（台南、高雄、新竹），各校日期可能差幾天，以學校公告為準。第二次起考英聽（英文必修第 1–4 學期）。範圍還沒考完，前幾次分數偏低很正常；跟正式學測最接近的是第四次。另有民間的樂學網「樂模」（9/12–13、11/21–22）。正式學測：2027/1/22–1/24。</p><p class="hint">內建五標（翰林）：7月全國只找到數學（115-E1，約 5.3 萬人）；9月北北基各科（兩份公開整理一致）；10月北北基各科（115-E3 原始分數與級分五標對照表，報考約 5–6 萬人）；12 月還沒考。都是公開整理的數字，跟你的成績單不一樣就以成績單為準，在「修改」改掉。</p></details>`;
   }
   const mockLinkHTML = () => `<section class="sec mocklink"><h2>模考趨勢</h2><p class="sub">${st.mocks.length ? `已存 ${st.mocks.length} 次模考。` : ''}每次模考的成績、五標、每一科的變化和每一次的落點，都在「模考」分頁。</p><button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}${st.mocks.length ? '看模考趨勢' : '新增模考'}</button></section>`;
   /** One small chart per subject on a shared 級分 scale, plus 落點 per 模考 and a table. */
