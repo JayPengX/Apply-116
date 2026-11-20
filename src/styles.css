@@ -750,7 +750,7 @@ details.fold>summary:hover{color:var(--text)}
 .mockform input[type=text],.mockform input[type=date]{width:100%;min-width:0;height:36px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;padding:0 10px}
 .mockform .btn{justify-self:start}
 .mocklist{list-style:none;padding:0;margin:12px 0 8px;display:grid;gap:2px}
-.mocklist li{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
+.mocklist li{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
 .mocklist .md{color:var(--text-3);font-variant-numeric:tabular-nums}
 .mocklist .mn{min-width:0}
 .mocklist .mn b{display:block;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -794,3 +794,6 @@ details.fold>summary:hover{color:var(--text)}
   .mt-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
   .mt-row .tierbar{grid-column:1/-1;grid-row:2}
 }
+.mockstd{grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;padding:10px 0 4px}
+.mocklist li .textbtn.has{color:var(--ok)}
+.reftable td small.lv{display:block;font-size:11px;color:var(--text-3);font-weight:500;line-height:1.2}

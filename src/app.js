@@ -202,6 +202,13 @@
     if (x < 10) return '前 ' + x.toFixed(1) + '%';
     return '前 ' + Math.round(x) + '%';
   }
+  /** Which 標 a score reaches in a given 五標 table ('' when unknown). */
+  function levelIn(t, k, v) {
+    const s = t && t[k];
+    if (!s || !v) return '';
+    for (const l of L.LEVELS) if (v >= s[l]) return l;
+    return '未達底標';
+  }
   function levelOf(k, v, year) {
     const t = year ? D.std[year] : STD(), s = t && t[k];
     if (!s || !v) return '';
@@ -449,25 +456,31 @@
         <label class="mf">哪一次<span class="selectbox"><select id="mockPreset">${MOCK_REF.map(x => `<option value="${esc(x.n)}" ${x === preset ? 'selected' : ''}>${esc(x.n)}（${esc(x.when)}）</option>`).join('')}<option value="">其他</option></select>${icon('chevD', 'sm')}</span></label>
         <label class="mf">名稱<input id="mockName" type="text" maxlength="30" value="${esc(preset.n)}"></label>
         <label class="mf">日期<input id="mockDate" type="date" value="${preset.d}"></label>
-        ${st.stdYear === 'custom' ? '<label class="fcheck"><input type="checkbox" id="mockStd" checked> 一起存我填的自訂五標</label>' : ''}
+        <label class="fcheck"><input type="checkbox" id="mockStdOn" ${ui.mockStdOn ? 'checked' : ''}> 這次模考有公布五標（公布後再補也可以）</label>
+        ${ui.mockStdOn ? `<div class="mockstd"><p class="hint">填這次模考公布的五標。每次模考的五標都不一樣，同樣的級分這次可能是前標、下次只有均標。</p>${customStdHTML('draft', '這次模考的五標')}</div>` : ''}
         <button class="btn sm" type="button" data-act="saveMock">${icon('check', 'sm')}把現在的成績存成這次模考</button>
       </div>` : '<p class="hint">先填這次模考的級分，再存起來。</p>'}
-      ${ms.length ? `<ul class="mocklist">${ms.map(m => `<li><span class="md">${mdText(m.d)}</span><span class="mn"><b>${esc(m.n)}</b><small>${esc(scoreLine(m.s))}${m.std ? ' · 有五標' : ''}</small></span><button class="textbtn" type="button" data-mockuse="${m.id}">套用</button><button class="textbtn danger" type="button" data-mockdel="${m.id}" aria-label="刪除 ${esc(m.n)}">刪除</button></li>`).join('')}</ul>
+      ${ms.length ? `<ul class="mocklist">${ms.map(m => {
+        const open = ui.mockStdEdit === m.id;
+        const editor = !open ? '' : m.std
+          ? `<div class="mockstd"><p class="hint">改了會直接存。按「套用」就會用這組五標判斷檢定。</p>${customStdHTML(m.id, m.n + '的五標')}<button class="textbtn danger" type="button" data-mockstddel="${m.id}">移除這次的五標</button></div>`
+          : `<div class="mockstd"><p class="hint">還沒填「${esc(m.n)}」的五標。</p><button class="btn sm" type="button" data-mockstdadd="${m.id}">${icon('plus', 'sm')}填這次的五標</button></div>`;
+        return `<li class="${open ? 'open' : ''}"><span class="md">${mdText(m.d)}</span><span class="mn"><b>${esc(m.n)}</b><small>${esc(scoreLine(m.s))}</small></span><button class="textbtn${m.std ? ' has' : ''}" type="button" data-mockstd="${m.id}" aria-expanded="${open}">${m.std ? '五標 ✓' : '五標'}</button><button class="textbtn" type="button" data-mockuse="${m.id}">套用</button><button class="textbtn danger" type="button" data-mockdel="${m.id}" aria-label="刪除 ${esc(m.n)}">刪除</button>${editor}</li>`;
+      }).join('')}</ul>
       <button class="textbtn" type="button" data-tab="boost">${icon('boost', 'sm')}看模考趨勢</button>` : ''}
     </div></details>`;
   }
   function saveMock() {
     const n = ($('#mockName').value || '').trim().slice(0, 30) || '模考';
     const d = /^\d{4}-\d{2}-\d{2}$/.test($('#mockDate').value) ? $('#mockDate').value : todayISO();
-    const box = $('#mockStd');
-    const rec = { id: Math.random().toString(36).slice(2, 10), n, d, s: cleanScores(st.scores), std: box && box.checked ? copyStd(st.stdCustom) : null };
+    const rec = { id: Math.random().toString(36).slice(2, 10), n, d, s: cleanScores(st.scores), std: ui.mockStdOn ? copyStd(stdTable('draft')) : null };
     const i = st.mocks.findIndex(m => m.n === n && m.d === d);
     if (i >= 0) { rec.id = st.mocks[i].id; st.mocks[i] = rec; } else {
       if (st.mocks.length >= MOCK_MAX) { toast(`最多存 ${MOCK_MAX} 次，先刪掉舊的`); return; }
       st.mocks.push(rec);
     }
-    ui.mockOpen = true; keepEditorOpen(); render();
-    toast(i >= 0 ? `已更新「${n}」` : `已存成「${n}」`);
+    ui.mockOpen = true; ui.mockStdOn = false; ui.mockDraft = null; keepEditorOpen(); render();
+    toast(i >= 0 ? `已更新「${n}」` : `已存成「${n}」${rec.std ? '（含五標）' : ''}`);
   }
   function useMock(id) {
     const m = st.mocks.find(x => x.id === id);
@@ -478,15 +491,29 @@
     toast(`已套用「${m.n}」的成績${m.std ? '和五標' : ''}`);
   }
 
-  /** 自訂五標: one row per subject, 頂標 → 底標. */
-  function customStdHTML() {
-    const c = st.stdCustom;
+  /**
+   * 五標 grid, one row per subject, 頂標 → 底標. `target` says which table it edits:
+   * 'custom' = 自訂五標 used for 檢定, 'draft' = the 模考 being saved, otherwise a saved 模考's id.
+   */
+  function stdTable(target) {
+    if (target === 'custom') return st.stdCustom;
+    if (target === 'draft') return ui.mockDraft || (ui.mockDraft = copyStd(defaultMockStd()));
+    const m = st.mocks.find(x => x.id === target);
+    return m && m.std;
+  }
+  // A new 模考's 五標 starts from the latest saved 模考's, else the 自訂 or 115 ones: only a few numbers then change.
+  function defaultMockStd() {
+    const withStd = mocksByDate().filter(m => m.std);
+    return withStd.length ? withStd[withStd.length - 1].std : st.stdYear === 'custom' ? st.stdCustom : D.std['115'];
+  }
+  function customStdHTML(target = 'custom', label = '自訂五標') {
+    const c = stdTable(target);
     const bad = SCORE_KEYS.filter(k => L.LEVELS.some((l, i) => i && c[k][l] > c[k][L.LEVELS[i - 1]]));
-    return `<div class="stdgrid" role="table" aria-label="自訂五標">
+    return `<div class="stdgrid" role="table" aria-label="${esc(label)}">
       <span role="columnheader"></span>${L.LEVELS.map(l => `<span role="columnheader">${l.replace('標', '')}</span>`).join('')}
-      ${SCORE_KEYS.map(k => `<span role="rowheader">${subj(k)}</span>${L.LEVELS.map(l => `<input type="number" inputmode="numeric" min="1" max="15" value="${c[k][l]}" data-std="${k}:${l}" aria-label="${subj(k)}${l}">`).join('')}`).join('')}
+      ${SCORE_KEYS.map(k => `<span role="rowheader">${subj(k)}</span>${L.LEVELS.map(l => `<input type="number" inputmode="numeric" min="1" max="15" value="${c[k][l]}" data-std="${target}:${k}:${l}" aria-label="${esc(label)} ${subj(k)}${l}">`).join('')}`).join('')}
     </div>
-    <div class="stdgrid-f">${Object.keys(D.std).sort().reverse().map(y => `<button class="textbtn" type="button" data-stdcopy="${y}">填入 ${y} 五標</button>`).join('')}</div>
+    <div class="stdgrid-f">${Object.keys(D.std).sort().reverse().map(y => `<button class="textbtn" type="button" data-stdcopy="${target}:${y}">填入 ${y} 學測五標</button>`).join('')}</div>
     ${bad.length ? `<p class="hint warn-t">${bad.map(subj).join('、')}的五標沒有由高到低，請檢查。</p>` : ''}`;
   }
   function scoreEditor() {
@@ -1198,7 +1225,11 @@
     const W = 240, H = 104, PL = 6, PR = 38, PT = 16, PB = 8;
     const X = i => (ms.length === 1 ? (PL + W - PR) / 2 : PL + (i * (W - PL - PR)) / (ms.length - 1));
     const Y = v => PT + ((hi - v) * (H - PT - PB)) / (hi - lo || 1);
-    const std = STD();
+    // Each 模考 is read with its own 五標 when it has one; the dashed lines use the latest 模考 五標 (or the 檢定 五標).
+    const mstd = m => m.std || STD();
+    const lastStd = ms.slice().reverse().find(m => m.std);
+    const std = lastStd ? lastStd.std : STD();
+    const stdLabel = lastStd ? `「${lastStd.n}」` : stdName();
     const panels = subs.map(k => {
       const pts = ms.map((m, i) => ({ i, m, v: L.val(m.s, k) })).filter(p => p.v != null);
       const last = pts[pts.length - 1], prev = pts[pts.length - 2], first = pts[0];
@@ -1206,7 +1237,7 @@
       // a 前標 and a 均標 one 級分 apart would collide: label only the upper one then
       const refs = ref.map(([l, v], j) => `<line class="ref" x1="${PL}" x2="${W - PR}" y1="${Y(v)}" y2="${Y(v)}"/>${j && Math.abs(Y(v) - Y(ref[0][1])) < 11 ? '' : `<text class="reft" x="${W - PR + 4}" y="${Y(v) + 3.5}">${l} ${v}</text>`}`).join('');
       const path = pts.map((p, j) => `${j ? 'L' : 'M'}${X(p.i).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
-      const tip = p => `${p.m.n}（${mdText(p.m.d)}）：${subj(k)} ${p.v} 級分${levelOf(k, p.v) ? '，' + levelOf(k, p.v) : ''}`;
+      const tip = p => { const lv = levelIn(mstd(p.m), k, p.v); return `${p.m.n}（${mdText(p.m.d)}）：${subj(k)} ${p.v} 級分${lv ? `，${p.m.std ? '這次模考的' : ''}${lv}` : ''}`; };
       const dots = pts.map(p => `<circle class="pt" cx="${X(p.i)}" cy="${Y(p.v)}" r="4"/>`).join('');
       const hits = pts.map(p => `<circle class="hit" cx="${X(p.i)}" cy="${Y(p.v)}" r="13" data-tip="${esc(tip(p))}" tabindex="0" aria-label="${esc(tip(p))}"/>`).join('');
       const lab = pts.length > 1 ? `<text class="vlab" x="${X(last.i) - 7}" y="${Y(last.v) - 7}" text-anchor="end">${last.v}</text>` : '';
@@ -1232,17 +1263,32 @@
       if (up.length) notes.push(`進步：${up.map(x => `${subj(x.k)} +${x.d}`).join('、')}`);
       if (dn.length) notes.push(`退步：${dn.map(x => `${subj(x.k)} ${x.d}`).join('、')}${dn[0].d <= -2 ? `，${subj(dn[0].k)}要多注意` : ''}`);
       const a = tierRows[tierRows.length - 2], b = tierRows[tierRows.length - 1];
+      // Same 級分 can mean a different standing: compare 標 between the first and latest 模考 that both have their own 五標.
+      const both = ms.filter(m => m.std);
+      if (both.length > 1) {
+        const a = both[0], b = both[both.length - 1], rank = l => (l ? L.LEVELS.indexOf(l) : -1);
+        for (const k of subs) {
+          const va = L.val(a.s, k), vb = L.val(b.s, k);
+          if (va == null || vb == null) continue;
+          const la = levelIn(a.std, k, va), lb = levelIn(b.std, k, vb);
+          if (la === lb) continue;
+          const better = (rank(lb) === -1 ? 9 : rank(lb)) < (rank(la) === -1 ? 9 : rank(la));
+          const dv = vb - va;
+          const twist = (better && dv < 0) || (!better && dv > 0);
+          notes.push(`${subj(k)}：${a.n} ${va} 級分（${la}）→ ${b.n} ${vb} 級分（${lb}）${twist ? (better ? '，級分少了但標更高：這次大家考得比較差' : '，級分多了但標更低：這次大家考得比較好') : better ? '，排名往前' : '，排名往後'}`);
+        }
+      }
       notes.push(`最近一次「穩＋適中」${b.good > a.good ? `多了 ${b.good - a.good} 個` : b.good < a.good ? `少了 ${a.good - b.good} 個` : '一樣'}（${a.good} → ${b.good}）`);
     }
     const table = `<div class="tablewrap"><table class="reftable"><thead><tr><th>模考</th>${subs.map(k => `<th>${ABBR[k]}</th>`).join('')}<th>英聽</th><th>總和</th><th>最強組合</th></tr></thead><tbody>
-      ${ms.map(m => { const b = bestCombo(m.s); return `<tr><th>${esc(m.n)}<small>${mdText(m.d)}</small></th>${subs.map(k => `<td class="num">${L.val(m.s, k) ?? '—'}</td>`).join('')}<td>${m.s.聽 || '—'}</td><td class="num">${mockTotal(m)}</td><td>${b ? `${esc(comboName(b.k))} ${fmtTop(b.top)}` : '—'}</td></tr>`; }).join('')}
+      ${ms.map(m => { const b = bestCombo(m.s); return `<tr><th>${esc(m.n)}<small>${mdText(m.d)}</small></th>${subs.map(k => { const v = L.val(m.s, k), lv = m.std && v != null ? levelIn(m.std, k, v) : ''; return `<td class="num">${v ?? '—'}${lv ? `<small class="lv">${lv}</small>` : ''}</td>`; }).join('')}<td>${m.s.聽 || '—'}</td><td class="num">${mockTotal(m)}</td><td>${b ? `${esc(comboName(b.k))} ${fmtTop(b.top)}` : '—'}</td></tr>`; }).join('')}
       </tbody></table></div>`;
-    return `<section class="sec" id="trendSec"><h2>模考趨勢</h2><p class="sub">${ms.length} 次模考 · 每格同一個級分刻度，虛線是${stdName()}的前標、均標。點一下圓點看那次的級分。</p>
+    return `<section class="sec" id="trendSec"><h2>模考趨勢</h2><p class="sub">${ms.length} 次模考 · 每格同一個級分刻度，虛線是${esc(stdLabel)}的前標、均標。點一下圓點看那次的級分${ms.some(m => m.std) ? '和那次模考五標的標' : ''}。</p>
       ${notes.length ? `<ul class="trendnotes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       <div class="sparks">${panels}</div>
       <h3 class="sec-h3">每次模考的落點</h3><p class="sub">用每次的成績算「找校系」目前範圍（${fmtN(scope.length)} 個校系）的落點${ms.some(m => m.std) ? '；有存五標的那次用它自己的五標判斷檢定' : ''}。</p>
       <div class="mtiers">${bars}</div>
-      <h3 class="sec-h3">成績表</h3>${table}
+      <h3 class="sec-h3">成績表</h3>${ms.some(m => m.std) ? '<p class="sub">小字是那次模考五標的標。</p>' : `<p class="sub">在「我的學測級分 → 模考紀錄」按每一次的「五標」，填那次公布的五標，這裡就會標出每次是頂標、前標還是均標。</p>`}${table}
       ${mockRefHTML()}</section>`;
   }
 
@@ -1606,7 +1652,14 @@
         if (m && confirm(`刪除「${m.n}」（${mdText(m.d)}）？`)) { st.mocks = st.mocks.filter(x => x !== m); keepEditorOpen(); render(); toast('已刪除'); }
         return;
       }
-      if (ds.stdcopy) { st.stdCustom = copyStd(D.std[ds.stdcopy]); keepEditorOpen(); render(); toast(`已填入 ${ds.stdcopy} 學年度五標`); return; }
+      if (ds.stdcopy) {
+        const [target, y] = ds.stdcopy.split(':'), tab = stdTable(target);
+        if (tab) for (const k of SCORE_KEYS) Object.assign(tab[k], D.std[y][k]);
+        keepEditorOpen(); render(); toast(`已填入 ${y} 學年度學測五標`); return;
+      }
+      if (ds.mockstd) { ui.mockStdEdit = ui.mockStdEdit === ds.mockstd ? null : ds.mockstd; ui.mockOpen = true; keepEditorOpen(); render(); return; }
+      if (ds.mockstdadd) { const m = st.mocks.find(x => x.id === ds.mockstdadd); if (m) m.std = copyStd(defaultMockStd()); keepEditorOpen(); render(); return; }
+      if (ds.mockstddel) { const m = st.mocks.find(x => x.id === ds.mockstddel); if (m) m.std = null; keepEditorOpen(); render(); toast('已移除這次的五標'); return; }
       if (ds.combo) { toggle(f.combos, ds.combo); ui.shown = PAGE; render(); return; }
       if (ds.listen) { keepEditorOpen(); st.scores.聽 = ds.listen === 'none' ? '' : ds.listen; render(); return; }
       if (ds.clear) {
@@ -1643,10 +1696,11 @@
         return;
       }
       if (t.id === 'stdYear') { st.stdYear = t.value; render(); return; }
+      if (t.id === 'mockStdOn') { ui.mockStdOn = t.checked; keepEditorOpen(); render(); return; }
       if (t.dataset.std) {
-        const [k, l] = t.dataset.std.split(':'), n = Math.round(Number(t.value));
+        const [target, k, l] = t.dataset.std.split(':'), n = Math.round(Number(t.value)), tab = stdTable(target);
         keepEditorOpen();
-        if (Number.isFinite(n) && n >= 1 && n <= 15) st.stdCustom[k][l] = n;
+        if (tab && Number.isFinite(n) && n >= 1 && n <= 15) tab[k][l] = n;
         else toast('五標要填 1–15 級分');
         render();
         return;
