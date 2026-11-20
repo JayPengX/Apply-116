@@ -1726,13 +1726,13 @@ details.fold>summary:hover{color:var(--text)}
   };
   // 116 學測模擬考 (115 學年度高三): dates and 範圍 from several high schools' 115 學年度 notices (台南、高雄、新竹).
   // Schools sit the same papers on nearby days, so a school's own notice wins.
-  // 翰林 學測模擬考 五標 (頂/前/均/後/底), as 翰林高中試務中心 names them:
-  //   7月全國 (115-E1): 「115學年度第一次學測模擬考（翰林）各科成績標準一覽表」 (posted by threads.com/@minda_tsu);
-  //     its 數學 row and 級距 6.60317 match the 翰林115E1 playlist (2026/7/30, 約 5.3 萬人) exactly.
-  //   9月北北基 (115-E2): seventeen5.co/115-1-mock-test-analysis and xuebago.tw/blog/article/parent/115-trme-analysis.html agree.
-  //   10月北北基 (115-E3): 原始分數與級分五標對照表 retyped by threads.com/@116_gsat_ (post Df4VMGFAYRh, 2026/11/19),
-  //     with that account's correction for 社會 (post Df6TqE5AW-2): 13、12、10、8、7. 報考人數 數A 59616、數B 55802、社會 56679、自然 49241.
-  // Anything not found is left for the student to copy from their 成績單.
+  // 翰林 學測模擬考 五標 (頂/前/均/後/底), as 翰林高中試務中心 names them. Primary source: 翰林's own
+  // 「115學年度第一／二／三次學測模擬考（翰林）各科成績標準一覽表」 as handed to students (copies from
+  // students who sat them, 2026-11-20). Every number was cross-checked against independent public copies:
+  //   7月全國 (115-E1): threads.com/@minda_tsu; 數學 row and 級距 6.60317 = 翰林115E1 playlist (約 5.3 萬人).
+  //   9月北北基 (115-E2): seventeen5.co/115-1-mock-test-analysis, xuebago.tw/blog/article/parent/115-trme-analysis.html.
+  //   10月北北基 (115-E3): threads.com/@116_gsat_ 原始分數與級分五標對照表 (社會 per its correction:
+  //     13、12、10、8、7). 報考人數 數A 59616、數B 55802、社會 56679、自然 49241.
   const lv5 = a => ({ 頂標: a[0], 前標: a[1], 均標: a[2], 後標: a[3], 底標: a[4] });
   const H1M = lv5([13, 11, 7, 4, 3]);
   const H1 = { 國: lv5([13, 12, 11, 9, 7]), 英: lv5([12, 10, 7, 5, 4]), 數A: H1M, 數B: H1M, 社: lv5([13, 12, 10, 8, 7]), 自: lv5([12, 10, 8, 5, 4]) };
@@ -3052,7 +3052,7 @@ details.fold>summary:hover{color:var(--text)}
       <div class="tablewrap"><table class="reftable"><thead><tr><th>次</th><th>日期</th>${['國文', '英文', '數學', '社會', '自然'].map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>
       ${MOCK_REF.filter(x => x.r).map(x => `<tr><th>${esc(x.n.replace('學測模擬考', ''))}</th><td>${esc(x.when)}</td>${['國文', '英文', '數學', '社會', '自然'].map(k => `<td>${esc(x.r[k] || '—')}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
-      <p class="hint">整理自各校 115 學年度模考公告，日期以學校為準。英聽只有第二次考。學測：2027/1/22–1/24。</p><p class="hint">內建五標來自公開整理的翰林成績表（7月全國 E1、9月北北基 E2、10月北北基 E3），跟成績單不同以成績單為準。中區、南一是不同考試。</p></details>`;
+      <p class="hint">整理自各校 115 學年度模考公告，日期以學校為準。英聽只有第二次考。學測：2027/1/22–1/24。</p><p class="hint">內建五標照翰林「各科成績標準一覽表」（7月全國、9月北北基、10月北北基），並跟公開資料逐一核對過；跟你的成績單不同以成績單為準。中區、南一是不同考試。</p></details>`;
   }
   const mockLinkHTML = () => `<section class="sec mocklink"><h2>模考趨勢</h2><p class="sub">${st.mocks.length ? `已存 ${st.mocks.length} 次模考。` : ''}趨勢和每次的落點在「模考」分頁。</p><button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}${st.mocks.length ? '看模考趨勢' : '新增模考'}</button></section>`;
   /** One small chart per subject on a shared 級分 scale, plus 落點 per 模考 and a table. */
