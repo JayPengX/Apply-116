@@ -889,3 +889,6 @@ details.fold>summary:hover{color:var(--text)}
 .clash li>b{min-width:6.5em;font-variant-numeric:tabular-nums;font-size:13.5px}
 .clash li>span{display:flex;gap:5px;flex-wrap:wrap}
 .clash-n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--surface-3);font-weight:750;font-size:13px;font-variant-numeric:tabular-nums}
+.boost-all{margin:0 0 14px;font-size:13px;color:var(--text-2)}
+.try-from{flex-wrap:wrap;justify-content:space-between}
+.try-from>span{flex:1 1 200px}

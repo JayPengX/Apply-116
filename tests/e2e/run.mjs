@@ -179,6 +179,13 @@ try {
     await page.waitForTimeout(300);
     ok((await page.locator('#tryOut').innerText()).includes('→'), 'what-if lists improved departments');
     ok((await scores(page)).數B === '1', 'what-if does not change the saved scores');
+    // subjects you have not taken stay out of 怎麼進步 unless you ask for them
+    const trySubs = () => page.evaluate(() => [...document.querySelectorAll('#trySec [data-try]')].map(t => t.dataset.try));
+    ok(!(await trySubs()).includes('數A') && !(await trySubs()).includes('自'), 'untaken subjects hidden in 怎麼進步 by default');
+    await page.check('#boostAll');
+    await page.waitForFunction(() => [...document.querySelectorAll('#trySec [data-try]')].some(t => t.dataset.try === '自'));
+    ok(true, '「也看沒考的科目」 shows them');
+    await page.uncheck('#boostAll');
     await page.screenshot({ path: join(SHOTS, 'desktop-boost.png'), fullPage: true });
 
     // 模考: pick 翰林第二次 (its 五標 come built in), type scores, see the 標, save, analysis appears

@@ -611,8 +611,13 @@
   function tryMock(id) {
     const m = st.mocks.find(x => x.id === id);
     if (!m) return;
-    ui.tryS = { ...st.scores, ...cleanScores(mockAsTest(m).S), 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
+    const { S, eq } = mockAsTest(m);
+    ui.tryS = { ...st.scores, ...cleanScores(S), 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
+    ui.tryRaw = { ...st.scores, ...cleanScores(m.s), 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
     ui.tryFrom = mName(m);
+    ui.tryConv = SCORE_KEYS.filter(k => L.val(m.s, k) != null).map(k => (eq[k] ? `${ABBR[k]} ${L.val(m.s, k)}${eq[k].g !== L.val(m.s, k) ? '→' + eq[k].g : ''}` : `${ABBR[k]} ${L.val(m.s, k)}`)).join('、');
+    ui.tryIsRaw = false;
+    ui.tryAlt = null;
     ui.keepTry = true;
     if (ui.tab === 'boost') render(); else setTab('boost');
     setTimeout(() => { const el = $('#trySec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
@@ -1533,7 +1538,7 @@
     const max1 = Math.max(1, ...rows.map(r => (r.cells[0] ? r.cells[0].up : 0)));
     const best = rows.reduce((a, r) => (r.cells[0] && (!a || r.cells[0].up > a.cells[0].up) ? r : a), null);
     const heat = (c, mx) => (c ? `<span class="bd-n" style="--h:${(c.up / mx).toFixed(3)}"><b>${c.up}</b>${c.unlock ? `<small>解鎖 ${c.unlock}</small>` : ''}</span>` : '<span class="bd-n none">—</span>');
-    const body = rows.filter(r => r.cur || series.out[r.k]).map(r => {
+    const body = rows.filter(r => ui.boostAll || r.cur || series.out[r.k]).map(r => {
       const x = series.out[r.k], lv = r.cur ? levelOf(r.k, r.cur) : '';
       const gap = x && r.cur ? x.last - r.cur : null;
       const mock = x ? `${miniSpark(x.vals, subj(r.k) + ' 模考：' + x.vals.filter(v => v != null).join('、'))}<span class="bd-m"><b class="num">${x.last}</b>${gap ? `<small class="${gap > 0 ? 'up' : 'down'}" title="比現在填的${gap > 0 ? '高' : '低'} ${Math.abs(gap)} 級分">${gap > 0 ? '+' + gap : gap}</small>` : ''}</span>` : '<span class="muted">—</span>';
@@ -1557,8 +1562,15 @@
     clearTimeout(renderBoost.t);
     renderBoost.t = setTimeout(() => {
       if (ui.tab !== 'boost') return;
-      const { rows, blockers } = boostData(scope);
+      const { rows: allRows, blockers: allBlockers } = boostData(scope);
       const series = mockSeries();
+      // subjects you have not taken (no score, no 模考) only matter if you are thinking of adding one
+      const taken = k => L.val(st.scores, k) != null || !!series.out[k];
+      const untaken = SCORE_KEYS.filter(k => !taken(k));
+      const rows = ui.boostAll ? allRows : allRows.filter(r => taken(r.k));
+      const NAME_RE = { 國: /國文/, 英: /英文/, 數A: /數學A|數A/, 數B: /數學B|數B/, 社: /社會/, 自: /自然/ };
+      const blockers = ui.boostAll ? allBlockers : allBlockers.filter(([lab]) => { const ks = SCORE_KEYS.filter(k => NAME_RE[k].test(lab)); return !ks.length || ks.some(taken); });
+      const allToggle = untaken.length ? `<label class="fcheck boost-all"><input type="checkbox" id="boostAll" ${ui.boostAll ? 'checked' : ''}> 也看沒考的科目（${untaken.map(k => ABBR[k]).join('、')}），想加考的話</label>` : '';
       const all = rows.flatMap(r => r.cells.filter(Boolean).map(c => ({ ...c, k: r.k, cur: r.cur })));
       const maxUp = Math.max(1, ...all.map(c => c.up));
       // "6 級分" is above 均標 5, not equal to it: say "達到" unless it is exactly the line.
@@ -1582,11 +1594,11 @@
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
       const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${stdName()}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
       if (!ui.tryS) ui.tryS = { ...st.scores };
-      const tryGrid = SCORE_KEYS.map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
-      el.innerHTML = head + hero + boardHTML(rows, series) +
+      const tryGrid = SCORE_KEYS.filter(k => ui.boostAll || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
+      el.innerHTML = head + allToggle + hero + boardHTML(rows, series) +
         `<section class="sec"><h2>每科多考幾級分，會多出多少機會？</h2><p class="sub">落點變好的校系數，解鎖＝不符變可報</p>${grid}</section>
         <section class="sec"><h2>擋住你的檢定</h2><p class="sub">因此進不了一階的校系數</p>${blockHTML}</section>
-        <section class="sec" id="trySec"><h2>試算</h2>${ui.tryFrom ? `<p class="note-inline">${icon('mock', 'sm')}已帶入「${esc(ui.tryFrom)}」換算的學測級分</p>` : ''}<p class="sub">暫時改成績看結果，不會改掉你存的成績。</p><div class="try-act">${st.mocks.length ? `<button class="btn sm" type="button" data-mocktry="${mocksByDate().pop().id}">${icon('mock', 'sm')}帶入最近一次模考</button>` : ''}<button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回我的成績</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
+        <section class="sec" id="trySec"><h2>試算</h2>${ui.tryFrom ? `<div class="note-inline try-from">${icon('mock', 'sm')}<span>「${esc(ui.tryFrom)}」${ui.tryIsRaw ? '原始級分' : '換算成學測級分'}：${esc(ui.tryIsRaw ? ui.tryConv.replace(/→\d+/g, '') : ui.tryConv)}</span><button class="textbtn" type="button" data-act="tryToggleRaw">${ui.tryIsRaw ? '改用換算' : '改用原始級分'}</button></div>` : ''}<p class="sub">暫時改成績看結果，不會改掉你存的成績。</p><div class="try-act">${st.mocks.length ? `<button class="btn sm" type="button" data-mocktry="${mocksByDate().pop().id}">${icon('mock', 'sm')}帶入最近一次模考</button>` : ''}<button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回我的成績</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();
     }, 30);
   }
@@ -1716,7 +1728,8 @@
     ui.tab = name;
     ['explore', 'plan', 'boost', 'mock', 'guide'].forEach(v => { $('#view-' + v).hidden = v !== name; });
     if (!fromRoute && !/^#d=/.test(location.hash)) history.replaceState(null, '', tabHash(name));
-    if (name === 'boost' && !ui.keepTry) { ui.tryS = null; ui.tryFrom = null; }
+    // 試算 follows your scores, unless a 模考 was loaded into it (kept until 改回我的成績)
+    if (name === 'boost' && !ui.keepTry && !ui.tryFrom) ui.tryS = null;
     ui.keepTry = false;
     render();
     if (changed) window.scrollTo(0, 0);
@@ -1864,7 +1877,13 @@
     csvPlan: () => download('apply116-plan.csv', csv(), 'text/csv;charset=utf-8'),
     printPlan: () => { if (ui.tab !== 'plan') setTab('plan'); setTimeout(() => window.print(), 60); },
     exportState: () => download('apply116-backup.json', JSON.stringify(st, null, 1), 'application/json'),
-    tryReset: () => { ui.tryS = { ...st.scores }; ui.tryFrom = null; const n = $('#trySec .note-inline'); if (n) n.remove(); $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
+    tryToggleRaw: () => {
+      if (!ui.tryFrom) return;
+      ui.tryIsRaw = !ui.tryIsRaw;
+      const keep = ui.tryS; ui.tryS = ui.tryIsRaw ? ui.tryRaw : ui.tryAlt || keep; ui.tryAlt = keep;
+      render();
+    },
+    tryReset: () => { ui.tryS = { ...st.scores }; ui.tryFrom = null; ui.tryAlt = null; const n = $('#trySec .try-from'); if (n) n.remove(); $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
   };
   /** Chart tooltips: any element with data-tip, on hover, keyboard focus or tap. */
   function bindTips() {
@@ -1965,6 +1984,7 @@
         render();
         return;
       }
+      if (t.id === 'boostAll') { ui.boostAll = t.checked; render(); return; }
       if (t.id === 'untakenBox') { st.f.untaken = t.checked; ui.shown = PAGE; render(); return; }
       if (t.id === 'sort') { st.f.sort = t.value; ui.shown = PAGE; render(); return; }
       if (t.id === 'importState') {
