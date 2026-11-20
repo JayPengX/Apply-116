@@ -870,3 +870,22 @@ details.fold>summary:hover{color:var(--text)}
 .bd-n small{font-size:10.5px;color:var(--text-2)}
 .bd-n.none{background:none;color:var(--text-3)}
 @media (max-width:600px){.board .msp{width:48px}.bd-row>span{padding:8px 5px}.bd-n{min-width:38px}}
+/* polish */
+.srow-h .textbtn,.ov-t .textbtn,.fsec h3 .textbtn,.panel-h .textbtn,.sec-hh .textbtn{margin-right:0}
+.olist{display:flex;flex-direction:column;gap:3px}
+.olist span{display:flex;gap:6px;align-items:baseline}
+.olist i{font-style:normal;font-size:11px;font-weight:700;color:var(--text-3);min-width:12px}
+.mf-h .textbtn,.mf-std-h .textbtn,.filter-h .textbtn,.listbar .textbtn{margin-right:0}
+.rmx tbody th[scope=row]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:1px;width:100%}
+.cb-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block;min-width:0}
+.cb-h{min-width:0}
+.lt .k{white-space:nowrap}
+.lt-h .msp{flex-shrink:1;min-width:0}
+.try-act{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.textbtn.inline{display:inline;padding:0 2px;margin:0;vertical-align:baseline;font-size:inherit}
+.lt .eqv small{width:auto;margin-left:4px}
+.clash{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:6px}
+.clash li{display:flex;align-items:center;gap:10px;margin:0}
+.clash li>b{min-width:6.5em;font-variant-numeric:tabular-nums;font-size:13.5px}
+.clash li>span{display:flex;gap:5px;flex-wrap:wrap}
+.clash-n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--surface-3);font-weight:750;font-size:13px;font-variant-numeric:tabular-nums}

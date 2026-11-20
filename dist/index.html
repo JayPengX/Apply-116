@@ -880,6 +880,25 @@ details.fold>summary:hover{color:var(--text)}
 .bd-n small{font-size:10.5px;color:var(--text-2)}
 .bd-n.none{background:none;color:var(--text-3)}
 @media (max-width:600px){.board .msp{width:48px}.bd-row>span{padding:8px 5px}.bd-n{min-width:38px}}
+/* polish */
+.srow-h .textbtn,.ov-t .textbtn,.fsec h3 .textbtn,.panel-h .textbtn,.sec-hh .textbtn{margin-right:0}
+.olist{display:flex;flex-direction:column;gap:3px}
+.olist span{display:flex;gap:6px;align-items:baseline}
+.olist i{font-style:normal;font-size:11px;font-weight:700;color:var(--text-3);min-width:12px}
+.mf-h .textbtn,.mf-std-h .textbtn,.filter-h .textbtn,.listbar .textbtn{margin-right:0}
+.rmx tbody th[scope=row]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:1px;width:100%}
+.cb-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block;min-width:0}
+.cb-h{min-width:0}
+.lt .k{white-space:nowrap}
+.lt-h .msp{flex-shrink:1;min-width:0}
+.try-act{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.textbtn.inline{display:inline;padding:0 2px;margin:0;vertical-align:baseline;font-size:inherit}
+.lt .eqv small{width:auto;margin-left:4px}
+.clash{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:6px}
+.clash li{display:flex;align-items:center;gap:10px;margin:0}
+.clash li>b{min-width:6.5em;font-variant-numeric:tabular-nums;font-size:13.5px}
+.clash li>span{display:flex;gap:5px;flex-wrap:wrap}
+.clash-n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--surface-3);font-weight:750;font-size:13px;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -1695,13 +1714,15 @@ details.fold>summary:hover{color:var(--text)}
   const SORTS = ['chance', 'select', 'sat', 'satLow', 'date', 'quota', 'code'];
   const TIERS = L.TIERS;
   const TC = { 穩: 't1', 適中: 't2', 衝: 't3', 難: 't4', 不符: 't5', 無資料: 't6' };
+  // one-liners for group headers
+  const TIER_SHORT = { 穩: '每關都有餘裕', 適中: '都達到，差距小', 衝: '剛好或差一點', 難: '明顯不夠', 不符: '進不了一階', 無資料: '沒有可比的門檻' };
   const TIER_HELP = {
-    穩: '每一關都高出 115 最低，就算門檻漲 1 級分也還會過',
-    適中: '達到 115 的每一關，但差距小，或 116 規則有變',
-    衝: '剛好等於 115 最後一關（要看超額篩選）、略低於 115 門檻，或 116 倍率改了而可能差一點',
+    穩: '每關都高過 115 最低，門檻漲 1 也會過',
+    適中: '每一關都達到，但差距小或 116 規則有變',
+    衝: '剛好等於門檻（看超額篩選）或差一點',
     難: '明顯低於 115 門檻',
-    不符: '檢定沒過，或系用到的學測科目你都沒考：一定進不了一階',
-    無資料: '沒有可以比的 115 門檻：116 改用 115 沒篩過的科目、116 新設或改名，或只用術科篩選（都會寫原因）',
+    不符: '檢定沒過或沒考用到的科目，進不了一階',
+    無資料: '沒有可比的 115 門檻（新科目組合、新設或術科）',
   };
   // 116 學測模擬考 (115 學年度高三): dates and 範圍 from several high schools' 115 學年度 notices (台南、高雄、新竹).
   // Schools sit the same papers on nearby days, so a school's own notice wins.
@@ -2206,16 +2227,16 @@ details.fold>summary:hover{color:var(--text)}
     const p = presetOf(f.n) || (f.pre && presetOf(f.pre));
     const pick = p ? p.n : '';
     const stdKeys = SCORE_KEYS.filter(k => f.std[k] && L.LEVELS.every(l => f.std[k][l]));
-    const stdText = !stdKeys.length ? (p ? '翰林這次的五標還沒收錄，拿到成績單後可以自己填（不填就用檢定用的五標）。' : '可以填這次模考公布的五標（不填就用檢定用的五標）。')
+    const stdText = !stdKeys.length ? (p ? '還沒收錄這次的五標，可以照成績單填。' : '可以照成績單填這次的五標。')
       : p && p.std && sameStd(f.std, p.std) ? `已帶入${p.stdNote}。` : `已填 ${stdKeys.map(subj).join('、')} 的五標。`;
     const grid = `<div class="stdgrid" role="table" aria-label="這次模考的五標">
       <span role="columnheader"></span>${L.LEVELS.map(l => `<span role="columnheader">${l.replace('標', '')}</span>`).join('')}
       ${SCORE_KEYS.map(k => `<span role="rowheader">${subj(k)}</span>${L.LEVELS.map(l => `<input type="number" inputmode="numeric" min="1" max="15" value="${(f.std[k] && f.std[k][l]) || ''}" data-mfstd="${k}:${l}" aria-label="${subj(k)}${l}">`).join('')}`).join('')}
-      </div><p class="hint">一科五格都填才算。成績單上通常寫「頂標、前標、均標、後標、底標」。${p && p.std ? ' <button class="textbtn" type="button" data-act="mfStdPreset">改回翰林公布的</button>' : ''}</p>`;
+      </div><p class="hint">一科五格都填才算。${p && p.std ? ' <button class="textbtn" type="button" data-act="mfStdPreset">改回翰林公布的</button>' : ''}</p>`;
     return `<section class="sec mform" id="mockForm"><div class="sec-hh"><h2>${f.id ? '修改模考' : '新增一次模考'}</h2>${st.mocks.length ? '<button class="textbtn" type="button" data-act="mfCancel">取消</button>' : ''}</div>
       <div class="mf-top">
         <label class="mf-f"><span>哪一次</span><span class="selectbox"><select id="mfPreset">${MOCK_REF.filter(x => x.r).map(x => `<option value="${esc(x.n)}" ${x.n === pick ? 'selected' : ''}>翰林 ${esc(x.org)}（${x.area ? esc(x.area) + '・' : ''}${esc(x.n.replace('學測模擬考', ''))}，${esc(x.when.replace(/（.*）/, ''))}）</option>`).join('')}<option value="" ${pick ? '' : 'selected'}>其他模考</option></select>${icon('chevD', 'sm')}</span></label>
-        ${pick ? '' : '<p class="hint mf-wide">中區（南一出題，「中模」）、全國公私立（南一）跟翰林北北基（北區）、翰林全國是不同的考試，五標不能混用：照你的成績單填這次的五標。</p>'}
+        ${pick ? '' : '<p class="hint mf-wide">中區（南一）、南一全國跟翰林是不同考試，五標照你的成績單填。</p>'}
         ${presetOf(f.n) ? '' : `<label class="mf-f"><span>名稱</span><input id="mfName" type="text" maxlength="30" value="${esc(f.n)}" placeholder="例如：南一第一次、校內模考"></label>`}
         <label class="mf-f"><span>日期</span><input id="mfDate" type="date" value="${f.d}"></label>
       </div>
@@ -2223,8 +2244,8 @@ details.fold>summary:hover{color:var(--text)}
       <div class="mf-scores">${SCORE_KEYS.map(k => `<label class="mf-s"><span class="k">${subj(k)}</span><input type="number" inputmode="numeric" min="0" max="15" value="${f.s[k] || ''}" data-mf="${k}" placeholder="—"><small class="lv" data-mflv="${k}">${mfLevel(f, k)}</small></label>`).join('')}
         ${p && !p.r.英聽 && !f.聽 ? '' : `<label class="mf-s"><span class="k">英聽</span><span class="selectbox"><select data-mf="聽"><option value="">—</option>${['A', 'B', 'C', 'F'].map(g => `<option ${f.聽 === g ? 'selected' : ''}>${g}</option>`).join('')}</select>${icon('chevD', 'sm')}</span><small class="lv"></small></label>`}
       </div>
-      ${p && p.n === '第一次學測模擬考' || p && p.n === '第二次學測模擬考' ? '<p class="hint">這次數A、數B 是同一份考卷：填在你學測要考的那一科。</p>' : ''}
-      ${p && !p.r.英聽 ? '<p class="hint">這次沒有考英聽（英聽只有第二次考）。</p>' : ''}
+      ${p && p.n === '第一次學測模擬考' || p && p.n === '第二次學測模擬考' ? '<p class="hint">這次數A、數B 同一份考卷，填在你要考的那科。</p>' : ''}
+      ${p && !p.r.英聽 ? '<p class="hint">這次沒考英聽。</p>' : ''}
       <div class="mf-std"><div class="mf-std-h"><b>這次的五標</b><span>${esc(stdText)}</span><button class="textbtn" type="button" data-act="mfStdToggle" aria-expanded="${f.stdOpen}">${f.stdOpen ? '收起' : stdKeys.length ? '看／修改' : '填五標'}</button></div>${f.stdOpen ? grid : ''}</div>
       <div class="mf-actions"><button class="btn primary" type="button" data-act="mfSave">${icon('check', 'sm')}${f.id ? '存好了' : '存這次模考'}</button></div>
     </section>`;
@@ -2234,7 +2255,7 @@ details.fold>summary:hover{color:var(--text)}
     return `<ul class="mcards">${ms.map(m => {
       const chips = SCORE_KEYS.map(k => { const v = L.val(m.s, k); if (v == null) return ''; const lv = m.std && m.std[k] ? levelIn(m.std, k, v) : ''; return `<span class="mchip"><span class="k">${ABBR[k]}</span><b>${v}</b>${lv ? `<small>${LV_SHORT[lv] || lv.replace('未達底標', '底下')}</small>` : ''}</span>`; }).join('') + (m.s.聽 ? `<span class="mchip"><span class="k">聽</span><b>${m.s.聽}</b></span>` : '');
       return `<li class="mcard"><div class="mc-h"><b>${esc(mName(m))}</b><span>${mdText(m.d)} · ${esc(stdSource(m))}</span></div><div class="mc-s">${chips}</div>
-        <div class="mc-a"><button class="btn sm" type="button" data-mockuse="${m.id}">用這次成績看落點</button><button class="textbtn" type="button" data-mockedit="${m.id}">${icon('edit', 'sm')}修改</button><button class="textbtn danger" type="button" data-mockdel="${m.id}" aria-label="刪除 ${esc(mName(m))}">刪除</button></div></li>`;
+        <div class="mc-a"><button class="btn sm" type="button" data-mockuse="${m.id}">看落點</button><button class="textbtn" type="button" data-mockedit="${m.id}">${icon('edit', 'sm')}修改</button><button class="textbtn danger" type="button" data-mockdel="${m.id}" aria-label="刪除 ${esc(mName(m))}">刪除</button></div></li>`;
     }).join('')}</ul>`;
   }
   function saveMockForm() {
@@ -2278,7 +2299,7 @@ details.fold>summary:hover{color:var(--text)}
   function renderMock() {
     const el = $('#mock');
     if (!ui.mf && !st.mocks.length) ui.mf = newMockDraft();
-    const head = `<header class="page-h"><div><h1>模考</h1><p>每次模考填一筆，看每一科的變化、每一次的落點和最強的科目組合。內建翰林各次模考的日期、範圍和找得到的五標。</p></div>${ui.mf ? '' : `<button class="btn primary" type="button" data-act="mfNew">${icon('plus', 'sm')}新增模考</button>`}</header>`;
+    const head = `<header class="page-h"><div><h1>模考</h1><p>每次模考存一筆，看趨勢、落點和換算的學測級分。</p></div>${ui.mf ? '' : `<button class="btn primary" type="button" data-act="mfNew">${icon('plus', 'sm')}新增模考</button>`}</header>`;
     el.innerHTML = head + (ui.mf ? mockFormHTML() : '') + (st.mocks.length ? `<section class="sec"><h2>我的模考（${st.mocks.length}）</h2>${mockCardsHTML()}</section>` : '') + (st.mocks.length ? trendHTML(baseFiltered()) : '') + `<section class="sec">${mockRefHTML()}</section>`;
     bindTips();
   }
@@ -2302,17 +2323,17 @@ details.fold>summary:hover{color:var(--text)}
     const s = st.scores, any = hasScores();
     const years = Object.keys(D.std).sort().reverse().map(y => `<option value="${y}" ${y === st.stdYear ? 'selected' : ''}>${y} 學年度學測五標</option>`).join('') + `<option value="custom" ${st.stdYear === 'custom' ? 'selected' : ''}>自訂（例如模考的五標）</option>`;
     return `<div class="panel-h"><h2>我的學測級分</h2>${any || s.聽 ? '<button class="textbtn" type="button" data-act="clearScores">全部清除</button>' : ''}</div>
-      <p class="panel-note">${any ? '點或拖曳格子改級分（鍵盤用方向鍵）。' : '還沒考也可以先填模考或目標分數，點格子就好。'}格子下方是${stdName()}。成績只存在這台裝置。</p>
+      <p class="panel-note">${any ? '點或拖曳格子改級分。' : '點格子填級分，模考或目標分數也可以。'}下方標的是${stdName()}。</p>
       <div class="sliders">${SCORE_KEYS.map(k => sliderHTML('slider', k, subj(k), L.val(s, k) || 0, 15)).join('')}
         <div class="srow listen-row"><span class="srow-l" id="lab-listen">英聽</span>${listenHTML(s.聽)}</div>
       </div>
- <p class="panel-note">模考成績請到 <button class="textbtn" type="button" data-tab="mock">「模考」分頁</button> 存，可以看每次的趨勢。</p>
+ <p class="panel-note">模考成績存在<button class="textbtn inline" type="button" data-tab="mock">模考分頁</button>。</p>
       <details class="more" id="moreScores" ${ui.more ? 'open' : ''}><summary>${icon('chevR', 'sm')}APCS、檢定用五標年份</summary><div class="more-b">
         ${sliderHTML('slider', '識', 'APCS 觀念', L.val(s, '識') || 0, 5)}
         ${sliderHTML('slider', '實', 'APCS 實作', L.val(s, '實') || 0, 5)}
         <label class="field">檢定用五標<span class="selectbox"><select id="stdYear">${years}</select>${icon('chevD', 'sm')}</span></label>
         ${st.stdYear === 'custom' ? customStdHTML() : ''}
-        <p class="hint">116 學測五標 2027/2/25 才公布，${st.stdYear === 'custom' ? '這裡用你自己填的五標。用模考成績的話，填那次模考公布的五標比較準' : `先用 ${st.stdYear} 年的。也可以選「自訂」填模考公布的五標`}。數學 A、B 都列為檢定時，過一科就好（甄選會規定）。</p>
+        <p class="hint">116 五標 2027/2/25 公布，先用${st.stdYear === 'custom' ? '自訂的' : ` ${st.stdYear} 年的`}。數A、數B 都列檢定時過一科就好。</p>
       </div></details>
       ${any ? `<div class="panel-f"><button class="btn primary" type="button" data-act="doneScores">${icon('check', 'sm')}完成，看落點</button></div>` : ''}`;
   }
@@ -2352,14 +2373,14 @@ details.fold>summary:hover{color:var(--text)}
       <div class="fsec"><h3>公私立</h3><div class="segctl" role="group" aria-label="公私立">${[['all', '全部'], ['pub', '公立'], ['pri', '私立']].map(([k, l]) => `<button type="button" data-own="${k}" aria-pressed="${f.own === k}">${l}${k !== 'all' ? `<span class="muted num"> ${oc[k] || 0}</span>` : ''}</button>`).join('')}</div></div>
       <div class="fsec"><h3>一階科目</h3>
         <p class="fsub" id="skipLab">不要檢定或倍率篩選用到這些科目的校系</p><div class="chips" role="group" aria-labelledby="skipLab">${SKIP_SUBJ.map(([k, l]) => chip(l, f.skip.includes(k), `data-skip="${k}"`, kc[k])).join('')}</div>
-        <p class="hint">數A、數B 檢定「擇一」的校系，兩科都選才會隱藏。</p>
+        <p class="hint">數A、數B 擇一檢定的系，兩科都選才隱藏。</p>
         <p class="fsub" id="comboLab">只看一階用這個組合篩選的校系</p>${comboChips()}
-        <p class="hint">${hasScores() ? '旁邊是你這個組合的總級分在 115 考生排前幾 %，越前面越強；照強弱排（5 個系以上的組合）。' : '輸入成績後會顯示你在每個組合排前幾 %。'}組合是一階所有倍率篩選科目合起來，例如國文 ×3、英文 ×5 算「國英」。</p>
-        ${hasScores() ? `<label class="fcheck"><input type="checkbox" id="untakenBox" ${f.untaken ? 'checked' : ''}> 也顯示用到我沒考科目的校系<span class="muted num"> ${nUntaken}</span></label><p class="hint">依簡章，沒考的科目以 0 級分計：倍率篩選或二階採計用到它的系，預設隱藏。檢定用到沒考的科目一定是「不符」；系用到的學測科目你全部沒考，也不能參加篩選。</p>` : ''}</div>
+        <p class="hint">${hasScores() ? '% 是你在這個組合排 115 考生前幾 %，由強到弱排。' : '輸入成績後會顯示你在每個組合的排名。'}</p>
+        ${hasScores() ? `<label class="fcheck"><input type="checkbox" id="untakenBox" ${f.untaken ? 'checked' : ''}> 也顯示用到我沒考科目的校系<span class="muted num"> ${nUntaken}</span></label><p class="hint">沒考的科目以 0 級分計，用到它的系預設隱藏。</p>` : ''}</div>
       <div class="fsec"><h3>第二階段</h3>
         <p class="fsub" id="satLab">學測佔二階總成績</p><div class="chips" role="group" aria-labelledby="satLab">${SAT.map(([k, l]) => chip(l, f.sat === k, `data-sat="${k}"`, sc[k] || 0)).join('')}</div>
         <p class="fsub" id="ivLab">甄試</p><div class="chips" role="group" aria-labelledby="ivLab">${ST2.map(([k, l]) => chip(l, f.st2.includes(k), `data-st2="${k}"`, xc[k] || 0)).join('')}</div></div>
-      <div class="fsec"><details id="catsBox" ${ui.catsOpen || catsChanged() ? 'open' : ''}><summary>${icon('chevR', 'sm')}特殊組別${catsChanged() ? '（已變更）' : ''}</summary><div class="chips">${CATS.map(([k, l]) => chip(l, f.cats.includes(k), `data-cat="${k}"`)).join('')}</div><p class="hint">扶弱專組、青年儲蓄帳戶組和術科組別預設隱藏，多數限特定身分或要考術科。</p></details></div>`;
+      <div class="fsec"><details id="catsBox" ${ui.catsOpen || catsChanged() ? 'open' : ''}><summary>${icon('chevR', 'sm')}特殊組別${catsChanged() ? '（已變更）' : ''}</summary><div class="chips">${CATS.map(([k, l]) => chip(l, f.cats.includes(k), `data-cat="${k}"`)).join('')}</div><p class="hint">限特定身分或要考術科的組別，預設隱藏。</p></details></div>`;
     keepFocus(el, () => { el.innerHTML = h; });
     const fc = $('#filterCount');
     fc.textContent = n ? String(n) : '';
@@ -2397,14 +2418,14 @@ details.fold>summary:hover{color:var(--text)}
     const outCats = baseFiltered('cats').length - base.length;
     const head = `<div class="ov-t"><h2><b class="num">${fmtN(base.length)}</b> 個校系${scope ? ' · ' + esc(scope) : ''}</h2>${outCats > 0 ? `<button class="textbtn ov-note" type="button" data-act="showCats">另有 ${fmtN(outCats)} 個特殊組別沒列出</button>` : ''}</div>`;
     if (!hasScores()) {
-      el.innerHTML = `<div class="ov-h">${head}</div><div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（還沒考可以填模考或目標分數）。這裡會畫出你在這些校系的落點：哪些穩、哪些要衝、哪些被檢定擋住。現在每個校系下面先列出檢定和 115 一階最低級分。${isNarrow() ? '' : '成績在左邊輸入。'}</div></div>`;
+      el.innerHTML = `<div class="ov-h">${head}</div><div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（模考或目標分數也可以），就會標出每個系的落點。</div></div>`;
       return;
     }
     const c = {};
     base.forEach(d => { const t = tierOf(d); c[t] = (c[t] || 0) + 1; });
     const good = (c['穩'] || 0) + (c['適中'] || 0);
     const W = el.clientWidth || 600;
-    el.innerHTML = `<div class="ov-h">${head}<p>你有 <b>${good}</b> 個「穩」或「適中」${c['不符'] ? `，<b>${c['不符']}</b> 個一定進不了一階` : ''}</p></div>
+    el.innerHTML = `<div class="ov-h">${head}<p>穩＋適中 <b>${good}</b> 個${c['不符'] ? ` · <b>${c['不符']}</b> 個進不了一階` : ''}</p></div>
       ${tierBarHTML(c, base.length, { width: W, tiers: st.f.tiers, label: '落點分布' })}
       <div class="legend" role="group" aria-label="要顯示哪些落點">${TIERS.map(t => `<button type="button" class="lg" data-tier="${t}" aria-pressed="${st.f.tiers.includes(t)}" title="${esc(TIER_HELP[t])}"><span class="sw ${TC[t]}"></span>${t}<b>${c[t] || 0}</b></button>`).join('')}</div>
       <details class="tierhelp" id="tierHelp" ${ui.helpOpen ? 'open' : ''}><summary>${icon('info', 'sm')}落點怎麼判斷？按標籤可以隱藏或顯示</summary><ul class="tierdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul></details>`;
@@ -2451,9 +2472,9 @@ details.fold>summary:hover{color:var(--text)}
         const moved = s.res === 'short' || s.res === 'maybe';
         const delta = moved ? `<span class="delta eq">${s.diff > 0 ? '+' : ''}${s.diff}</span>` : deltaHTML(s.diff, s.last);
         const notes = [];
-        if (s.scaled) notes.push(`這關 115 約 ${s.n115} 人 → 116 約 ${s.n116} 人`);
+        if (s.scaled) notes.push(`收 ${s.n115} → ${s.n116} 人`);
         else if (s.kind === 'mult' && s.scale == null && !e.warnings.some(w => w.includes(`116 ×${s.m}`))) notes.push(`116 倍率 ×${s.ref.m} → ×${s.m}`);
-        if (n > 1) notes.push(`共 ${n} 關，這是${s.last ? '最後一關' : c.status === 'fail' ? '差最多的一關' : '最接近門檻的一關'}`);
+        if (n > 1) notes.push(`第 ${c.stages.indexOf(s) + 1}／${n} 關`);
         const head = `<span class="rv-subj">${esc(partsLabel(s.parts))}</span><span class="rv-num"><span class="lab">115 最低</span><b>${s.v}</b><span class="lab">你</span><b>${s.mine}</b></span>${delta}`;
         return verdict(e.tier, head, notes.length ? `<div class="rv-note">${esc(notes.join('・'))}</div>` : '');
       }
@@ -2476,11 +2497,37 @@ details.fold>summary:hover{color:var(--text)}
     const facts = [`名額 ${d.q}`, daysText(d).replace(/\([一二三四五六日]\)/g, ''), d.city].filter(Boolean);
     return `<div class="rm-facts">${facts.map(x => `<span>${esc(x)}</span>`).join('')}</div>${parts ? `<div class="rm-parts"><span class="lab">二階</span>${esc(parts)}</div>` : ''}`;
   }
+  /** 「一、面試 二、審查資料 三、…」 → one item per line. */
+  function orderList(t) {
+    if (!t) return '—';
+    const items = String(t).split(/\s*[一二三四五六七八九十]+、/).map(x => x.trim()).filter(Boolean);
+    return items.length > 1 ? `<span class="olist">${items.map((x, i) => `<span><i>${i + 1}</i>${esc(x)}</span>`).join('')}</span>` : esc(t);
+  }
+  /** Short labels for a row's warnings; the full sentences stay in the detail view. */
+  function warnTags(e) {
+    const out = [];
+    for (const w of e.warnings) {
+      if (/^沒考 (.+)，116 倍率/.test(w)) out.push(w.replace(/^沒考 (.+)，116.*/, '$1 以 0 級分篩選'));
+      else if (/^沒考 (.+)，二階/.test(w)) out.push(w.replace(/^沒考 (.+)，二階.*/, '二階 $1 以 0 計'));
+      else if (/^檢定邊緣/.test(w)) out.push('檢定邊緣');
+      else if (/還有術科/.test(w)) out.push('另有術科篩選');
+      else if (/人數變多/.test(w)) out.push('甄試人數變多');
+      else if (/這一關沒算進去/.test(w)) out.push('有一關 115 沒資料');
+      else for (const part of w.split('；')) {
+        if (/^116 篩選跟 115 不同|篩選順序|拿掉了/.test(part)) out.push('116 篩選有變');
+        else if (/的資料$/.test(part)) out.push(/同系/.test(part) ? '用同系資料' : '用相近系組資料');
+        else if (/人數變少/.test(part)) out.push('甄試人數變少');
+        else if (/檢定邊緣/.test(part)) out.push('檢定邊緣');
+      }
+    }
+    return [...new Set(out)].slice(0, 3);
+  }
   function rowHTML(d) {
     const e = EV.get(d.c), t = e ? e.tier : null;
     const fav = st.fav.includes(d.c), pi = st.plan.indexOf(d.c);
     const name = sch(d) + ' ' + d.n;
-    const warn = e && e.warnings.length ? `<div class="r-warn">${icon('alert')}<span>${esc(e.warnings[0])}</span></div>` : '';
+    const tags = e ? warnTags(e) : [];
+    const warn = tags.length ? `<div class="r-warn" title="${esc(e.warnings.join('\n'))}">${icon('alert')}<span>${tags.map(esc).join('・')}</span></div>` : '';
     return `<li class="row" data-code="${d.c}" data-open="${d.c}">
       <button class="r-title" type="button" data-open="${d.c}"><span class="sch">${esc(sch(d))}</span><span class="dn">${esc(d.n)}</span></button>
       <div class="r-act">${pi >= 0 ? `<span class="inplan">第 ${pi + 1} 志願</span>` : ''}<button class="star" type="button" data-fav="${d.c}" aria-pressed="${fav}" aria-label="${fav ? '取消收藏' : '收藏'}：${esc(name)}" title="${fav ? '取消收藏' : '收藏'}">${icon('star')}</button></div>
@@ -2500,7 +2547,7 @@ details.fold>summary:hover{color:var(--text)}
     let h = '', prev = null;
     for (const d of s.slice(0, ui.shown)) {
       const t = tierOf(d);
-      if (group && t !== prev) { h += `<li class="ghead" aria-hidden="true">${pillHTML(t)}<span><b>${counts[t]}</b> 個 · ${esc(TIER_HELP[t])}</span></li>`; prev = t; }
+      if (group && t !== prev) { h += `<li class="ghead" aria-hidden="true">${pillHTML(t)}<span><b>${counts[t]}</b> 個 · ${esc(TIER_SHORT[t])}</span></li>`; prev = t; }
       h += rowHTML(d);
     }
     if (!h) {
@@ -2511,7 +2558,7 @@ details.fold>summary:hover{color:var(--text)}
     const sortName = $('#sort').selectedOptions[0] ? $('#sort').selectedOptions[0].textContent : '';
     const hidden = has ? TIERS.filter(t => !st.f.tiers.includes(t)) : [];
     const nUntaken = has && !st.f.untaken ? baseFiltered('untaken').filter(d => usesUntaken(d) && st.f.tiers.includes(tierOf(d))).length : 0;
-    const untakenNote = nUntaken ? `<button class="textbtn" type="button" data-act="showUntaken">另有 ${fmtN(nUntaken)} 個用到你沒考的科目，已隱藏（顯示）</button>` : '';
+    const untakenNote = nUntaken ? `<button class="textbtn" type="button" data-act="showUntaken">＋${fmtN(nUntaken)} 個用到沒考科目</button>` : '';
     $('#listbar').innerHTML = `<span>顯示 <b class="num">${fmtN(s.length)}</b> 個${hidden.length ? `（隱藏了${hidden.join('、')}）` : ''}${untakenNote ? ' ' + untakenNote : ''}</span><span>${esc(sortName)}</span>`;
     $('#more').innerHTML = s.length > ui.shown ? `<button class="btn" type="button" data-act="more">再顯示 ${Math.min(PAGE, s.length - ui.shown)} 個（還有 ${fmtN(s.length - ui.shown)} 個）</button>` : '';
     if (ui.sheet) $('#sheetDone').textContent = `看 ${fmtN(s.length)} 個結果`;
@@ -2557,7 +2604,7 @@ details.fold>summary:hover{color:var(--text)}
   }
   /** How many people a stage lets through in 115 and 116 (倍率 × 名額), what that does to the cut, and where you land. */
   function flowNote(s, has) {
-    if (s.scale == null) return `115 這一關是 × ${s.ref.m}，116 改成 × ${s.m}；用的是同系別組的資料，名額不同，人數沒辦法直接比`;
+    if (s.scale == null) return `倍率 115 ×${s.ref.m} → 116 ×${s.m}，用同系別組資料，人數不能直接比`;
     const mm = s.ref.m !== s.m;
     const what = `115 ${mm ? `× ${s.ref.m}、` : ''}名額 ${s.q115}，約 ${s.n115} 人過這一關；116 ${mm ? `× ${s.m}、` : ''}名額 ${s.q116}，約 ${s.n116} 人`;
     if (!s.scaled) return `${what}：人數差不多，115 的門檻可以直接比`;
@@ -2639,7 +2686,7 @@ details.fold>summary:hover{color:var(--text)}
         .map(([k, v]) => `${k === '組合' ? (r.combo ? partsLabel(r.combo) : '科目組合') : subj(k)} × ${v}`).join('、');
       h += noteHTML('info', `115 一階沒有篩掉人${m115 ? `（115 倍率：${esc(m115)}）` : ''}：通過檢定的人都進了二階。`);
     }
-    h += `<ol class="steps" style="margin-top:16px">${thresholdStep(d, e)}${stageSteps(d, e)}${plan.length ? stepHTML('', '=', '同級分超額篩選<small>最後一關同分時，116 依序比</small>', `<p class="step-d">${esc(d.tbS || '—')}</p>`) : ''}</ol>`;
+    h += `<ol class="steps" style="margin-top:16px">${thresholdStep(d, e)}${stageSteps(d, e)}${plan.length ? stepHTML('', '=', '同級分超額篩選<small>最後一關同分時，116 依序比</small>', `<p class="step-d">${orderList(d.tbS)}</p>`) : ''}</ol>`;
     if (r && r.majors) h += `<p class="hint" style="margin-top:10px">115 各主修最低：${esc(r.majors.map(m => m.major + ' ' + m.cut.map(c => c.raw).join('→')).join('；'))}</p>`;
     const e115 = r ? L.expected115(r) : null;
     h += `<dl class="kv" style="margin-top:18px"><dt>招生名額</dt><dd>${d.q}${d.gen !== '無' ? '（' + esc(d.gen) + '）' : ''}</dd><dt>預計甄試人數</dt><dd>${d.ei}${e115 ? `（115 約 ${e115}）` : ''}</dd>${r ? `<dt>115 對照</dt><dd>${esc(r.name)}（${r.code}）· 名額 ${r.q}</dd>` : ''}</dl></section>`;
@@ -2685,7 +2732,7 @@ details.fold>summary:hover{color:var(--text)}
     const w = d.sub.filter(s => s.w != null).map(s => `${subj(s.k)} × ${s.w}`).join('、');
     h += `<dl class="kv" style="margin-top:14px"><dt>學測採計</dt><dd>${esc(w || '—')}</dd>
       <dt>甄試日期</dt><dd>${d.idays.length ? esc(rocText(d.idate)) : '不用到校甄試'}</dd><dt>審查資料截止</dt><dd>${esc(rocDate(d.dd))}</dd><dt>放榜</dt><dd>${esc(rocDate(d.rd))}</dd>
-      <dt>甄試費</dt><dd>${d.fee ? fmtN(d.fee) + ' 元' : '—'}</dd><dt>總成績同分</dt><dd>${esc(d.tbT || '—')}</dd></dl>`;
+      <dt>甄試費</dt><dd>${d.fee ? fmtN(d.fee) + ' 元' : '—'}</dd><dt>總成績同分</dt><dd>${orderList(d.tbT)}</dd></dl>`;
     h += reviewHTML(d);
     if (d.rn) h += foldHTML('審查資料說明', d.rn);
     if (d.iv) h += foldHTML('甄試說明', d.iv);
@@ -2780,19 +2827,30 @@ details.fold>summary:hover{color:var(--text)}
     const ck = (state, title, body) => out.push({ state, title, body });
     if (!P.length) return out;
     if (hasScores()) {
-      if (c('不符')) ck('bad', `${c('不符')} 個志願一定進不了一階`, '檢定沒過或用到的科目都沒考，等於浪費一個志願和報名費，建議換掉。');
+      if (c('不符')) ck('bad', `${c('不符')} 個志願一定進不了一階`, '一定進不了一階，建議換掉。');
       else ck('ok', '沒有一定進不了的志願', '每個志願都通過檢定、也考了要篩選的科目。');
       if (!c('穩') && !c('適中')) ck('bad', '沒有「穩」或「適中」', '如果一階全部沒過，就只剩分科測驗。建議至少放 1–2 個穩的。');
       else if (!c('穩')) ck('warn', '沒有「穩」的志願', '很多學長姐會留 1 個保底，避免一階全落。');
       else ck('ok', `有 ${c('穩')} 個「穩」保底`, '');
-      if (c('衝') + c('難') >= 4) ck('warn', `${c('衝') + c('難')} 個是「衝」或「難」`, '如果申請是主要管道，2 衝 2 適中 2 穩左右比較安全；打算考分科當後路就可以接受。');
+      if (c('衝') + c('難') >= 4) ck('warn', `${c('衝') + c('難')} 個是「衝」或「難」`, '2 衝 2 適中 2 穩比較安全。');
       if (c('穩') >= 4) ck('warn', `${c('穩')} 個都是「穩」`, '可能浪費機會。考慮把 1–2 個換成更想讀、但要衝一下的系。');
-      if (c('無資料')) ck('info', `${c('無資料')} 個沒有可以比的 115 門檻`, '116 改用 115 沒篩過的科目、新設或改名，或只看術科，無法估計落點。點進去看是哪一關。');
+      if (c('無資料')) ck('info', `${c('無資料')} 個沒有可以比的 115 門檻`, '沒有可比的 115 門檻，點進去看原因。');
     } else ck('info', '輸入成績才能檢查穩衝搭配', '在「找校系」輸入學測級分（或模考、目標分數）。');
     const cf = L.conflicts(P);
     if (cf.length) {
       const sure = cf.some(x => x.sure);
-      ck(sure ? 'bad' : 'warn', sure ? '甄試撞期' : '甄試可能撞期', `<ul>${cf.map(x => `<li>${esc(sch(BY_CODE[x.a]) + BY_CODE[x.a].n)} 和 ${esc(sch(BY_CODE[x.b]) + BY_CODE[x.b].n)}：${x.days.map(L.fmtDay).join('、')}${x.sure ? '，兩系都只有這一天' : '，有一系是多天，通常可以選時段'}</li>`).join('')}</ul><p>一階如果都過，同一天只能去一個。現在就想好哪個比較重要。</p>`);
+      // group by day: which 志願 share each 甄試 day (pairs read badly with 6 志願)
+      const byDay = {};
+      cf.forEach(x => x.days.forEach(dy => { (byDay[dy] = byDay[dy] || new Set()).add(x.a).add(x.b); }));
+      const no = c => P.findIndex(d => d.c === c) + 1;
+      const groups = [];
+      for (const dy of Object.keys(byDay).sort()) {
+        const set = [...byDay[dy]].sort((a, b) => no(a) - no(b)), key = set.join(',');
+        const last = groups[groups.length - 1];
+        if (last && last.key === key) last.days.push(dy); else groups.push({ key, days: [dy], set });
+      }
+      const day = g => (g.days.length > 1 ? L.fmtDay(g.days[0]) + '–' + L.fmtDay(g.days[g.days.length - 1]) : L.fmtDay(g.days[0]));
+      ck(sure ? 'bad' : 'warn', sure ? '甄試撞期' : '甄試可能撞期', `<ul class="clash">${groups.map(g => `<li><b>${day(g)}</b><span>${g.set.map(c => `<span class="clash-n">${no(c)}</span>`).join('')}</span></li>`).join('')}</ul><p>數字是第幾志願。${sure ? '同一天只能去一個。' : '多天的系通常可以選時段。'}</p>`);
     } else ck('ok', '甄試日期沒有撞期', '');
     // 簡章 五(二)：大學得限制考生可申請該校之學系(組)數，違者取消報名該大學所有校系(組)之申請資格.
     // In 116 these limits are 「同一系的各組限擇一組報名」 written in the 校系分則 備註.
@@ -2801,9 +2859,9 @@ details.fold>summary:hover{color:var(--text)}
     const byDept = {};
     P.forEach(d => { const k = d.sid + '|' + baseName(d.n); (byDept[k] = byDept[k] || []).push(d); });
     const pick = Object.values(byDept).filter(a => a.length > 1 && a.some(d => ONE_OF.test((d.notes || '') + (d.rn || ''))));
-    if (pick.length) ck('bad', '同一系的組「限擇一組報名」', '這些組依校系分則只能報一個，違反的話依簡章會被取消報名該大學所有校系的資格：' + pick.map(a => a.map(d => esc(sch(d) + d.n)).join('、')).join('；'));
+    if (pick.length) ck('bad', '同一系的組「限擇一組報名」', '只能報其中一組，違反會被取消該校所有申請：' + pick.map(a => a.map(d => esc(sch(d) + d.n)).join('、')).join('；'));
     const fee2 = P.reduce((a, d) => a + (d.fee || 0), 0);
-    ck('info', `費用約 ${fmtN(P.length * 100 + fee2)} 元`, `一階報名費 ${P.length} × 100 = ${P.length * 100} 元（116 簡章：低收入戶全免，中低收入戶每校系 40 元）；全部進二階的甄試費共 ${fmtN(fee2)} 元（116 校系分則）。`);
+    ck('info', `費用約 ${fmtN(P.length * 100 + fee2)} 元`, `報名費 ${P.length * 100} 元（低收入戶免繳、中低收入戶每系 40 元），甄試費全部約 ${fmtN(fee2)} 元。`);
     return out;
   }
   function calendarHTML(P) {
@@ -2849,7 +2907,7 @@ details.fold>summary:hover{color:var(--text)}
       rows += groupRow(g);
       for (const c of codes) {
         const has = G.map(gs => codesOf(gs, g).includes(c)), n = has.filter(Boolean).length;
-        rows += `<tr${n === P.length && P.length > 1 ? ' class="all"' : ''}><th scope="row"><b class="cd">${c}</b>${esc(REVIEW[c])}</th>${cells(has)}<td class="cnt">${n}</td></tr>`;
+        rows += `<tr${n === P.length && P.length > 1 ? ' class="all"' : ''}><th scope="row" title="${esc(c + ' ' + REVIEW[c])}"><b class="cd">${c}</b>${esc(REVIEW[c])}</th>${cells(has)}<td class="cnt">${n}</td></tr>`;
       }
     }
     // 其他: each 系 defines its own R, S, T, so rows are the items themselves.
@@ -2857,19 +2915,19 @@ details.fold>summary:hover{color:var(--text)}
     G.forEach((gs, i) => (gs.find(x => x.g === '其他') || { items: [] }).items.forEach(it => { if (!others.has(it.t)) others.set(it.t, new Set()); others.get(it.t).add(i); }));
     if (others.size) {
       rows += groupRow('其他');
-      for (const [t, set] of others) rows += `<tr><th scope="row">${esc(t)}</th>${cells(P.map((_, i) => set.has(i)))}<td class="cnt">${set.size}</td></tr>`;
+      for (const [t, set] of others) rows += `<tr><th scope="row" title="${esc(t)}">${esc(t)}</th>${cells(P.map((_, i) => set.has(i)))}<td class="cnt">${set.size}</td></tr>`;
     }
     const used = new Set(G.flatMap(gs => gs.flatMap(x => x.codes)));
     const unused = Object.keys(REVIEW).filter(c => !used.has(c));
     const head = `<tr><th scope="col"><span class="sr">審查資料</span></th>${P.map((d, i) => `<th scope="col" title="${esc(sch(d) + ' ' + d.n)}"><span aria-hidden="true">${i + 1}</span><span class="sr">第 ${i + 1} 志願 ${esc(sch(d) + ' ' + d.n)}</span></th>`).join('')}<th scope="col" class="cnt">幾個要</th></tr>`;
     const notes = P.map((d, i) => (d.rn || d.iv ? `<details class="fold"><summary>${icon('chevR', 'sm')}${i + 1}. ${esc(sch(d) + ' ' + d.n)}</summary>${d.rn ? `<div class="long"><b>審查資料說明</b>\n${esc(d.rn)}</div>` : ''}${d.iv ? `<div class="long"><b>甄試說明</b>\n${esc(d.iv)}</div>` : ''}</details>` : '')).join('');
-    return `<section class="sec prep" id="prep"><h2>二階要準備什麼</h2><p class="sub">過了一階以後，你的志願怎麼算總成績、要交哪些審查資料（116 校系分則）</p>
+    return `<section class="sec prep" id="prep"><h2>二階要準備什麼</h2><p class="sub">總成績怎麼算、要交哪些審查資料</p>
       <ul class="facts">${facts.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
       <h3 class="sec-h3">二階總成績怎麼組成</h3><ol class="cbars">${bars}</ol>
       <h3 class="sec-h3">審查資料：哪幾個志願要</h3>
       <div class="tablewrap"><table class="rmx"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
       ${unused.length ? `<p class="hint" style="margin-top:10px">你的志願都沒列出：${esc(unused.map(c => c + ' ' + REVIEW[c]).join('、'))}。</p>` : ''}
-      <div style="margin-top:14px">${noteHTML('info', '招聯會的審查原則「三重二不」：不是學系列的每一項都要具備，也不是以量取勝（116 學生手冊）。各系的必備、選備和字數限制，看下面每個志願的說明。')}</div>
+      <div style="margin-top:14px">${noteHTML('info', '審查「不是每項都要、不以量取勝」。各系必備項目和字數看下面說明。')}</div>
       ${notes ? `<div class="prep-notes">${notes}</div>` : ''}
     </section>`;
   }
@@ -2892,7 +2950,7 @@ details.fold>summary:hover{color:var(--text)}
       return `<li class="fav">${pillHTML(tierOf(d))}<div class="s-main" data-open="${d.c}" role="button" tabindex="0"><div class="s-t"><span class="sch">${esc(sch(d))}</span>${esc(d.n)}</div><div class="s-d"><span>${esc(daysText(d))}</span><span>${esc(partsLine(d))}</span></div></div>
         <div class="fav-act"><button class="btn sm${pi >= 0 ? '' : ' primary'}" type="button" data-plan="${d.c}">${pi >= 0 ? `移出第 ${pi + 1} 志願` : `${icon('plus', 'sm')}排入志願`}</button><button class="star" type="button" data-fav="${d.c}" aria-pressed="true" aria-label="取消收藏：${esc(sch(d) + d.n)}" title="取消收藏">${icon('star')}</button></div></li>`;
     }).join('');
-    const h = `<header class="page-h"><div><h1>我的志願</h1><p>申請入學最多報 6 個校系。報名時沒有順序；這裡的順序是你的偏好，放榜後「登記就讀志願序」時會用到。</p></div>
+    const h = `<header class="page-h"><div><h1>我的志願</h1><p>最多 6 個，順序就是你的偏好。</p></div>
       <div class="page-actions">${P.length || favs.length ? `<button class="btn sm" type="button" data-act="copyPlan">${icon('copy', 'sm')}複製文字</button><button class="btn sm" type="button" data-act="csvPlan">${icon('download', 'sm')}下載 CSV</button><button class="btn sm" type="button" data-act="printPlan">${icon('print', 'sm')}列印</button>` : ''}</div></header>
       <div class="plan-grid">
         <section class="sec"><h2>六個志願</h2><p class="sub">已排 ${P.length}/6</p><ol class="slots" id="planList">${slots}</ol></section>
@@ -2902,8 +2960,8 @@ details.fold>summary:hover{color:var(--text)}
       </div>
       <section class="sec"><h2>收藏</h2><p class="sub">${favs.length ? `${favs.length} 個 · 從這裡排進志願` : '在「找校系」按星號收藏想考慮的校系'}</p>${favs.length ? `<ol class="favs" id="favList">${favRows}</ol>` : `<div style="margin-top:14px"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}去找校系</button></div>`}</section>
       ${prepHTML(P)}
-      ${P.length ? `<section class="sec"><h2>二階行事曆</h2><p class="sub">你的志願的審查資料截止、甄試和放榜日期（116 校系分則），加上甄選會的統一日期</p>${calendarHTML(P)}</section>` : ''}
-      <section class="sec no-print"><h2>備份與換裝置</h2><p class="sub">成績、收藏和志願只存在這台裝置的瀏覽器裡，不會上傳。換手機或電腦前先備份。</p>
+      ${P.length ? `<section class="sec"><h2>二階行事曆</h2><p class="sub">審查資料截止、甄試、放榜和統一日期</p>${calendarHTML(P)}</section>` : ''}
+      <section class="sec no-print"><h2>備份與換裝置</h2><p class="sub">資料只存在這台裝置，換裝置前先備份。</p>
         <div class="page-actions" style="margin-top:14px"><button class="btn sm" type="button" data-act="exportState">${icon('download', 'sm')}備份我的資料</button><label class="btn sm">${icon('upload', 'sm')}還原備份<input type="file" id="importState" accept="application/json,.json"></label></div></section>`;
     keepFocus($('#plan'), () => { $('#plan').innerHTML = h; });
   }
@@ -2994,9 +3052,9 @@ details.fold>summary:hover{color:var(--text)}
       <div class="tablewrap"><table class="reftable"><thead><tr><th>次</th><th>日期</th>${['國文', '英文', '數學', '社會', '自然'].map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>
       ${MOCK_REF.filter(x => x.r).map(x => `<tr><th>${esc(x.n.replace('學測模擬考', ''))}</th><td>${esc(x.when)}</td>${['國文', '英文', '數學', '社會', '自然'].map(k => `<td>${esc(x.r[k] || '—')}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
-      <p class="hint">整理自多所高中 115 學年度高三模考公告（台南、高雄、新竹），各校日期可能差幾天，以學校公告為準。英聽只有第二次考（英文必修第 1–4 學期），第一次、第三次的範圍表都沒有英聽。範圍還沒考完，前幾次分數偏低很正常；跟正式學測最接近的是第四次。另有民間的樂學網「樂模」（9/12–13、11/21–22）。正式學測：2027/1/22–1/24。</p><p class="hint">內建五標（翰林）：7月全國各科（115-E1，約 5.3 萬人；數學和級距跟另一份公開資料完全一致）；9月北北基各科（兩份公開整理一致）；10月北北基各科（115-E3 原始分數與級分五標對照表，報考約 5–6 萬人）；12 月還沒考。都是公開整理的數字，跟你的成績單不一樣就以成績單為準，在「修改」改掉。北北基（北區）、中區（南一「中模」）、全國公私立（南一）是不同單位辦的不同考試，考生和難度都不一樣，五標不能互用。</p></details>`;
+      <p class="hint">整理自各校 115 學年度模考公告，日期以學校為準。英聽只有第二次考。學測：2027/1/22–1/24。</p><p class="hint">內建五標來自公開整理的翰林成績表（7月全國 E1、9月北北基 E2、10月北北基 E3），跟成績單不同以成績單為準。中區、南一是不同考試。</p></details>`;
   }
-  const mockLinkHTML = () => `<section class="sec mocklink"><h2>模考趨勢</h2><p class="sub">${st.mocks.length ? `已存 ${st.mocks.length} 次模考。` : ''}每次模考的成績、五標、每一科的變化和每一次的落點，都在「模考」分頁。</p><button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}${st.mocks.length ? '看模考趨勢' : '新增模考'}</button></section>`;
+  const mockLinkHTML = () => `<section class="sec mocklink"><h2>模考趨勢</h2><p class="sub">${st.mocks.length ? `已存 ${st.mocks.length} 次模考。` : ''}趨勢和每次的落點在「模考」分頁。</p><button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}${st.mocks.length ? '看模考趨勢' : '新增模考'}</button></section>`;
   /** One small chart per subject on a shared 級分 scale, plus 落點 per 模考 and a table. */
   /** A 模考's scores read as 學測 級分: each subject with that 模考's 五標 is converted by rank (L.mockToTest). */
   function mockAsTest(m) {
@@ -3061,30 +3119,28 @@ details.fold>summary:hover{color:var(--text)}
       let next;
       if (lv) { const i = L.LEVELS.indexOf(lv), up = i === -1 ? '底標' : i > 0 ? L.LEVELS[i - 1] : null; next = up ? `再 ${lm.std[k][up] - v} 級分到這次的${up}` : '已到這次的頂標'; }
       else next = lp && lp.std && !lp.std[k] ? '翰林沒公開這科五標：按「修改」補上' : '沒有這次的五標';
-      const testLv = e ? levelOf(k, e.g) : '';
       const hist = ms.map(m => valOf(m, k));
       const g = gains[k];
       return `<div class="lt"><div class="lt-h"><span class="k">${subj(k)}</span>${miniSpark(hist, subj(k) + '：' + hist.filter(x => x != null).join('、'))}</div>
         <span class="v"><b class="num">${v}</b>${lv ? `<span class="lvt">${lv}</span>` : ''}</span>
-        ${e ? `<span class="eqv">學測約 <b class="num">${e.g}</b>${testLv && testLv !== '未達底標' ? `・${testLv}` : ''}<small>排名前 ${Math.round(e.top)}%</small></span>` : ''}
+        ${e ? `<span class="eqv">學測約 <b class="num">${e.g}</b><small>前 ${Math.round(e.top)}%</small></span>` : ''}
         <small>${esc(next)}</small>${g ? `<small class="gain">多 1 級分：<b>${g}</b> 個校系變好</small>` : ''}</div>`;
     }).join('');
     const lb = bestCombo(lc.S);
     const anyEq = Object.keys(lc.eq).length > 0;
     const latest = `<div class="latest"><h3 class="sec-h3">最近一次：${esc(mName(lm))}<small>${mdText(lm.d)}</small></h3>
-      ${anyEq ? '<p class="sub">「學測約」：照你這次模考的排名，換算成 115 學測同樣排名的級分（估計，模考的範圍和考生跟學測不同）。這一區的「多 1 級分」和落點都用換算後的級分算。</p>' : ''}
+      ${anyEq ? '<p class="sub">學測約＝照模考排名換算的學測級分（估計）</p>' : ''}
       <div class="lt-grid">${cells}</div>
-      <p class="sub">「找校系」目前範圍（${fmtN(scope.length)} 個校系）裡「穩＋適中」<b>${lt.good}</b> 個${lb ? `；最強的一階組合是 <b>${esc(comboName(lb.k))}</b>（115 考生${fmtTop(lb.top)}）` : ''}。</p>
-      <div class="lt-act"><button class="btn sm primary" type="button" data-mockuse="${lm.id}">${anyEq ? '用換算後的級分看落點' : '用這次成績看落點'}</button><button class="btn sm" type="button" data-mocktry="${lm.id}">${icon('boost', 'sm')}拿這次去「怎麼進步」試算</button></div></div>`;
+      <p class="sub">穩＋適中 <b>${lt.good}</b> 個${lb ? ` · 最強組合 <b>${esc(comboName(lb.k))}</b>（${fmtTop(lb.top)}）` : ''}</p>
+      <div class="lt-act"><button class="btn sm primary" type="button" data-mockuse="${lm.id}">看換算後的落點</button><button class="btn sm" type="button" data-mocktry="${lm.id}">${icon('boost', 'sm')}拿去試算</button></div></div>`;
 
     // ---- what changed
     const notes = [];
     if (ms.length > 1) {
       const ch = subs.map(k => { const vs = ms.map(m => valOf(m, k)).filter(v => v != null); return { k, d: vs.length > 1 ? vs[vs.length - 1] - vs[0] : 0, n: vs.length }; }).filter(x => x.n > 1);
-      const scale = subs.every(onTest) ? '（換算成學測級分）' : '';
       const up = ch.filter(x => x.d > 0).sort((a, b) => b.d - a.d), dn = ch.filter(x => x.d < 0).sort((a, b) => a.d - b.d);
-      if (up.length) notes.push(`進步${scale}：${up.map(x => `${subj(x.k)} +${x.d}`).join('、')}`);
-      if (dn.length) notes.push(`退步${scale}：${dn.map(x => `${subj(x.k)} ${x.d}`).join('、')}${dn[0].d <= -2 ? `，${subj(dn[0].k)}要多注意` : ''}`);
+      if (up.length) notes.push(`進步：${up.map(x => `${subj(x.k)} +${x.d}`).join('、')}`);
+      if (dn.length) notes.push(`退步：${dn.map(x => `${subj(x.k)} ${x.d}`).join('、')}${dn[0].d <= -2 ? `，${subj(dn[0].k)}要多注意` : ''}`);
       // raw 級分 and standing can move apart: a harder or easier 模考
       const rank = l => (L.LEVELS.includes(l) ? L.LEVELS.indexOf(l) : 9);
       for (const k of subs) {
@@ -3096,7 +3152,7 @@ details.fold>summary:hover{color:var(--text)}
         if ((better && dv < 0) || (!better && dv > 0)) notes.push(`${subj(k)}：${mName(a)} ${va} 級分（${la}）→ ${mName(b)} ${vb} 級分（${lb2}），${better ? '級分少了但排名更前面：這次比較難' : '級分多了但排名往後：這次比較簡單，別被分數騙了'}`);
       }
       const a = tierRows[tierRows.length - 2], b = tierRows[tierRows.length - 1];
-      notes.push(`「穩＋適中」${b.good > a.good ? `多了 ${b.good - a.good} 個` : b.good < a.good ? `少了 ${a.good - b.good} 個` : '一樣'}（${mName(a.m)} ${a.good} → ${mName(b.m)} ${b.good}）`);
+      notes.push(`穩＋適中 ${a.good} → ${b.good}（${b.good - a.good >= 0 ? '+' : ''}${b.good - a.good}）`);
     }
 
     // ---- one chart per subject, on the 學測 scale when possible
@@ -3119,7 +3175,7 @@ details.fold>summary:hover{color:var(--text)}
       const lab = pts.length > 1 ? `<text class="vlab" x="${X(last.i) - 7}" y="${Y(last.v) - 7}" text-anchor="end">${last.v}</text>` : '';
       return `<figure class="spark"><figcaption><span class="sk">${subj(k)}</span><span class="sv num">${last.v}</span>${deltaChip(prev ? last.v - prev.v : null)}</figcaption>
         <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${subj(k)}：` + pts.map(p => `${mName(p.m)} ${p.v}`).join('、'))}"><line class="base" x1="${PL}" x2="${W - PR}" y1="${H - PB}" y2="${H - PB}"/>${refs}<path class="ln" d="${path}"/>${dots}${lab}${hits}</svg>
-        <span class="sx">${test ? '換算成學測級分' : '模考原始級分'} · ${mdText(first.m.d)}${pts.length > 1 ? ` → ${mdText(last.m.d)}` : ''} · 虛線：${test ? esc(stdName()) : refStd ? '模考五標' : '無'}</span></figure>`;
+        <span class="sx">${test ? '學測級分' : '模考級分'} · ${mdText(first.m.d)}${pts.length > 1 ? ` → ${mdText(last.m.d)}` : ''}</span></figure>`;
     }).join('');
     const allTest = subs.every(onTest);
 
@@ -3130,11 +3186,11 @@ details.fold>summary:hover{color:var(--text)}
       </tbody></table></div>`;
     return `<section class="sec" id="trendSec"><h2>模考分析</h2>${latest}
       ${notes.length ? `<h3 class="sec-h3">跟之前比</h3><ul class="trendnotes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-      <h3 class="sec-h3">每一科的變化</h3><p class="sub">${allTest ? '每次都換算成學測級分，範圍不同的模考才能放在一起比；虛線是學測的前標、均標。' : '有五標的科目換算成學測級分，沒有的畫原始級分。'}點圓點看那次的原始級分和標。</p>
+      <h3 class="sec-h3">每一科的變化</h3><p class="sub">${allTest ? '換算成學測級分，虛線是學測前標、均標。' : '有五標的科目換算成學測級分，沒有的畫原始級分。'}點圓點看原始級分。</p>
       <div class="sparks">${panels}</div>
-      <h3 class="sec-h3">每次模考的落點</h3><p class="sub">每一次都用換算後的學測級分、${esc(stdName())}判斷，範圍是「找校系」目前的篩選（${fmtN(scope.length)} 個校系）。</p>
+      <h3 class="sec-h3">每次模考的落點</h3><p class="sub">用換算後的級分，範圍是找校系目前的 ${fmtN(scope.length)} 個校系。</p>
       <div class="mtiers">${bars}</div>
-      <h3 class="sec-h3">成績表</h3><p class="sub">大字是模考原始級分，小字是那次的標和換算成學測的級分。</p>${table}
+      <h3 class="sec-h3">成績表</h3><p class="sub">大字原始級分，小字是標和換算的學測級分。</p>${table}
       </section>`;
   }
   /** Each subject across the saved 模考, as 學測 級分 where the 模考 has 五標 (raw otherwise). */
@@ -3150,7 +3206,7 @@ details.fold>summary:hover{color:var(--text)}
     }
     return { ms, out };
   }
-  const trendWord = x => (!x || x.n < 2 ? '' : x.last > x.first ? `模考換算一路從 ${x.first} 到 ${x.last}，在進步` : x.last < x.first ? `模考換算從 ${x.first} 掉到 ${x.last}，要注意` : `模考換算持平在 ${x.last}`);
+  const trendWord = x => (!x || x.n < 2 ? '' : x.last > x.first ? `模考 ${x.first} → ${x.last}，在進步` : x.last < x.first ? `模考 ${x.first} → ${x.last}，要注意` : `模考持平在 ${x.last}`);
   /** 各科一覽: what you entered, how the 模考 went (on the 學測 scale), and what 1–2 more 級分 would do. */
   function boardHTML(rows, series) {
     const max1 = Math.max(1, ...rows.map(r => (r.cells[0] ? r.cells[0].up : 0)));
@@ -3163,15 +3219,15 @@ details.fold>summary:hover{color:var(--text)}
       return `<div class="bd-row${best === r && best.cells[0].up ? ' top' : ''}" role="row"><span class="bd-k" role="rowheader">${subj(r.k)}</span><span class="bd-c" role="cell"><b class="num">${r.cur || '—'}</b>${lv && lv !== '未達底標' ? `<small>${lv}</small>` : !r.cur ? '<small>沒考</small>' : ''}</span><span class="bd-c bd-mock" role="cell">${mock}</span><span role="cell">${heat(r.cells[0], max1)}</span><span role="cell">${heat(r.cells[1], max1)}</span></div>`;
     }).join('');
     const hasMock = Object.keys(series.out).length > 0;
-    return `<section class="sec"><h2>各科一覽</h2><p class="sub">你填的級分、${hasMock ? '模考換算成學測的趨勢、' : ''}多考 1、2 級分會讓幾個校系落點變好，放在一起看。${hasMock ? '' : '存了模考，這裡會多一欄每科的模考趨勢。'}</p>
+    return `<section class="sec"><h2>各科一覽</h2><p class="sub">數字是多考 1、2 級分會變好的校系數。</p>
       <div class="board" role="table" aria-label="各科一覽"><div class="bd-row bd-h" role="row"><span role="columnheader">科目</span><span role="columnheader">現在</span><span role="columnheader">${hasMock ? '模考換算' : '模考'}</span><span role="columnheader">多 1 級分</span><span role="columnheader">多 2 級分</span></div>${body}</div>
-      ${hasMock ? `<p class="hint">「模考換算」是每次模考照排名換算成的學測級分，小字 +1／−1 是最近一次跟你現在填的差多少。<button class="textbtn" type="button" data-tab="mock">${icon('mock', 'sm')}看模考分析</button></p>` : `<button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}新增模考</button>`}</section>`;
+      ${hasMock ? `<p class="hint">模考換算＝照排名換算的學測級分。<button class="textbtn" type="button" data-tab="mock">${icon('mock', 'sm')}看模考分析</button></p>` : `<button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}新增模考</button>`}</section>`;
   }
   function renderBoost() {
     const el = $('#boost');
-    const head = `<header class="page-h"><div><h1>怎麼進步</h1><p>還有時間準備的話，哪一科多考幾級分最划算？用你現在的成績和「找校系」的篩選範圍來算。</p></div></header>`;
+    const head = `<header class="page-h"><div><h1>怎麼進步</h1><p>哪一科多考幾級分最划算。</p></div></header>`;
     if (!hasScores()) {
-      el.innerHTML = head + `<div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（還沒考可以填模考或目標分數），這裡才能算每一科多考幾級分會多出哪些機會。</div><button class="btn primary" type="button" data-act="goScores">輸入成績</button>${st.mocks.length ? `<button class="btn" type="button" data-mockuse="${mocksByDate().pop().id}">用最近一次模考（換算成學測級分）</button>` : ''}</div>` + mockLinkHTML();
+      el.innerHTML = head + `<div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（模考或目標分數也可以）。</div><button class="btn primary" type="button" data-act="goScores">輸入成績</button>${st.mocks.length ? `<button class="btn" type="button" data-mockuse="${mocksByDate().pop().id}">用最近一次模考（換算成學測級分）</button>` : ''}</div>` + mockLinkHTML();
       return;
     }
     const scope = baseFiltered();
@@ -3188,7 +3244,7 @@ details.fold>summary:hover{color:var(--text)}
       const lvSentence = (k, v, lv) => {
         if (!lv || lv === '未達底標') return '';
         const line = STD() && STD()[k] ? STD()[k][lv] : null;
-        return line === v ? `${v} 級分剛好是${stdName()}的${subj(k)}${lv}。` : `${v} 級分已達${stdName()}的${subj(k)}${lv}（${line} 級分）。`;
+        return `${v} 級分達${lv}。`;
       };
       const bestOf = r => r.cells.filter(Boolean).reduce((a, c) => (c.up > (a ? a.up : 0) ? c : a), null);
       const ranked = rows.map(r => ({ r, b: bestOf(r) })).filter(x => x.b && x.b.up > 0).sort((a, b) => b.b.up - a.b.up || (a.b.to - a.r.cur) - (b.b.to - b.r.cur));
@@ -3197,19 +3253,19 @@ details.fold>summary:hover{color:var(--text)}
         const { r, b } = ranked[0];
         const lv = levelOf(r.k, b.to);
         hero = `<section class="hero"><span class="eyebrow">最值得補強</span><h2>${subj(r.k)} 從 ${r.cur || '沒考'} 考到 ${b.to} 級分</h2>
-          <p>在${esc(sl || '目前的範圍')}（${fmtN(scope.length)} 個校系）裡，<b>${b.up}</b> 個校系落點變好${b.unlock ? `，其中 <b>${b.unlock}</b> 個從「不符」變成可以報` : ''}。${lvSentence(r.k, b.to, lv)}${trendWord(series.out[r.k]) ? `${esc(trendWord(series.out[r.k]))}。` : ''}</p>
+          <p><b>${b.up}</b> 個校系落點變好${b.unlock ? `（${b.unlock} 個解鎖）` : ''}。${lvSentence(r.k, b.to, lv)}${trendWord(series.out[r.k]) ? `${esc(trendWord(series.out[r.k]))}。` : ''}</p>
           ${ranked.length > 1 ? `<div class="alts">${ranked.slice(1, 4).map(x => `<span>${subj(x.r.k)} ${x.r.cur || '沒考'} → ${x.b.to}：${x.b.up} 個</span>`).join('')}</div>` : ''}</section>`;
       } else hero = `<section class="hero"><span class="eyebrow">最值得補強</span><h2>這個範圍裡，每科多考 1–5 級分都不會改變落點</h2><p>可以換個學群或放寬篩選再看看。</p></section>`;
       const grid = `<div class="heat" role="table" aria-label="每科多考幾級分，落點變好的校系數"><div role="row" style="display:contents"><span class="hh" role="columnheader">科目</span>${[1, 2, 3, 4, 5].map(i => `<span class="hh" role="columnheader">+${i}</span>`).join('')}</div>
-        ${rows.map(r => `<div role="row" style="display:contents"><span class="hs" role="rowheader">${subj(r.k)}<small>現在 ${r.cur || '沒考'}</small></span>${r.cells.map(c => c ? `<span class="hc" role="cell" style="--h:${(c.up / maxUp).toFixed(3)}" title="${subj(r.k)} 考到 ${c.to} 級分：${c.up} 個校系落點變好${c.unlock ? `，${c.unlock} 個從不符變成可以報` : ''}"><span class="to">考到 ${c.to}</span><span class="n">${c.up}</span>${c.unlock ? `<span class="u">解鎖 ${c.unlock}</span>` : ''}</span>` : '<span class="hc na" role="cell">—</span>').join('')}</div>`).join('')}</div>`;
+        ${rows.filter(r => r.cur || r.cells.some(c => c && c.up)).map(r => `<div role="row" style="display:contents"><span class="hs" role="rowheader">${subj(r.k)}<small>${r.cur ? '現在 ' + r.cur : '沒考'}</small></span>${r.cells.map(c => c ? `<span class="hc" role="cell" style="--h:${(c.up / maxUp).toFixed(3)}" title="${subj(r.k)} 考到 ${c.to} 級分：${c.up} 個校系落點變好${c.unlock ? `，${c.unlock} 個從不符變成可以報` : ''}"><span class="to">考到 ${c.to}</span><span class="n">${c.up}</span>${c.unlock ? `<span class="u">解鎖 ${c.unlock}</span>` : ''}</span>` : '<span class="hc na" role="cell">—</span>').join('')}</div>`).join('')}</div>`;
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
-      const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">檢定沒過就不能參加篩選。116 五標 2027/2/25 才公布，這裡用${stdName()}換算。</p>` : '<p class="hint" style="margin-top:12px">這個範圍裡沒有被檢定或科目擋住的校系。</p>';
+      const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${stdName()}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
       if (!ui.tryS) ui.tryS = { ...st.scores };
       const tryGrid = SCORE_KEYS.map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
       el.innerHTML = head + hero + boardHTML(rows, series) +
-        `<section class="sec"><h2>每科多考幾級分，會多出多少機會？</h2><p class="sub">格子裡是「落點變好的校系數」，顏色越深越多；「解鎖」是從不符變成可以報的數量。範圍：${esc(sl || '全部（一般組、公費、APCS）')}，${fmtN(scope.length)} 個校系。</p>${grid}</section>
-        <section class="sec"><h2>擋住你的檢定</h2><p class="sub">這個範圍裡，因為檢定或沒考的科目而「一定進不了一階」的校系</p>${blockHTML}</section>
-        <section class="sec" id="trySec"><h2>試算</h2>${ui.tryFrom ? `<p class="note-inline">${icon('mock', 'sm')}已帶入「${esc(ui.tryFrom)}」換算成學測的級分，跟你現在的成績比。</p>` : ''}<p class="sub">暫時改成績看結果，不會改掉你存的成績。${st.mocks.length ? ` <button class="textbtn" type="button" data-mocktry="${mocksByDate().pop().id}">${icon('mock', 'sm')}帶入最近一次模考</button>` : ''}<button class="textbtn" type="button" data-act="tryReset">${icon('reset', 'sm')}改回我的成績</button></p><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
+        `<section class="sec"><h2>每科多考幾級分，會多出多少機會？</h2><p class="sub">落點變好的校系數，解鎖＝不符變可報</p>${grid}</section>
+        <section class="sec"><h2>擋住你的檢定</h2><p class="sub">因此進不了一階的校系數</p>${blockHTML}</section>
+        <section class="sec" id="trySec"><h2>試算</h2>${ui.tryFrom ? `<p class="note-inline">${icon('mock', 'sm')}已帶入「${esc(ui.tryFrom)}」換算的學測級分</p>` : ''}<p class="sub">暫時改成績看結果，不會改掉你存的成績。</p><div class="try-act">${st.mocks.length ? `<button class="btn sm" type="button" data-mocktry="${mocksByDate().pop().id}">${icon('mock', 'sm')}帶入最近一次模考</button>` : ''}<button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回我的成績</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();
     }, 30);
   }
@@ -3236,25 +3292,25 @@ details.fold>summary:hover{color:var(--text)}
 
   // ------------------------------------------------------------------ guide
   const TIMELINE = [
-    ['準備期', '2026-11-03', '簡章與校系分則公告（甄選會網站可查）'],
-    ['準備期', '2026-12-12', '英聽第二次考試（檢定用 114–116 學年度考過最好的一次）'],
+    ['準備期', '2026-11-03', '簡章與校系分則公告'],
+    ['準備期', '2026-12-12', '英聽第二次考試'],
     ['學測與成績', '2027-01-22', '學測（1/22–1/24）'],
-    ['學測與成績', '2027-02-25', '學測成績與 116 五標公布：回來把「檢定用五標」改成 116'],
-    ['選系與報名', '2027-03-18', '繁星推薦第 1–7 類放榜：錄取者不論放棄與否，都不能報申請入學'],
-    ['選系與報名', '2027-03-22', '申請入學繳費（3/22–3/24 17:00）'],
-    ['選系與報名', '2027-03-23', '申請入學報名（3/23–3/24），最多 6 個校系'],
-    ['一階篩選', '2027-03-30', '一階篩選結果（9:00）；3/31 中午前可申請複查'],
-    ['二階：審查與甄試', '2027-04-01', '學習歷程上傳中央資料庫（約 4/1–4/21，依就讀高中規定）'],
-    ['二階：審查與甄試', '2027-04-09', '審查資料上傳測試版（4/9–4/14）：可先核對中央資料庫的學習歷程，有錯 4/15 中午前向學校反映'],
-    ['二階：審查與甄試', '2027-04-29', '二階審查資料上傳／勾選（4/29 起，截止日各校不同，多數在 5/5 前）'],
-    ['二階：審查與甄試', '2027-05-08', '應屆生確認第 6 學期修課紀錄（5/8 14:00–5/11）'],
-    ['二階：審查與甄試', '2027-05-13', '指定項目甄試（5/13–5/30，面試、筆試等）'],
-    ['二階：審查與甄試', '2027-05-31', '各校放榜前限（各校自訂日期）'],
-    ['放榜與分發', '2027-06-03', '登記就讀志願序（6/3–6/4 9:00–21:00）：正取、備取都要登記，沒登記視同放棄'],
-    ['放榜與分發', '2027-06-10', '統一分發結果：每人最多分發 1 個校系'],
-    ['放榜與分發', '2027-06-13', '放棄入學資格截止：分到了卻想考分科，要在這天前上網聲明放棄'],
-    ['分科與分發入學', '2027-06-15', '分科測驗報名截止（沒分發到、要走分發入學的人）'],
-    ['分科與分發入學', '2027-07-10', '分科測驗（7/10–7/11）'],
+    ['學測與成績', '2027-02-25', '學測成績、116 五標公布'],
+    ['選系與報名', '2027-03-18', '繁星第 1–7 類放榜'],
+    ['選系與報名', '2027-03-22', '繳費（至 3/24 17:00）'],
+    ['選系與報名', '2027-03-23', '報名（至 3/24）'],
+    ['一階篩選', '2027-03-30', '一階結果（9:00）'],
+    ['二階：審查與甄試', '2027-04-01', '學習歷程上傳（約至 4/21）'],
+    ['二階：審查與甄試', '2027-04-09', '上傳系統測試版（至 4/14）'],
+    ['二階：審查與甄試', '2027-04-29', '審查資料上傳（截止各校不同）'],
+    ['二階：審查與甄試', '2027-05-08', '確認第 6 學期修課紀錄'],
+    ['二階：審查與甄試', '2027-05-13', '二階甄試（至 5/30）'],
+    ['二階：審查與甄試', '2027-05-31', '各校放榜截止'],
+    ['放榜與分發', '2027-06-03', '登記就讀志願序（至 6/4）'],
+    ['放榜與分發', '2027-06-10', '統一分發結果'],
+    ['放榜與分發', '2027-06-13', '聲明放棄截止'],
+    ['分科與分發入學', '2027-06-15', '分科測驗報名截止'],
+    ['分科與分發入學', '2027-07-10', '分科測驗'],
     ['分科與分發入學', '2027-08-13', '分發入學放榜'],
   ];
   const KEY_DATES = [['2027-01-22', '學測'], ['2027-02-25', '成績公布'], ['2027-03-23', '申請報名'], ['2027-03-30', '一階結果'], ['2027-05-13', '甄試開始'], ['2027-06-03', '登記志願序'], ['2027-06-10', '統一分發']];
@@ -3275,7 +3331,7 @@ details.fold>summary:hover{color:var(--text)}
     const examDays = daysUntil(exam[1]);
     const nx = nextI >= 0 ? TIMELINE[nextI] : null;
     let hero;
-    if (examDays > 0) hero = `<div class="big">${examDays}<small>天</small></div><div><h2>距離學測（2027/1/22–1/24）</h2><p>${nx && nx[1] !== exam[1] ? `下一個日期：${esc(nx[1].slice(5).replace('-', '/').replace(/^0/, ''))} ${esc(nx[2])}，還有 ${daysUntil(nx[1])} 天。` : ''}學測前最有用的是「怎麼進步」：看哪一科多考幾級分最划算。</p></div>`;
+    if (examDays > 0) hero = `<div class="big">${examDays}<small>天</small></div><div><h2>距離學測（2027/1/22–1/24）</h2><p>${nx && nx[1] !== exam[1] ? `下一個：${esc(nx[1].slice(5).replace('-', '/').replace(/^0/, ''))} ${esc(nx[2])}（${daysUntil(nx[1])} 天後）` : ''}</p></div>`;
     else if (nx) hero = `<div class="big">${daysUntil(nx[1])}<small>天</small></div><div><h2>${esc(nx[2])}</h2><p>${esc(nx[1].replace(/-/g, '/'))}</p></div>`;
     else hero = '<div><h2>116 申請入學已經結束</h2></div>';
     let ph = null;
@@ -3287,36 +3343,32 @@ details.fold>summary:hover{color:var(--text)}
       const [y, m, dd] = dte.split('-').map(Number);
       return pre + `<li class="${past ? 'past' : ''}${next ? ' next' : ''}"><span class="d"><small>${y}<i>/</i></small>${m}/${dd}</span><span class="dc"></span><span class="t">${esc(txt)}${next ? `<span class="soon">${n === 0 ? '今天' : `還有 ${n} 天`}</span>` : ''}</span></li>`;
     }).join('');
-    $('#guide').innerHTML = `<header class="page-h"><div><h1>時程與規則</h1><p>116 個人申請的官方日程與一定要知道的規則。來源：教育部《116 學年度大學多元入學學生手冊》。</p></div></header>
+    $('#guide').innerHTML = `<header class="page-h"><div><h1>時程與規則</h1><p>116 個人申請日程與規則（116 學生手冊、招生簡章）。</p></div></header>
       <section class="count-hero">${hero}</section>
       <section class="sec"><h2>116 個人申請時程</h2><ol class="tl">${tl}</ol></section>
       <section class="sec"><h2>一定要知道的規則</h2><ol class="rules">
-        <li><div><b>最多 6 個校系。</b>報名費一次繳足（每校系 100 元），報名截止後不能改。有些系的各組「限擇一組報名」，違反的話會被取消報名該大學所有校系的資格，「我的志願」會幫你檢查。</div></li>
-        <li><div><b>一階 = 檢定 → 倍率篩選 → 同級分超額篩選。</b>檢定沒過，連篩選都不能參加。倍率從大到小一關一關篩，同一關同級分的人一起過；只有最後一關同分才比超額篩選的科目順序，比到最後一個科目還同分的人全部通過。</div></li>
-        <li><div><b>每一關都要過。</b>只看第一關、或只看總級分都會判錯（這個工具的舊版就犯過這個錯）。</div></li>
-        <li><div><b>數A、數B 同時列為檢定時，過一科就好。</b>只考數B 的人不會因為數A 沒考被擋。</div></li>
-        <li><div><b>二階通常是學測＋審查資料＋面試或筆試，各系比例差很多。</b>學測佔比高的系，學測好的人比較有利；審查和面試佔比高的系，學習歷程和準備最重要。有 ${fmtN(D.depts.filter(d => !d.sp).length)} 個校系的二階完全不計學測。「找校系」可以依學測佔二階的比例篩選，「我的志願」會整理你的志願要交哪些審查資料。</div></li>
-        <li><div><b>撞期很常見。</b>一階過了兩個同一天甄試的系，只能去一個。排志願時就先看甄試日期。</div></li>
-        <li><div><b>放榜後要登記就讀志願序（6/3–6/4）。</b>正取、備取都要登記，沒登記等於放棄。甄選會依志願序和名次統一分發，每人只會分到 1 個。</div></li>
-        <li><div><b>繁星第 1–7 類錄取的人不能報申請入學。</b>就算放棄繁星的錄取也一樣。繁星第八類（醫牙）通過一階的人，不能再報同一所大學的醫學系（牙醫系同理）；第八類錄取的人，不能參加申請入學的統一分發。</div></li>
-        <li><div><b>分發到了但想改考分科測驗，要先聲明放棄。</b>6/13 前上網聲明放棄，否則不能參加分發入學。</div></li>
-        <li><div><b>沒考的科目以 0 級分計。</b>系用到的學測科目（檢定、倍率篩選、採計）加總不是 0 就能報；全部是 0 不能參加篩選。檢定用到沒考的科目一定不過，倍率篩選用到它就是拿 0 級分去比（簡章 九、十二）。這個工具把空白和 0 都當「沒考」。</div></li>
+        <li><div><b>最多 6 個校系，每系 100 元。</b>有些系限擇一組報名，違反會取消該校所有申請。</div></li>
+        <li><div><b>一階：檢定 → 倍率篩選 → 超額篩選。</b>檢定沒過不能篩選。中間關卡同分一起過，最後一關同分才比超額篩選。</div></li>
+        <li><div><b>每一關都要過。</b>只看第一關或總級分會判錯。</div></li>
+        <li><div><b>數A、數B 都列檢定時，過一科就好。</b></div></li>
+        <li><div><b>二階各系比例差很多。</b>${fmtN(D.depts.filter(d => !d.sp).length)} 個系完全不計學測，「找校系」可以依學測佔比篩選。</div></li>
+        <li><div><b>小心甄試撞期。</b>同一天只能去一個。</div></li>
+        <li><div><b>6/3–6/4 登記就讀志願序。</b>正備取都要登記，沒登記等於放棄，最後只分發 1 個。</div></li>
+        <li><div><b>繁星第 1–7 類錄取，不能報申請。</b>放棄也一樣。第八類過一階的，不能報同校醫（牙）系。</div></li>
+        <li><div><b>想改考分科，6/13 前聲明放棄。</b></div></li>
+        <li><div><b>沒考的科目以 0 級分計。</b>用到的科目全沒考就不能篩選。</div></li>
       </ol></section>
       <section class="sec"><h2>這個工具怎麼判斷落點</h2><ul class="tdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul>
-        <div class="prose" style="margin-top:16px"><p><b>以 116 的篩選規則為準</b>：科目、倍率和順序都照 116 校系分則，一關一關看。每一關只拿 <b>115 用同樣科目篩選的最低級分</b>來比（115 一階篩選結果，甄選會只公布圖片，每一格都經兩次獨立判讀核對）：你每一關的級分都要大於或等於 115 最低，最後一關剛好相等要看超額篩選。</p>
-        <p>116 改用 115 沒篩過的科目組合時（例如 115 篩國+英+數B+社、116 改篩國+英+社），115 的門檻不能拿來比，這個系判「無資料」並寫出是哪一關；除非你在其他同科目的關卡已經明顯不夠。科目一樣但收的人數變了（一關大約收「倍率 × 招生名額」人，差超過 10%），就用大考中心 115 級分人數表換算，看你是不是還在 116 收的人數內；倍率改了但名額也跟著改、人數差不多的，115 的門檻照樣可以直接比。</p>
-        <p>「穩」比較嚴格：每一關都要比 115 高，最後一關至少高 2 級分（門檻漲 1 也還會過），而且用大考中心 115 年各科、各科組合的級分人數表換算，排在你前面的人要明顯少於排在門檻前面的人。</p>
-        <p>遇到這些情況，最多只判「適中」並寫出原因：116 改了倍率而收的人數差超過 10%、116 篩選順序跟 115 不同、116 拿掉了 115 的某一關、用的是同系別組或名稱相近系組的資料、預計甄試人數比 115 少 15% 以上、你的級分換成 113 或 114 年五標就會檢定不過。</p>
-        <p class="hint">這只是一階能不能過的估計，不是錄取機率。二階要看審查資料、面試和當年的競爭。</p></div></section>
-      <section class="sec"><h2>審查資料代碼</h2><p class="sub">課程學習成果最多 3 件，多元表現最多 10 件（另附綜整心得）。R、S、T 看各系分則。</p><div class="codegrid">${Object.entries(REVIEW).map(([k, v]) => `<span class="code"><b>${k}</b>${v}</span>`).join('')}</div></section>
+        <div class="prose" style="margin-top:16px"><p>照 116 的科目、倍率和順序一關一關看，每關只跟 <b>115 同樣科目</b>的最低級分比。收的人數差超過 10% 就用 115 級分人數表換算。</p>
+        <p class="hint">只是一階的估計，不是錄取機率。</p></div></section>
+      <section class="sec"><h2>審查資料代碼</h2><p class="sub">課程學習成果最多 3 件、多元表現最多 10 件。</p><div class="codegrid">${Object.entries(REVIEW).map(([k, v]) => `<span class="code"><b>${k}</b>${v}</span>`).join('')}</div></section>
       <section class="sec"><h2>資料來源</h2><ul class="srcs">
-        <li>116 校系分則：大學甄選入學委員會（${esc(D.fetched116)} 擷取，2,240 校系）。簡章若有「內容修正事項」以官方為準。</li>
-        <li>115 一階篩選結果：甄選會「115 學年度各校系篩選標準一覽表」（圖片，雙重判讀）。</li>
-        <li>115 分發最低標準（備取遞補到第幾名）：甄選會「115 學年度各校系分發標準一覽表」。</li>
-        <li>五標（113–115）與各科、2–4 科組合級分人數累計表：大學入學考試中心。</li>
-        <li>116 扶助弱勢校系一覽表、學生手冊：甄選會、教育部。</li>
-        <li>學校所在縣市是校本部；有寫校區的系用該校區。</li>
-      </ul><p class="hint" style="margin-top:10px">資料版本 ${esc(D.built)}。原始碼與資料處理程式公開在 GitHub（JayPengX/Apply-116）。</p></section>`;
+        <li>116 校系分則：甄選會（${esc(D.fetched116)}）</li>
+        <li>115 篩選標準一覽表：甄選會</li>
+        <li>115 分發標準一覽表：甄選會</li>
+        <li>五標與級分人數累計表：大考中心</li>
+        <li>扶弱校系、學生手冊：甄選會、教育部</li>
+              </ul><p class="hint" style="margin-top:10px">資料版本 ${esc(D.built)}</p></section>`;
   }
 
   // ------------------------------------------------------------------ navigation

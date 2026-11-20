@@ -310,6 +310,7 @@ try {
     const { ctx, page, errors } = await newPage(browser, { viewport: { width: 1280, height: 900 } });
     await page.goto(URL_);
     await page.waitForSelector('.row');
+    await page.waitForTimeout(400); // let the app's own debounced save finish before writing old-format data
     await page.evaluate(() => {
       const st = JSON.parse(JSON.stringify(window.__app.st()));
       delete st.mockV;
@@ -337,6 +338,7 @@ try {
     await page.waitForSelector('#trendSec');
     ok((await page.locator('.mcard').count()) === 4 && (await page.locator('#trendSec').innerText()).includes('最近一次'), 'upgraded 模考 render with analysis');
     // saved after the 9月/10月 upgrade but before 7月全國 had every subject: only 數學 there, plus one typed row
+    await page.waitForTimeout(400);
     await page.evaluate(() => {
       const st = JSON.parse(JSON.stringify(window.__app.st()));
       st.mockV = 2;
