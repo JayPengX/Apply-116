@@ -608,22 +608,29 @@
     if (either.length && !either[0].groupOk) {
       const same = either.every(i => i.label === either[0].label);
       const taken = either.filter(i => i.mine != null);
+      const gaps = taken.filter(i => i.need != null).map(i => i.need - i.mine);
       out.push({
         what: same ? `數A或數B ${either[0].label}` : either.map(i => `${ABBR[i.k]} ${i.label}`).join(' 或 '),
         need: either.map(i => `${ABBR[i.k]} ${i.need ?? '?'}`).join(' 或 '),
         mine: taken.length ? taken.map(i => `${ABBR[i.k]} ${i.mine}`).join('、') : '都沒考',
+        gap: gaps.length ? Math.min(...gaps) : null,
       });
     }
     th.items.filter(i => !i.either && !i.ok).forEach(i => out.push({
       what: `${subj(i.k)} ${i.label}`,
       need: i.k === '聽' ? i.need + ' 級' : String(i.need ?? '?'),
       mine: i.mine == null ? '沒考' : String(i.mine),
+      gap: i.k !== '聽' && i.mine != null && i.need != null ? i.need - i.mine : null,
     }));
     return out;
   }
+  // One verdict block per row: the tier, one plain sentence, and (only when it helps) a few aligned detail lines.
+  const verdict = (t, head, more) => `<div class="r-verdict">${pillHTML(t)}<div class="rv-b"><div class="rv-h">${head}</div>${more || ''}</div></div>`;
   function cmpHTML(d, e) {
     if (e.tier === '不符' && !e.th.ok) {
-      return '<span class="lab">檢定沒過</span>' + thFailParts(e.th).map(x => `<span class="val">${esc(x.what)}</span><span class="lab">要 ${esc(x.need)}，你 ${esc(x.mine)}</span>`).join('<span class="sep">｜</span>');
+      const parts = thFailParts(e.th);
+      const lines = parts.map(x => `<div class="rv-k">${esc(x.what)}</div><div class="rv-v">要 <b>${esc(x.need)}</b>，你 <b>${esc(x.mine)}</b>${x.gap > 0 ? ` <span class="delta down">差 ${x.gap}</span>` : ''}</div>`).join('');
+      return verdict(e.tier, `檢定沒過${parts.length > 1 ? ` ${parts.length} 項` : ''}`, `<div class="rv-grid">${lines}</div>`);
     }
     const c = e.cmp;
     // The 116 stage that decides the tier, against the 115 cut for the same subjects.
@@ -634,28 +641,31 @@
         const n = c.stages.length;
         const moved = s.res === 'short' || s.res === 'maybe';
         const delta = moved ? `<span class="delta eq">${s.diff > 0 ? '+' : ''}${s.diff}</span>` : deltaHTML(s.diff, s.last);
-        const flow = s.scaled ? `<span class="lab">這關 115 約 ${s.n115} 人 → 116 約 ${s.n116} 人</span>` : s.kind === 'mult' && s.scale == null ? `<span class="lab">116 倍率 ×${s.ref.m} → ×${s.m}</span>` : '';
-        return `<span class="lab">115 最低</span><span class="val">${esc(partsLabel(s.parts))} ${s.v}</span><span class="lab">你</span><span class="val">${s.mine}</span>${delta}${flow}${n > 1 ? `<span class="lab">共 ${n} 關，這是${s.last ? '最後一關' : c.status === 'fail' ? '差最多的一關' : '最接近門檻的一關'}</span>` : ''}`;
+        const notes = [];
+        if (s.scaled) notes.push(`這關 115 約 ${s.n115} 人 → 116 約 ${s.n116} 人`);
+        else if (s.kind === 'mult' && s.scale == null && !e.warnings.some(w => w.includes(`116 ×${s.m}`))) notes.push(`116 倍率 ×${s.ref.m} → ×${s.m}`);
+        if (n > 1) notes.push(`共 ${n} 關，這是${s.last ? '最後一關' : c.status === 'fail' ? '差最多的一關' : '最接近門檻的一關'}`);
+        const head = `<span class="rv-subj">${esc(partsLabel(s.parts))}</span><span class="rv-num"><span class="lab">115 最低</span><b>${s.v}</b><span class="lab">你</span><b>${s.mine}</b></span>${delta}`;
+        return verdict(e.tier, head, notes.length ? `<div class="rv-note">${esc(notes.join('・'))}</div>` : '');
       }
     }
-    return `<span>${esc(e.reasons[0] || '')}</span>`;
+    return verdict(e.tier, `<span class="rv-text">${esc(e.reasons[0] || '')}</span>`);
   }
   function reqHTML(d) {
     const th = thList(d);
     const r = d.r115, A = L.align116(d);
-    let tail;
-    if (!A.stages.length) tail = `<span class="lab">一階</span><span class="val">${A.arts116.length ? '只用術科篩選' : '不篩學測，通過檢定就進二階'}</span>`;
-    else if (!r) tail = `<span class="lab">${esc(d.why || '116 新設或改名，115 沒有可對應的校系')}</span>`;
-    else if (!r.cut.length) tail = '<span class="lab">115 一階</span><span class="val">沒有篩掉人</span>';
-    else {
-      const cut = A.stages.map(s => { const tag = s.ref ? changeTag(s) : ''; return `${partsLabel(s.parts)} ${s.ref ? s.ref.v + (tag ? `（${tag}）` : '') : s.kind === 'open' ? '沒篩人' : s.open ? '沒篩人（116 收得比較少）' : '（115 沒有）'}`; });
-      tail = `<span class="lab">115 一階最低</span><span class="val">${esc(cut.join(' → '))}</span>`;
-    }
-    return `<span class="lab">檢定</span><span class="val">${th.length ? esc(th.join('、')) : '不設'}</span><span class="sep">｜</span>` + tail;
+    let k = '115 一階最低', v;
+    if (!A.stages.length) { k = '一階'; v = A.arts116.length ? '只用術科篩選' : '不篩學測，通過檢定就進二階'; }
+    else if (!r) { k = '115'; v = d.why || '116 新設或改名，115 沒有可對應的校系'; }
+    else if (!r.cut.length) v = '沒有篩掉人';
+    else v = A.stages.map(s => { const tag = s.ref ? changeTag(s) : ''; return `${partsLabel(s.parts)} ${s.ref ? s.ref.v + (tag ? `（${tag}）` : '') : s.kind === 'open' ? '沒篩人' : s.open ? '沒篩人（116 收得比較少）' : '（115 沒有）'}`; }).join(' → ');
+    return `<div class="rv-grid plain"><div class="rv-k">檢定</div><div class="rv-v">${th.length ? esc(th.join('、')) : '不設'}</div><div class="rv-k">${esc(k)}</div><div class="rv-v">${esc(v)}</div></div>`;
   }
   function metaHTML(d) {
     const parts = partsLine(d);
-    return [`<span>名額 ${d.q}</span>`, `<span>${esc(daysText(d))}</span>`, `<span>${esc(d.city)}</span>`, parts ? `<span class="parts">${esc(parts)}</span>` : ''].join('');
+    // Weekdays live in the detail drawer; the row keeps dates short.
+    const facts = [`名額 ${d.q}`, daysText(d).replace(/\([一二三四五六日]\)/g, ''), d.city].filter(Boolean);
+    return `<div class="rm-facts">${facts.map(x => `<span>${esc(x)}</span>`).join('')}</div>${parts ? `<div class="rm-parts"><span class="lab">二階</span>${esc(parts)}</div>` : ''}`;
   }
   function rowHTML(d) {
     const e = EV.get(d.c), t = e ? e.tier : null;
@@ -663,8 +673,7 @@
     const name = sch(d) + ' ' + d.n;
     const warn = e && e.warnings.length ? `<div class="r-warn">${icon('alert')}<span>${esc(e.warnings[0])}</span></div>` : '';
     return `<li class="row" data-code="${d.c}" data-open="${d.c}">
-      ${pillHTML(t)}
-      <button class="r-title" type="button" data-open="${d.c}"><span class="sch">${esc(sch(d))}</span>${esc(d.n)}</button>
+      <button class="r-title" type="button" data-open="${d.c}"><span class="sch">${esc(sch(d))}</span><span class="dn">${esc(d.n)}</span></button>
       <div class="r-act">${pi >= 0 ? `<span class="inplan">第 ${pi + 1} 志願</span>` : ''}<button class="star" type="button" data-fav="${d.c}" aria-pressed="${fav}" aria-label="${fav ? '取消收藏' : '收藏'}：${esc(name)}" title="${fav ? '取消收藏' : '收藏'}">${icon('star')}</button></div>
       <div class="r-cmp">${e ? cmpHTML(d, e) : reqHTML(d)}</div>
       ${warn}
