@@ -334,6 +334,27 @@ try {
     await page.click('#tabs [data-tab="mock"]');
     await page.waitForSelector('#trendSec');
     ok((await page.locator('.mcard').count()) === 4 && (await page.locator('#trendSec').innerText()).includes('最近一次'), 'upgraded 模考 render with analysis');
+    // saved after the 9月/10月 upgrade but before 7月全國 had every subject: only 數學 there, plus one typed row
+    await page.evaluate(() => {
+      const st = JSON.parse(JSON.stringify(window.__app.st()));
+      st.mockV = 2;
+      const lv = a => ({ 頂標: a[0], 前標: a[1], 均標: a[2], 後標: a[3], 底標: a[4] });
+      st.mocks = [
+        { id: 'e', n: '第一次學測模擬考', d: '2026-07-29', s: { 國: '10', 英: '11', 數A: '', 數B: '7', 社: '12', 自: '', 聽: '' }, std: { 數A: lv([13, 11, 7, 4, 3]), 數B: lv([13, 11, 7, 4, 3]), 自: lv([15, 14, 13, 12, 11]) } },
+        { id: 'f', n: '中區一模', d: '2026-07-29', s: { 國: '10', 英: '11', 數A: '', 數B: '7', 社: '12', 自: '', 聽: '' }, std: { 社: lv([13, 12, 10, 8, 7]) } },
+      ];
+      localStorage.setItem('apply116-v1', JSON.stringify(st));
+    });
+    await page.reload();
+    await page.waitForSelector('.mcard');
+    const m3 = await page.evaluate(() => Object.fromEntries(window.__app.st().mocks.map(m => [m.id, m.std])));
+    ok(m3.e.國.均標 === 11 && m3.e.英.均標 === 7 && m3.e.社.均標 === 10 && m3.e.自.頂標 === 15, 'saved 第一次 gets 翰林 7月全國 國英社, keeps a typed 自然 row');
+    ok(JSON.stringify(Object.keys(m3.f)) === '["社"]', 'another exam is not filled from 翰林');
+    await page.click('[data-act="mfNew"]');
+    await page.selectOption('#mfPreset', '第三次學測模擬考');
+    ok(!(await page.locator('[data-mf="聽"]').count()), '第三次 form has no 英聽 (not tested)');
+    await page.selectOption('#mfPreset', '第二次學測模擬考');
+    ok((await page.locator('[data-mf="聽"]').count()) === 1, '第二次 form has 英聽');
     ok(errors.length === 0, 'no console errors after the upgrade');
     await ctx.close();
   }

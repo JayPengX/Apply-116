@@ -1650,17 +1650,19 @@ details.fold>summary:hover{color:var(--text)}
   // 116 學測模擬考 (115 學年度高三): dates and 範圍 from several high schools' 115 學年度 notices (台南、高雄、新竹).
   // Schools sit the same papers on nearby days, so a school's own notice wins.
   // 翰林 學測模擬考 五標 (頂/前/均/後/底), as 翰林高中試務中心 names them:
-  //   7月全國 (115-E1): only 數學 found (one shared paper, 2026/7/30, 約 5.3 萬人; 翰林115E1 playlist).
+  //   7月全國 (115-E1): 「115學年度第一次學測模擬考（翰林）各科成績標準一覽表」 (posted by threads.com/@minda_tsu);
+  //     its 數學 row and 級距 6.60317 match the 翰林115E1 playlist (2026/7/30, 約 5.3 萬人) exactly.
   //   9月北北基 (115-E2): seventeen5.co/115-1-mock-test-analysis and xuebago.tw/blog/article/parent/115-trme-analysis.html agree.
   //   10月北北基 (115-E3): 原始分數與級分五標對照表 retyped by threads.com/@116_gsat_ (post Df4VMGFAYRh, 2026/11/19),
   //     with that account's correction for 社會 (post Df6TqE5AW-2): 13、12、10、8、7. 報考人數 數A 59616、數B 55802、社會 56679、自然 49241.
   // Anything not found is left for the student to copy from their 成績單.
   const lv5 = a => ({ 頂標: a[0], 前標: a[1], 均標: a[2], 後標: a[3], 底標: a[4] });
   const H1M = lv5([13, 11, 7, 4, 3]);
+  const H1 = { 國: lv5([13, 12, 11, 9, 7]), 英: lv5([12, 10, 7, 5, 4]), 數A: H1M, 數B: H1M, 社: lv5([13, 12, 10, 8, 7]), 自: lv5([12, 10, 8, 5, 4]) };
   const H3 = { 國: lv5([13, 12, 11, 9, 7]), 英: lv5([12, 9, 6, 4, 3]), 數A: lv5([10, 8, 6, 4, 3]), 數B: lv5([12, 10, 6, 4, 3]), 社: lv5([13, 12, 10, 8, 7]), 自: lv5([13, 11, 9, 7, 5]) };
   const H2 = { 國: lv5([14, 13, 12, 10, 9]), 英: lv5([12, 10, 7, 4, 3]), 數A: lv5([11, 9, 6, 4, 3]), 數B: lv5([11, 9, 6, 4, 3]), 社: lv5([13, 11, 10, 8, 7]), 自: lv5([12, 10, 8, 6, 4]) };
   const MOCK_REF = [
-    { n: '第一次學測模擬考', d: '2026-07-29', org: '7月全國', std: { 數A: H1M, 數B: H1M }, stdNote: '翰林 7月全國模考只找到數學的五標（數A、數B 同一份考卷）',  when: '7/29–7/30', r: { 國文: '第 1–2 冊', 英文: '第 1–2 冊', 數學: '第 1 冊（數A、數B 不分卷）', 社會: '歷史、地理第 1 冊；公民：社會政治', 自然: '物理、化學、生物、地科必修上半冊' } },
+    { n: '第一次學測模擬考', d: '2026-07-29', org: '7月全國', std: H1, stdNote: '翰林 7月全國模考的五標（數A、數B 同一份考卷）',  when: '7/29–7/30', r: { 國文: '第 1–2 冊', 英文: '第 1–2 冊', 數學: '第 1 冊（數A、數B 不分卷）', 社會: '歷史、地理第 1 冊；公民：社會政治', 自然: '物理、化學、生物、地科必修上半冊' } },
     { n: '第二次學測模擬考', d: '2026-09-02', org: '9月北北基', std: H2, stdNote: '翰林 9月北北基模考的五標（數A、數B 同一份考卷）',  when: '9/2–9/3（有的學校 9/9–9/10）', r: { 國文: '第 1–3 冊', 英文: '第 1–3 冊', 數學: '第 1–2 冊（不分卷）', 社會: '第 1–2 冊；公民：社會政治、法律', 自然: '物化生地必修全（含探究與實作）', 英聽: '英文必修第 1–4 學期' } },
     { n: '第三次學測模擬考', d: '2026-10-28', org: '10月北北基', std: H3, stdNote: '翰林 10月北北基模考（115-E3）的五標',  when: '10/28–10/29', r: { 國文: '第 1–4 冊', 英文: '第 1–4 冊', 數學: '第 1–2 冊＋數A 或數B 第 3 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
     { n: '第四次學測模擬考', d: '2026-12-08', org: '12月', when: '12/8–12/9', r: { 國文: '第 1–5 冊', 英文: '第 1–5 冊', 數學: '第 1–2 冊＋數A 或數B 第 3–4 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
@@ -1712,7 +1714,7 @@ details.fold>summary:hover{color:var(--text)}
     stdYear: '115',
     stdCustom: copyStd(D.std['115']),
     f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', skip: [], combos: [], untaken: false, sort: 'chance' },
-    fav: [], plan: [], mocks: [], mockV: 2, theme: '',
+    fav: [], plan: [], mocks: [], mockV: 3, theme: '',
   });
   /** 五標 tables: {國: {頂標: 13, …}, …}. A custom one (e.g. a 模考's) must have every level as 1–15 級分. */
   function copyStd(x) { return JSON.parse(JSON.stringify(x)); }
@@ -1810,7 +1812,13 @@ details.fold>summary:hover{color:var(--text)}
       std: cleanStdPart(m.std),
     })).filter(m => SCORE_KEYS.some(k => L.val(m.s, k) != null)).slice(0, MOCK_MAX);
     if (!(s.mockV >= 2)) out.mocks.forEach(m => { m.std = upgradeMockStd(m); });
-    out.mockV = 2;
+    // v3: 7月全國 五標 for every subject became available: fill subjects a matched 模考 still lacks
+    if (!(s.mockV >= 3)) out.mocks.forEach(m => {
+      const p = mockPreset(m);
+      if (!p || !p.std) return;
+      for (const k of SCORE_KEYS) if (p.std[k] && !(m.std && m.std[k])) { m.std = m.std || {}; m.std[k] = { ...p.std[k] }; }
+    });
+    out.mockV = 3;
     out.plan = [...new Set(arr(s.plan, c => BY_CODE[c]))].slice(0, 6);
     return out;
   }
@@ -2152,9 +2160,10 @@ details.fold>summary:hover{color:var(--text)}
       </div>
       <h3 class="mf-h">級分 <small>沒考的空著</small>${hasScores() ? '<button class="textbtn" type="button" data-act="mfFromScores">帶入「我的學測級分」</button>' : ''}</h3>
       <div class="mf-scores">${SCORE_KEYS.map(k => `<label class="mf-s"><span class="k">${subj(k)}</span><input type="number" inputmode="numeric" min="0" max="15" value="${f.s[k] || ''}" data-mf="${k}" placeholder="—"><small class="lv" data-mflv="${k}">${mfLevel(f, k)}</small></label>`).join('')}
-        <label class="mf-s"><span class="k">英聽</span><span class="selectbox"><select data-mf="聽"><option value="">—</option>${['A', 'B', 'C', 'F'].map(g => `<option ${f.聽 === g ? 'selected' : ''}>${g}</option>`).join('')}</select>${icon('chevD', 'sm')}</span><small class="lv"></small></label>
+        ${p && !p.r.英聽 && !f.聽 ? '' : `<label class="mf-s"><span class="k">英聽</span><span class="selectbox"><select data-mf="聽"><option value="">—</option>${['A', 'B', 'C', 'F'].map(g => `<option ${f.聽 === g ? 'selected' : ''}>${g}</option>`).join('')}</select>${icon('chevD', 'sm')}</span><small class="lv"></small></label>`}
       </div>
       ${p && p.n === '第一次學測模擬考' || p && p.n === '第二次學測模擬考' ? '<p class="hint">這次數A、數B 是同一份考卷：填在你學測要考的那一科。</p>' : ''}
+      ${p && !p.r.英聽 ? '<p class="hint">這次沒有考英聽（英聽只有第二次考）。</p>' : ''}
       <div class="mf-std"><div class="mf-std-h"><b>這次的五標</b><span>${esc(stdText)}</span><button class="textbtn" type="button" data-act="mfStdToggle" aria-expanded="${f.stdOpen}">${f.stdOpen ? '收起' : stdKeys.length ? '看／修改' : '填五標'}</button></div>${f.stdOpen ? grid : ''}</div>
       <div class="mf-actions"><button class="btn primary" type="button" data-act="mfSave">${icon('check', 'sm')}${f.id ? '存好了' : '存這次模考'}</button></div>
     </section>`;
@@ -2913,7 +2922,7 @@ details.fold>summary:hover{color:var(--text)}
       <div class="tablewrap"><table class="reftable"><thead><tr><th>次</th><th>日期</th>${['國文', '英文', '數學', '社會', '自然'].map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>
       ${MOCK_REF.filter(x => x.r).map(x => `<tr><th>${esc(x.n.replace('學測模擬考', ''))}</th><td>${esc(x.when)}</td>${['國文', '英文', '數學', '社會', '自然'].map(k => `<td>${esc(x.r[k] || '—')}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
-      <p class="hint">整理自多所高中 115 學年度高三模考公告（台南、高雄、新竹），各校日期可能差幾天，以學校公告為準。第二次起考英聽（英文必修第 1–4 學期）。範圍還沒考完，前幾次分數偏低很正常；跟正式學測最接近的是第四次。另有民間的樂學網「樂模」（9/12–13、11/21–22）。正式學測：2027/1/22–1/24。</p><p class="hint">內建五標（翰林）：7月全國只找到數學（115-E1，約 5.3 萬人）；9月北北基各科（兩份公開整理一致）；10月北北基各科（115-E3 原始分數與級分五標對照表，報考約 5–6 萬人）；12 月還沒考。都是公開整理的數字，跟你的成績單不一樣就以成績單為準，在「修改」改掉。</p></details>`;
+      <p class="hint">整理自多所高中 115 學年度高三模考公告（台南、高雄、新竹），各校日期可能差幾天，以學校公告為準。英聽只有第二次考（英文必修第 1–4 學期），第一次、第三次的範圍表都沒有英聽。範圍還沒考完，前幾次分數偏低很正常；跟正式學測最接近的是第四次。另有民間的樂學網「樂模」（9/12–13、11/21–22）。正式學測：2027/1/22–1/24。</p><p class="hint">內建五標（翰林）：7月全國各科（115-E1，約 5.3 萬人；數學和級距跟另一份公開資料完全一致）；9月北北基各科（兩份公開整理一致）；10月北北基各科（115-E3 原始分數與級分五標對照表，報考約 5–6 萬人）；12 月還沒考。都是公開整理的數字，跟你的成績單不一樣就以成績單為準，在「修改」改掉。</p></details>`;
   }
   const mockLinkHTML = () => `<section class="sec mocklink"><h2>模考趨勢</h2><p class="sub">${st.mocks.length ? `已存 ${st.mocks.length} 次模考。` : ''}每次模考的成績、五標、每一科的變化和每一次的落點，都在「模考」分頁。</p><button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}${st.mocks.length ? '看模考趨勢' : '新增模考'}</button></section>`;
   /** One small chart per subject on a shared 級分 scale, plus 落點 per 模考 and a table. */
