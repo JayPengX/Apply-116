@@ -108,7 +108,7 @@
     stdYear: '115',
     stdCustom: copyStd(D.std['115']),
     f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', skip: [], combos: [], untaken: false, sort: 'chance' },
-    fav: [], plan: [], mocks: [], theme: '',
+    fav: [], plan: [], mocks: [], mockV: 2, theme: '',
   });
   /** 五標 tables: {國: {頂標: 13, …}, …}. A custom one (e.g. a 模考's) must have every level as 1–15 級分. */
   function copyStd(x) { return JSON.parse(JSON.stringify(x)); }
@@ -145,6 +145,36 @@
     }
     return out;
   }
+  /**
+   * One-time upgrade of 模考 saved before the 翰林 五標 were built in (state version < 2):
+   * - match each record to a 翰林 preset by name (第三次 / 三模 / 10月…) or by date;
+   * - per subject, a 五標 row that is missing, or is a copy of a 學測 五標 (the old default that
+   *   was prefilled), takes the preset's row; a row the student typed themselves is kept;
+   * - a copied 學測 row with no preset row is dropped (it was never this 模考's 五標).
+   */
+  const MOCK_KEYS = [[/第?一次|一模|7\s*月/, 0], [/第?二次|二模|9\s*月/, 1], [/第?三次|三模|10\s*月/, 2], [/第?四次|四模|12\s*月/, 3]];
+  function mockPreset(m) {
+    const ref = MOCK_REF.filter(x => x.r);
+    const exact = ref.find(x => x.n === m.n);
+    if (exact) return exact;
+    // another publisher's or region's exam (中區、南一、樂模、校內…) is never matched to 翰林
+    if (/中區|中模|南區|南一|康熹|龍騰|樂學|樂模|校內|段考|全真|晟景|大考中心/.test(m.n)) return null;
+    const byName = MOCK_KEYS.find(([re]) => re.test(m.n));
+    if (byName) return ref[byName[1]];
+    const day = iso => Date.parse(iso + 'T00:00:00Z') / 864e5;
+    return ref.find(x => { const dd = day(m.d) - day(x.d); return dd >= -3 && dd <= 14; }) || null;
+  }
+  function upgradeMockStd(m) {
+    const p = mockPreset(m);
+    const isTestCopy = (k, row) => Object.values(D.std).some(y => y[k] && L.LEVELS.every(l => y[k][l] === row[l]));
+    const out = {};
+    for (const k of SCORE_KEYS) {
+      const mine = m.std && m.std[k], pre = p && p.std && p.std[k];
+      if (mine && !isTestCopy(k, mine)) out[k] = mine;
+      else if (pre) out[k] = { ...pre };
+    }
+    return Object.keys(out).length ? out : null;
+  }
   function sanitize(s) {
     const d = DEFAULT();
     if (!s || typeof s !== 'object' || s.v !== 1) return d;
@@ -175,6 +205,8 @@
       s: cleanScores(m.s),
       std: cleanStdPart(m.std),
     })).filter(m => SCORE_KEYS.some(k => L.val(m.s, k) != null)).slice(0, MOCK_MAX);
+    if (!(s.mockV >= 2)) out.mocks.forEach(m => { m.std = upgradeMockStd(m); });
+    out.mockV = 2;
     out.plan = [...new Set(arr(s.plan, c => BY_CODE[c]))].slice(0, 6);
     return out;
   }
@@ -475,10 +507,11 @@
   const mName = m => (presetOf(m.n) ? '翰林' + m.n.replace('學測模擬考', '') : m.n);
   const sameStd = (a, b) => JSON.stringify(cleanStdPart(a)) === JSON.stringify(cleanStdPart(b));
   function stdSource(m) {
-    const p = presetOf(m.n);
+    const p = mockPreset(m);
     if (!m.std) return '沒有五標';
     if (p && p.std && sameStd(m.std, p.std)) return '翰林公布的五標';
-    return '自己填的五標';
+    const same = p && p.std ? Object.keys(m.std).filter(k => p.std[k] && L.LEVELS.every(l => p.std[k][l] === m.std[k][l])) : [];
+    return same.length ? '翰林五標（有幾科自己改過）' : '自己填的五標';
   }
   /** New or edited 模考 in the form (ui.mf). */
   function newMockDraft() {
@@ -488,12 +521,14 @@
   function editMockDraft(m) {
     const s = {};
     SCORE_KEYS.forEach(k => { const v = L.val(m.s, k); if (v != null) s[k] = v; });
-    return { id: m.id, n: m.n, d: m.d, s, 聽: m.s.聽 || '', std: m.std ? copyStd(m.std) : {}, stdOpen: false };
+    const pre = mockPreset(m);
+    return { id: m.id, n: m.n, pre: pre ? pre.n : null, d: m.d, s, 聽: m.s.聽 || '', std: m.std ? copyStd(m.std) : {}, stdOpen: false };
   }
   const mfLevel = (f, k) => { const v = f.s[k]; const r = f.std[k]; if (!v || !r || L.LEVELS.some(l => !r[l])) return ''; return levelIn(f.std, k, v); };
   function mockFormHTML() {
     const f = ui.mf;
-    const p = presetOf(f.n);
+    // a record named 「三模」 etc. still belongs to its 翰林 模考: keep its own name, but offer that 模考's 五標
+    const p = presetOf(f.n) || (f.pre && presetOf(f.pre));
     const pick = p ? p.n : '';
     const stdKeys = SCORE_KEYS.filter(k => f.std[k] && L.LEVELS.every(l => f.std[k][l]));
     const stdText = !stdKeys.length ? (p ? '翰林這次的五標還沒收錄，拿到成績單後可以自己填（不填就用檢定用的五標）。' : '可以填這次模考公布的五標（不填就用檢定用的五標）。')
@@ -505,7 +540,7 @@
     return `<section class="sec mform" id="mockForm"><div class="sec-hh"><h2>${f.id ? '修改模考' : '新增一次模考'}</h2>${st.mocks.length ? '<button class="textbtn" type="button" data-act="mfCancel">取消</button>' : ''}</div>
       <div class="mf-top">
         <label class="mf-f"><span>哪一次</span><span class="selectbox"><select id="mfPreset">${MOCK_REF.filter(x => x.r).map(x => `<option value="${esc(x.n)}" ${x.n === pick ? 'selected' : ''}>翰林 ${esc(x.org)}（${esc(x.n.replace('學測模擬考', ''))}，${esc(x.when.replace(/（.*）/, ''))}）</option>`).join('')}<option value="" ${pick ? '' : 'selected'}>其他模考</option></select>${icon('chevD', 'sm')}</span></label>
-        ${pick ? '' : `<label class="mf-f"><span>名稱</span><input id="mfName" type="text" maxlength="30" value="${esc(f.n)}" placeholder="例如：南一第一次、校內模考"></label>`}
+        ${presetOf(f.n) ? '' : `<label class="mf-f"><span>名稱</span><input id="mfName" type="text" maxlength="30" value="${esc(f.n)}" placeholder="例如：南一第一次、校內模考"></label>`}
         <label class="mf-f"><span>日期</span><input id="mfDate" type="date" value="${f.d}"></label>
       </div>
       <h3 class="mf-h">級分 <small>沒考的空著</small>${hasScores() ? '<button class="textbtn" type="button" data-act="mfFromScores">帶入「我的學測級分」</button>' : ''}</h3>
@@ -1677,7 +1712,7 @@
     mfCancel: () => { ui.mf = null; render(); },
     mfSave: () => saveMockForm(),
     mfStdToggle: () => { ui.mf.stdOpen = !ui.mf.stdOpen; render(); },
-    mfStdPreset: () => { const x = presetOf(ui.mf.n); if (x && x.std) { ui.mf.std = copyStd(x.std); render(); toast('已改回翰林公布的五標'); } },
+    mfStdPreset: () => { const x = presetOf(ui.mf.n) || (ui.mf.pre && presetOf(ui.mf.pre)); if (x && x.std) { ui.mf.std = copyStd(x.std); render(); toast('已改回翰林公布的五標'); } },
     mfFromScores: () => { SCORE_KEYS.forEach(k => { const v = L.val(st.scores, k); if (v != null) ui.mf.s[k] = v; else delete ui.mf.s[k]; }); ui.mf.聽 = st.scores.聽 || ''; render(); },
     hideUntaken: () => { st.f.untaken = false; ui.shown = PAGE; render(); },
     groupsAll: () => { st.f.groups = []; ui.shown = PAGE; render(); },
@@ -1772,8 +1807,8 @@
       const t = ev.target;
       if (t.id === 'mfPreset' && ui.mf) {
         const x = presetOf(t.value);
-        if (x) Object.assign(ui.mf, { n: x.n, d: x.d, std: x.std ? copyStd(x.std) : {} });
-        else Object.assign(ui.mf, { n: '', std: {} });
+        if (x) Object.assign(ui.mf, { n: x.n, pre: null, d: x.d, std: x.std ? copyStd(x.std) : {} });
+        else Object.assign(ui.mf, { n: '', pre: null, std: {} });
         render();
         if (!x) $('#mfName').focus();
         return;

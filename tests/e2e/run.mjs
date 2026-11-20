@@ -302,6 +302,41 @@ try {
     ok((await scores(page)).國 === '10' && errors.length === 0, 'works when localStorage throws');
     await ctx.close();
   }
+
+  console.log('模考 saved by an older version');
+  {
+    const { ctx, page, errors } = await newPage(browser, { viewport: { width: 1280, height: 900 } });
+    await page.goto(URL_);
+    await page.waitForSelector('.row');
+    await page.evaluate(() => {
+      const st = JSON.parse(JSON.stringify(window.__app.st()));
+      delete st.mockV;
+      const lv = a => ({ 頂標: a[0], 前標: a[1], 均標: a[2], 後標: a[3], 底標: a[4] });
+      // the old version prefilled a copy of the 115 學測 五標
+      const T = { 國: lv([13, 12, 10, 9, 7]), 英: lv([13, 11, 8, 5, 3]), 數A: lv([12, 10, 8, 5, 4]), 數B: lv([11, 9, 5, 3, 2]), 社: lv([13, 12, 10, 8, 7]), 自: lv([13, 12, 9, 7, 5]) };
+      const sc = { 國: '12', 英: '10', 數A: '', 數B: '8', 社: '13', 自: '', 聽: '' };
+      const own = JSON.parse(JSON.stringify(T)); own.國 = lv([14, 13, 11, 9, 8]);
+      st.mocks = [
+        { id: 'a', n: '第二次學測模擬考', d: '2026-09-02', s: sc, std: null },
+        { id: 'b', n: '第三次學測模擬考', d: '2026-10-28', s: sc, std: own },
+        { id: 'c', n: '三模', d: '2026-10-28', s: sc, std: T },
+        { id: 'd', n: '中區三模', d: '2026-10-28', s: sc, std: null },
+      ];
+      localStorage.setItem('apply116-v1', JSON.stringify(st));
+    });
+    await page.reload();
+    await page.waitForSelector('.row');
+    const ms = await page.evaluate(() => Object.fromEntries(window.__app.st().mocks.map(m => [m.id, m.std])));
+    ok(ms.a && ms.a.國.均標 === 12, 'old 模考 without 五標 gets 翰林 9月北北基 五標');
+    ok(ms.b.國.頂標 === 14 && ms.b.英.前標 === 9, 'a typed 五標 row is kept; copied 學測 rows become 翰林 10月北北基');
+    ok(ms.c && ms.c.國.均標 === 11, '「三模」 is matched to 翰林 10月北北基');
+    ok(ms.d === null, 'another exam (中區) never gets 翰林 五標');
+    await page.click('#tabs [data-tab="mock"]');
+    await page.waitForSelector('#trendSec');
+    ok((await page.locator('.mcard').count()) === 4 && (await page.locator('#trendSec').innerText()).includes('最近一次'), 'upgraded 模考 render with analysis');
+    ok(errors.length === 0, 'no console errors after the upgrade');
+    await ctx.close();
+  }
 } finally {
   await browser.close();
 }
