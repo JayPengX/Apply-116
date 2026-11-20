@@ -323,3 +323,20 @@ test('comboRank: total and 115 rank on a combination; null when a subject was no
   assert.ok(rk.top > 0 && rk.top < 20, 'about the top fifth');
   assert.equal(L.comboRank(['國', '數A'], S({ 國: 13 }), D.pct), null);
 });
+
+test('mockToTest: a 模考 標 maps to the 學測 級分 at the same rank', () => {
+  const lv = a => ({ 頂標: a[0], 前標: a[1], 均標: a[2], 後標: a[3], 底標: a[4] });
+  const std = { 國: lv([14, 13, 12, 10, 9]), 數B: lv([11, 9, 6, 4, 3]) };
+  // 均標 of the 模考 = top 50% = 115 學測 國文 均標 (10)
+  assert.deepEqual(L.mockToTest(std, '國', 12, D.pct), { g: D.std['115'].國.均標, top: 50 });
+  // 前標 → 115 前標, 頂標 → 115 頂標
+  assert.equal(L.mockToTest(std, '國', 13, D.pct).g, D.std['115'].國.前標);
+  assert.equal(L.mockToTest(std, '國', 14, D.pct).g, D.std['115'].國.頂標);
+  assert.equal(L.mockToTest(std, '數B', 6, D.pct).g, D.std['115'].數B.均標);
+  // in between is interpolated, and higher 模考 級分 never maps lower
+  const gs = [3, 5, 7, 9, 11, 13, 15].map(v => L.mockToTest(std, '數B', v, D.pct).g);
+  assert.deepEqual(gs, gs.slice().sort((a, b) => a - b));
+  // no 五標 for the subject, or not taken → null
+  assert.equal(L.mockToTest(std, '英', 10, D.pct), null);
+  assert.equal(L.mockToTest(std, '國', 0, D.pct), null);
+});

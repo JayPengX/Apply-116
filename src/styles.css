@@ -839,3 +839,34 @@ details.fold>summary:hover{color:var(--text)}
 .lt .lvt{font-size:12.5px;font-weight:700;color:var(--ok)}
 .lt small{font-size:12px;color:var(--text-2)}
 @media (max-width:600px){.mf-scores{grid-template-columns:repeat(3,minmax(0,1fr))}.lt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* 模考 × 怎麼進步 */
+.mf-wide{grid-column:1 / -1}
+.mf-s .lv span{display:block;color:var(--text-2);font-weight:600;font-size:11.5px}
+.msp{width:64px;height:22px;flex:none}
+.msp path{fill:none;stroke:var(--series-1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.msp circle{fill:var(--series-1);stroke:var(--surface);stroke-width:1.5}
+.lt-h{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.lt .eqv{font-size:12.5px;color:var(--text-2);display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 4px}
+.lt .eqv b{font-size:15px;color:var(--text)}
+.lt .eqv small{color:var(--text-3);font-size:11.5px;width:100%}
+.lt .gain{color:var(--ok);font-weight:600}
+.lt-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.reftable small.lv.eq{color:var(--text-2)}
+.note-inline{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--info);background:var(--info-bg);padding:8px 10px;border-radius:9px;margin:6px 0}
+.board{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;margin-top:10px;border-top:1px solid var(--line)}
+.bd-row{display:contents}
+.bd-row>span{padding:9px 8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;min-width:0}
+.bd-h>span{font-size:12px;color:var(--text-3);font-weight:600;padding-top:7px;padding-bottom:7px}
+.bd-row.top>span{background:color-mix(in srgb,var(--ok-bg) 70%,transparent)}
+.bd-k{font-weight:700;font-size:14px;white-space:nowrap}
+.bd-c b{font-size:16px}
+.bd-c small{font-size:11.5px;color:var(--text-3)}
+.bd-mock{gap:8px}
+.bd-m{display:flex;flex-direction:column;line-height:1.2}
+.bd-m small{font-size:11px;font-weight:600}
+.bd-m small.up{color:var(--ok)}.bd-m small.down{color:var(--bad)}
+.bd-n{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;padding:4px 6px;border-radius:8px;background:color-mix(in srgb,var(--series-1) calc(var(--h) * 55%),transparent);line-height:1.15}
+.bd-n b{font-size:15px;font-variant-numeric:tabular-nums}
+.bd-n small{font-size:10.5px;color:var(--text-2)}
+.bd-n.none{background:none;color:var(--text-3)}
+@media (max-width:600px){.board .msp{width:48px}.bd-row>span{padding:8px 5px}.bd-n{min-width:38px}}

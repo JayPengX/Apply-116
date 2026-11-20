@@ -58,9 +58,9 @@
   const H3 = { 國: lv5([13, 12, 11, 9, 7]), 英: lv5([12, 9, 6, 4, 3]), 數A: lv5([10, 8, 6, 4, 3]), 數B: lv5([12, 10, 6, 4, 3]), 社: lv5([13, 12, 10, 8, 7]), 自: lv5([13, 11, 9, 7, 5]) };
   const H2 = { 國: lv5([14, 13, 12, 10, 9]), 英: lv5([12, 10, 7, 4, 3]), 數A: lv5([11, 9, 6, 4, 3]), 數B: lv5([11, 9, 6, 4, 3]), 社: lv5([13, 11, 10, 8, 7]), 自: lv5([12, 10, 8, 6, 4]) };
   const MOCK_REF = [
-    { n: '第一次學測模擬考', d: '2026-07-29', org: '7月全國', std: H1, stdNote: '翰林 7月全國模考的五標（數A、數B 同一份考卷）',  when: '7/29–7/30', r: { 國文: '第 1–2 冊', 英文: '第 1–2 冊', 數學: '第 1 冊（數A、數B 不分卷）', 社會: '歷史、地理第 1 冊；公民：社會政治', 自然: '物理、化學、生物、地科必修上半冊' } },
-    { n: '第二次學測模擬考', d: '2026-09-02', org: '9月北北基', std: H2, stdNote: '翰林 9月北北基模考的五標（數A、數B 同一份考卷）',  when: '9/2–9/3（有的學校 9/9–9/10）', r: { 國文: '第 1–3 冊', 英文: '第 1–3 冊', 數學: '第 1–2 冊（不分卷）', 社會: '第 1–2 冊；公民：社會政治、法律', 自然: '物化生地必修全（含探究與實作）', 英聽: '英文必修第 1–4 學期' } },
-    { n: '第三次學測模擬考', d: '2026-10-28', org: '10月北北基', std: H3, stdNote: '翰林 10月北北基模考（115-E3）的五標',  when: '10/28–10/29', r: { 國文: '第 1–4 冊', 英文: '第 1–4 冊', 數學: '第 1–2 冊＋數A 或數B 第 3 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
+    { n: '第一次學測模擬考', d: '2026-07-29', org: '7月全國', area: '全國', std: H1, stdNote: '翰林 7月全國模考的五標（數A、數B 同一份考卷）',  when: '7/29–7/30', r: { 國文: '第 1–2 冊', 英文: '第 1–2 冊', 數學: '第 1 冊（數A、數B 不分卷）', 社會: '歷史、地理第 1 冊；公民：社會政治', 自然: '物理、化學、生物、地科必修上半冊' } },
+    { n: '第二次學測模擬考', d: '2026-09-02', org: '9月北北基', area: '北區', std: H2, stdNote: '翰林 9月北北基模考的五標（數A、數B 同一份考卷）',  when: '9/2–9/3（有的學校 9/9–9/10）', r: { 國文: '第 1–3 冊', 英文: '第 1–3 冊', 數學: '第 1–2 冊（不分卷）', 社會: '第 1–2 冊；公民：社會政治、法律', 自然: '物化生地必修全（含探究與實作）', 英聽: '英文必修第 1–4 學期' } },
+    { n: '第三次學測模擬考', d: '2026-10-28', org: '10月北北基', area: '北區', std: H3, stdNote: '翰林 10月北北基模考（115-E3）的五標',  when: '10/28–10/29', r: { 國文: '第 1–4 冊', 英文: '第 1–4 冊', 數學: '第 1–2 冊＋數A 或數B 第 3 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
     { n: '第四次學測模擬考', d: '2026-12-08', org: '12月', when: '12/8–12/9', r: { 國文: '第 1–5 冊', 英文: '第 1–5 冊', 數學: '第 1–2 冊＋數A 或數B 第 3–4 冊', 社會: '第 1–3 冊', 自然: '必修全（含探究與實作）' } },
     { n: '116 學測', d: '2027-01-22', when: '2027/1/22–1/24', r: null },
   ];
@@ -509,10 +509,9 @@
   const mockTotal = m => SCORE_KEYS.reduce((t, k) => t + (L.val(m.s, k) || 0), 0);
   const scoreLine = sc => SCORE_KEYS.map(k => L.val(sc, k)).map((v, i) => (v == null ? null : `${ABBR[SCORE_KEYS[i]]}${v}`)).filter(Boolean).join(' ') + (sc.聽 ? ` 聽${sc.聽}` : '');
   // A 模考's 五標 completed with the 檢定 五標 for subjects it does not cover (used to judge 檢定 for that 模考).
-  const fullStd = ms => { const base = copyStd(STD()); if (ms) for (const k of Object.keys(ms)) base[k] = { ...ms[k] }; return base; };
   const presetOf = n => MOCK_REF.find(x => x.n === n && x.r);
   // Short display name: built-in 模考 read as 「翰林第二次」.
-  const mName = m => (presetOf(m.n) ? '翰林' + m.n.replace('學測模擬考', '') : m.n);
+  const mName = m => { const p = presetOf(m.n); return p ? '翰林' + m.n.replace('學測模擬考', '') + (p.area ? `（${p.area}）` : '') : m.n; };
   const sameStd = (a, b) => JSON.stringify(cleanStdPart(a)) === JSON.stringify(cleanStdPart(b));
   function stdSource(m) {
     const p = mockPreset(m);
@@ -535,7 +534,12 @@
     const pre = mockPreset(m);
     return { id: m.id, n: m.n, pre: pre ? pre.n : null, d: m.d, s, 聽: m.s.聽 || '', std: m.std ? copyStd(m.std) : {}, stdOpen: false };
   }
-  const mfLevel = (f, k) => { const v = f.s[k]; const r = f.std[k]; if (!v || !r || L.LEVELS.some(l => !r[l])) return ''; return levelIn(f.std, k, v); };
+  const mfLevel = (f, k) => {
+    const v = f.s[k], r = f.std[k];
+    if (!v || !r || L.LEVELS.some(l => !r[l])) return '';
+    const e = L.mockToTest(f.std, k, v, D.pct);
+    return `${levelIn(f.std, k, v)}${e ? `<span>學測約 ${e.g}</span>` : ''}`;
+  };
   function mockFormHTML() {
     const f = ui.mf;
     // a record named 「三模」 etc. still belongs to its 翰林 模考: keep its own name, but offer that 模考's 五標
@@ -550,7 +554,8 @@
       </div><p class="hint">一科五格都填才算。成績單上通常寫「頂標、前標、均標、後標、底標」。${p && p.std ? ' <button class="textbtn" type="button" data-act="mfStdPreset">改回翰林公布的</button>' : ''}</p>`;
     return `<section class="sec mform" id="mockForm"><div class="sec-hh"><h2>${f.id ? '修改模考' : '新增一次模考'}</h2>${st.mocks.length ? '<button class="textbtn" type="button" data-act="mfCancel">取消</button>' : ''}</div>
       <div class="mf-top">
-        <label class="mf-f"><span>哪一次</span><span class="selectbox"><select id="mfPreset">${MOCK_REF.filter(x => x.r).map(x => `<option value="${esc(x.n)}" ${x.n === pick ? 'selected' : ''}>翰林 ${esc(x.org)}（${esc(x.n.replace('學測模擬考', ''))}，${esc(x.when.replace(/（.*）/, ''))}）</option>`).join('')}<option value="" ${pick ? '' : 'selected'}>其他模考</option></select>${icon('chevD', 'sm')}</span></label>
+        <label class="mf-f"><span>哪一次</span><span class="selectbox"><select id="mfPreset">${MOCK_REF.filter(x => x.r).map(x => `<option value="${esc(x.n)}" ${x.n === pick ? 'selected' : ''}>翰林 ${esc(x.org)}（${x.area ? esc(x.area) + '・' : ''}${esc(x.n.replace('學測模擬考', ''))}，${esc(x.when.replace(/（.*）/, ''))}）</option>`).join('')}<option value="" ${pick ? '' : 'selected'}>其他模考</option></select>${icon('chevD', 'sm')}</span></label>
+        ${pick ? '' : '<p class="hint mf-wide">中區（南一出題，「中模」）、全國公私立（南一）跟翰林北北基（北區）、翰林全國是不同的考試，五標不能混用：照你的成績單填這次的五標。</p>'}
         ${presetOf(f.n) ? '' : `<label class="mf-f"><span>名稱</span><input id="mfName" type="text" maxlength="30" value="${esc(f.n)}" placeholder="例如：南一第一次、校內模考"></label>`}
         <label class="mf-f"><span>日期</span><input id="mfDate" type="date" value="${f.d}"></label>
       </div>
@@ -594,10 +599,21 @@
   function useMock(id) {
     const m = st.mocks.find(x => x.id === id);
     if (!m) return;
-    st.scores = { ...cleanScores(m.s), 識: st.scores.識, 實: st.scores.實 };
-    if (m.std) { st.stdYear = 'custom'; st.stdCustom = fullStd(m.std); }
+    // 模考 級分 are read as 學測 級分 by rank, so 檢定 and the 115 cuts use the 學測 scale too
+    const { S, eq } = mockAsTest(m);
+    st.scores = { ...cleanScores(S), 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
+    if (st.stdYear === 'custom' && Object.keys(eq).length) st.stdYear = '115';
     ui.shown = PAGE; ui.tryS = null; setTab('explore');
-    toast(`已用「${mName(m)}」的成績${m.std ? '和五標' : ''}算落點`);
+    toast(Object.keys(eq).length ? `已把「${mName(m)}」換算成學測級分（${Object.keys(eq).map(k => ABBR[k] + ' ' + L.val(m.s, k) + '→' + eq[k].g).join('、')}）看落點` : `已用「${mName(m)}」的成績看落點`);
+  }
+  function tryMock(id) {
+    const m = st.mocks.find(x => x.id === id);
+    if (!m) return;
+    ui.tryS = { ...st.scores, ...cleanScores(mockAsTest(m).S), 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
+    ui.tryFrom = mName(m);
+    ui.keepTry = true;
+    if (ui.tab === 'boost') render(); else setTab('boost');
+    setTimeout(() => { const el = $('#trySec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
   }
   function renderMock() {
     const el = $('#mock');
@@ -1318,108 +1334,184 @@
       <div class="tablewrap"><table class="reftable"><thead><tr><th>次</th><th>日期</th>${['國文', '英文', '數學', '社會', '自然'].map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>
       ${MOCK_REF.filter(x => x.r).map(x => `<tr><th>${esc(x.n.replace('學測模擬考', ''))}</th><td>${esc(x.when)}</td>${['國文', '英文', '數學', '社會', '自然'].map(k => `<td>${esc(x.r[k] || '—')}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
-      <p class="hint">整理自多所高中 115 學年度高三模考公告（台南、高雄、新竹），各校日期可能差幾天，以學校公告為準。英聽只有第二次考（英文必修第 1–4 學期），第一次、第三次的範圍表都沒有英聽。範圍還沒考完，前幾次分數偏低很正常；跟正式學測最接近的是第四次。另有民間的樂學網「樂模」（9/12–13、11/21–22）。正式學測：2027/1/22–1/24。</p><p class="hint">內建五標（翰林）：7月全國各科（115-E1，約 5.3 萬人；數學和級距跟另一份公開資料完全一致）；9月北北基各科（兩份公開整理一致）；10月北北基各科（115-E3 原始分數與級分五標對照表，報考約 5–6 萬人）；12 月還沒考。都是公開整理的數字，跟你的成績單不一樣就以成績單為準，在「修改」改掉。</p></details>`;
+      <p class="hint">整理自多所高中 115 學年度高三模考公告（台南、高雄、新竹），各校日期可能差幾天，以學校公告為準。英聽只有第二次考（英文必修第 1–4 學期），第一次、第三次的範圍表都沒有英聽。範圍還沒考完，前幾次分數偏低很正常；跟正式學測最接近的是第四次。另有民間的樂學網「樂模」（9/12–13、11/21–22）。正式學測：2027/1/22–1/24。</p><p class="hint">內建五標（翰林）：7月全國各科（115-E1，約 5.3 萬人；數學和級距跟另一份公開資料完全一致）；9月北北基各科（兩份公開整理一致）；10月北北基各科（115-E3 原始分數與級分五標對照表，報考約 5–6 萬人）；12 月還沒考。都是公開整理的數字，跟你的成績單不一樣就以成績單為準，在「修改」改掉。北北基（北區）、中區（南一「中模」）、全國公私立（南一）是不同單位辦的不同考試，考生和難度都不一樣，五標不能互用。</p></details>`;
   }
   const mockLinkHTML = () => `<section class="sec mocklink"><h2>模考趨勢</h2><p class="sub">${st.mocks.length ? `已存 ${st.mocks.length} 次模考。` : ''}每次模考的成績、五標、每一科的變化和每一次的落點，都在「模考」分頁。</p><button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}${st.mocks.length ? '看模考趨勢' : '新增模考'}</button></section>`;
   /** One small chart per subject on a shared 級分 scale, plus 落點 per 模考 and a table. */
+  /** A 模考's scores read as 學測 級分: each subject with that 模考's 五標 is converted by rank (L.mockToTest). */
+  function mockAsTest(m) {
+    const S = { ...m.s }, eq = {};
+    for (const k of SCORE_KEYS) {
+      const e = L.mockToTest(m.std, k, L.val(m.s, k), D.pct);
+      if (e) { eq[k] = e; S[k] = String(e.g); }
+    }
+    return { S, eq };
+  }
+  /** Tier counts in a scope for a set of scores (current 檢定 五標). */
+  function tierCounts(S, scope) {
+    const o = opts(), c = {}, tiers = new Map();
+    for (const d of scope) { const t = L.evaluate(d, S, o).tier; c[t] = (c[t] || 0) + 1; tiers.set(d.c, t); }
+    return { c, tiers, good: (c.穩 || 0) + (c.適中 || 0) };
+  }
+  /** For each subject: how many 系 in the scope get a better 落點 with 1 more 級分. */
+  function gainsFor(S, scope, base) {
+    const o = opts(), out = {};
+    for (const k of SCORE_KEYS) {
+      const v = L.val(S, k);
+      if (v == null || v >= 15) continue;
+      const S2 = { ...S, [k]: String(v + 1) };
+      let up = 0;
+      for (const d of scope) { const t0 = base.tiers.get(d.c), t1 = L.evaluate(d, S2, o).tier; if (TIERS.indexOf(t1) < TIERS.indexOf(t0) && t1 !== '無資料') up++; }
+      out[k] = up;
+    }
+    return out;
+  }
+  /** Tiny trend line for a list of numbers (null = not taken), on the 0–15 scale. */
+  function miniSpark(vals, label) {
+    const pts = vals.map((v, i) => [i, v]).filter(p => p[1] != null);
+    if (pts.length < 2) return '';
+    const W = 64, H = 22, X = i => 3 + (i * (W - 6)) / Math.max(1, vals.length - 1), Y = v => H - 3 - ((v - 0) * (H - 6)) / 15;
+    const lo = Math.min(...pts.map(p => p[1])), hi = Math.max(...pts.map(p => p[1]));
+    const y = v => (hi === lo ? H / 2 : 3 + ((hi - v) * (H - 6)) / (hi - lo));
+    const path = pts.map((p, j) => `${j ? 'L' : 'M'}${X(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('');
+    const last = pts[pts.length - 1];
+    return `<svg class="msp" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}"><path d="${path}"/><circle cx="${X(last[0]).toFixed(1)}" cy="${y(last[1]).toFixed(1)}" r="2.6"/></svg>`;
+  }
+  const deltaChip = d => (d == null ? '' : `<span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : 'flat'}">${d > 0 ? '+' + d : d === 0 ? '持平' : d}</span>`);
+
+  /** 模考分析: the latest 模考 read as 學測 級分, how each subject moved, 落點 per 模考, table. */
   function trendHTML(scope) {
     const ms = mocksByDate();
-    const intro = `<p class="sub">每次模考存一筆，這裡會畫出每一科的變化和每一次的落點。</p>`;
-    if (!ms.length) return `<section class="sec" id="trendSec"><h2>模考趨勢</h2>${intro}<button class="btn sm" type="button" data-act="goMocks">${icon('plus', 'sm')}存第一次模考</button>${mockRefHTML()}</section>`;
+    if (!ms.length) return `<section class="sec" id="trendSec"><h2>模考分析</h2><p class="sub">每次模考存一筆，這裡會畫出每一科的變化和每一次的落點。</p><button class="btn sm" type="button" data-act="goMocks">${icon('plus', 'sm')}存第一次模考</button></section>`;
     const subs = SCORE_KEYS.filter(k => ms.some(m => L.val(m.s, k) != null));
-    const all = ms.flatMap(m => subs.map(k => L.val(m.s, k)).filter(v => v != null));
-    const lo = Math.max(0, Math.min(...all) - 2), hi = 15;
-    const W = 240, H = 104, PL = 6, PR = 38, PT = 16, PB = 8;
-    const X = i => (ms.length === 1 ? (PL + W - PR) / 2 : PL + (i * (W - PL - PR)) / (ms.length - 1));
-    const Y = v => PT + ((hi - v) * (H - PT - PB)) / (hi - lo || 1);
-    // A 模考 is read with its own 五標, subject by subject: a subject without one has no 標 (學測 五標 do not fit a 模考).
     const lvOf = (m, k, v) => (m.std && m.std[k] && v != null ? levelIn(m.std, k, v) : '');
-    const panels = subs.map(k => {
-      // dashed lines: the latest 模考 that has this subject's 五標, else the 檢定 五標
-      const srcM = ms.slice().reverse().find(m => m.std && m.std[k]);
-      const std = srcM ? srcM.std : STD();
-      const pts = ms.map((m, i) => ({ i, m, v: L.val(m.s, k) })).filter(p => p.v != null);
-      const last = pts[pts.length - 1], prev = pts[pts.length - 2], first = pts[0];
-      const ref = std && std[k] ? [['前標', std[k].前標], ['均標', std[k].均標]].filter(([, v]) => v >= lo && v <= hi) : [];
-      // a 前標 and a 均標 one 級分 apart would collide: label only the upper one then
-      const refs = ref.map(([l, v], j) => `<line class="ref" x1="${PL}" x2="${W - PR}" y1="${Y(v)}" y2="${Y(v)}"/>${j && Math.abs(Y(v) - Y(ref[0][1])) < 11 ? '' : `<text class="reft" x="${W - PR + 4}" y="${Y(v) + 3.5}">${l} ${v}</text>`}`).join('');
-      const path = pts.map((p, j) => `${j ? 'L' : 'M'}${X(p.i).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
-      const tip = p => { const lv = lvOf(p.m, k, p.v); return `${mName(p.m)}（${mdText(p.m.d)}）：${subj(k)} ${p.v} 級分${lv ? `，這次模考的${lv}` : ''}`; };
-      const dots = pts.map(p => `<circle class="pt" cx="${X(p.i)}" cy="${Y(p.v)}" r="4"/>`).join('');
-      const hits = pts.map(p => `<circle class="hit" cx="${X(p.i)}" cy="${Y(p.v)}" r="13" data-tip="${esc(tip(p))}" tabindex="0" aria-label="${esc(tip(p))}"/>`).join('');
-      const lab = pts.length > 1 ? `<text class="vlab" x="${X(last.i) - 7}" y="${Y(last.v) - 7}" text-anchor="end">${last.v}</text>` : '';
-      const d = prev ? last.v - prev.v : null;
-      return `<figure class="spark"><figcaption><span class="sk">${subj(k)}</span><span class="sv num">${last.v}</span>${d == null ? '' : `<span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : 'flat'}">${d > 0 ? '+' + d : d === 0 ? '持平' : d}</span>`}</figcaption>
-        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${subj(k)}：` + pts.map(p => `${mName(p.m)} ${p.v}`).join('、'))}"><line class="base" x1="${PL}" x2="${W - PR}" y1="${H - PB}" y2="${H - PB}"/>${refs}<path class="ln" d="${path}"/>${dots}${lab}${hits}</svg>
-        <span class="sx">${mdText(first.m.d)}${pts.length > 1 ? ` → ${mdText(last.m.d)}（${pts.length} 次）` : ''} · 虛線：${srcM ? esc(mName(srcM)) + '五標' : esc(stdName())}</span></figure>`;
+    const conv = new Map(ms.map(m => [m.id, mockAsTest(m)]));
+    // a subject is shown on the 學測 scale when every 模考 that has it also has its 五標
+    const onTest = k => ms.every(m => L.val(m.s, k) == null || conv.get(m.id).eq[k]);
+    const valOf = (m, k) => { const v = L.val(m.s, k); if (v == null) return null; const e = conv.get(m.id).eq[k]; return onTest(k) && e ? e.g : v; };
+    const tierRows = ms.map(m => ({ m, ...tierCounts(conv.get(m.id).S, scope) }));
+    const std = STD();
+
+    // ---- latest 模考, subject by subject
+    const lm = ms[ms.length - 1], lc = conv.get(lm.id), lt = tierRows[tierRows.length - 1];
+    const gains = gainsFor(lc.S, scope, lt);
+    const lp = mockPreset(lm);
+    const cells = SCORE_KEYS.filter(k => L.val(lm.s, k) != null).map(k => {
+      const v = L.val(lm.s, k), lv = lvOf(lm, k, v), e = lc.eq[k];
+      let next;
+      if (lv) { const i = L.LEVELS.indexOf(lv), up = i === -1 ? '底標' : i > 0 ? L.LEVELS[i - 1] : null; next = up ? `再 ${lm.std[k][up] - v} 級分到這次的${up}` : '已到這次的頂標'; }
+      else next = lp && lp.std && !lp.std[k] ? '翰林沒公開這科五標：按「修改」補上' : '沒有這次的五標';
+      const testLv = e ? levelOf(k, e.g) : '';
+      const hist = ms.map(m => valOf(m, k));
+      const g = gains[k];
+      return `<div class="lt"><div class="lt-h"><span class="k">${subj(k)}</span>${miniSpark(hist, subj(k) + '：' + hist.filter(x => x != null).join('、'))}</div>
+        <span class="v"><b class="num">${v}</b>${lv ? `<span class="lvt">${lv}</span>` : ''}</span>
+        ${e ? `<span class="eqv">學測約 <b class="num">${e.g}</b>${testLv && testLv !== '未達底標' ? `・${testLv}` : ''}<small>排名前 ${Math.round(e.top)}%</small></span>` : ''}
+        <small>${esc(next)}</small>${g ? `<small class="gain">多 1 級分：<b>${g}</b> 個校系變好</small>` : ''}</div>`;
     }).join('');
-    // 落點 per 模考 in the current 找校系 scope, each judged with its own 五標 when it has one.
-    const base = opts();
-    const tierRows = ms.map(m => {
-      const o = { ...base, std: fullStd(m.std), stdYear: m.std ? 'custom' : base.stdYear };
-      const c = {};
-      for (const d of scope) { const t = L.evaluate(d, m.s, o).tier; c[t] = (c[t] || 0) + 1; }
-      return { m, c, good: (c.穩 || 0) + (c.適中 || 0) };
-    });
-    const bars = tierRows.map(x => `<div class="mt-row"><span class="mt-l"><b>${esc(mName(x.m))}</b><small>${mdText(x.m.d)}</small></span>${tierBarHTML(x.c, scope.length, { small: true, label: mName(x.m) })}<span class="mt-n num">穩＋適中 <b>${x.good}</b></span></div>`).join('');
-    // What changed: first vs latest per subject, and the latest 落點 vs the one before.
+    const lb = bestCombo(lc.S);
+    const anyEq = Object.keys(lc.eq).length > 0;
+    const latest = `<div class="latest"><h3 class="sec-h3">最近一次：${esc(mName(lm))}<small>${mdText(lm.d)}</small></h3>
+      ${anyEq ? '<p class="sub">「學測約」：照你這次模考的排名，換算成 115 學測同樣排名的級分（估計，模考的範圍和考生跟學測不同）。這一區的「多 1 級分」和落點都用換算後的級分算。</p>' : ''}
+      <div class="lt-grid">${cells}</div>
+      <p class="sub">「找校系」目前範圍（${fmtN(scope.length)} 個校系）裡「穩＋適中」<b>${lt.good}</b> 個${lb ? `；最強的一階組合是 <b>${esc(comboName(lb.k))}</b>（115 考生${fmtTop(lb.top)}）` : ''}。</p>
+      <div class="lt-act"><button class="btn sm primary" type="button" data-mockuse="${lm.id}">${anyEq ? '用換算後的級分看落點' : '用這次成績看落點'}</button><button class="btn sm" type="button" data-mocktry="${lm.id}">${icon('boost', 'sm')}拿這次去「怎麼進步」試算</button></div></div>`;
+
+    // ---- what changed
     const notes = [];
     if (ms.length > 1) {
-      const ch = subs.map(k => { const vs = ms.map(m => L.val(m.s, k)).filter(v => v != null); return { k, d: vs.length > 1 ? vs[vs.length - 1] - vs[0] : 0 }; });
+      const ch = subs.map(k => { const vs = ms.map(m => valOf(m, k)).filter(v => v != null); return { k, d: vs.length > 1 ? vs[vs.length - 1] - vs[0] : 0, n: vs.length }; }).filter(x => x.n > 1);
+      const scale = subs.every(onTest) ? '（換算成學測級分）' : '';
       const up = ch.filter(x => x.d > 0).sort((a, b) => b.d - a.d), dn = ch.filter(x => x.d < 0).sort((a, b) => a.d - b.d);
-      if (up.length) notes.push(`進步：${up.map(x => `${subj(x.k)} +${x.d}`).join('、')}`);
-      if (dn.length) notes.push(`退步：${dn.map(x => `${subj(x.k)} ${x.d}`).join('、')}${dn[0].d <= -2 ? `，${subj(dn[0].k)}要多注意` : ''}`);
-      const a = tierRows[tierRows.length - 2], b = tierRows[tierRows.length - 1];
-      // Same 級分 can mean a different standing: compare 標 between the first and latest 模考 that both have their own 五標.
+      if (up.length) notes.push(`進步${scale}：${up.map(x => `${subj(x.k)} +${x.d}`).join('、')}`);
+      if (dn.length) notes.push(`退步${scale}：${dn.map(x => `${subj(x.k)} ${x.d}`).join('、')}${dn[0].d <= -2 ? `，${subj(dn[0].k)}要多注意` : ''}`);
+      // raw 級分 and standing can move apart: a harder or easier 模考
       const rank = l => (L.LEVELS.includes(l) ? L.LEVELS.indexOf(l) : 9);
       for (const k of subs) {
         const both = ms.filter(m => lvOf(m, k, L.val(m.s, k)));
         if (both.length < 2) continue;
-        const a = both[0], b = both[both.length - 1];
-        {
-          const va = L.val(a.s, k), vb = L.val(b.s, k);
-          const la = lvOf(a, k, va), lb = lvOf(b, k, vb);
-          if (la === lb) continue;
-          const better = rank(lb) < rank(la);
-          const dv = vb - va;
-          const twist = (better && dv < 0) || (!better && dv > 0);
-          notes.push(`${subj(k)}：${mName(a)} ${va} 級分（${la}）→ ${mName(b)} ${vb} 級分（${lb}）${twist ? (better ? '，級分少了但標更高：這次大家考得比較差' : '，級分多了但標更低：這次大家考得比較好') : better ? '，排名往前' : '，排名往後'}`);
-        }
+        const a = both[0], b = both[both.length - 1], va = L.val(a.s, k), vb = L.val(b.s, k), la = lvOf(a, k, va), lb2 = lvOf(b, k, vb);
+        if (la === lb2) continue;
+        const better = rank(lb2) < rank(la), dv = vb - va;
+        if ((better && dv < 0) || (!better && dv > 0)) notes.push(`${subj(k)}：${mName(a)} ${va} 級分（${la}）→ ${mName(b)} ${vb} 級分（${lb2}），${better ? '級分少了但排名更前面：這次比較難' : '級分多了但排名往後：這次比較簡單，別被分數騙了'}`);
       }
-      notes.push(`最近一次「穩＋適中」${b.good > a.good ? `多了 ${b.good - a.good} 個` : b.good < a.good ? `少了 ${a.good - b.good} 個` : '一樣'}（${a.good} → ${b.good}）`);
+      const a = tierRows[tierRows.length - 2], b = tierRows[tierRows.length - 1];
+      notes.push(`「穩＋適中」${b.good > a.good ? `多了 ${b.good - a.good} 個` : b.good < a.good ? `少了 ${a.good - b.good} 個` : '一樣'}（${mName(a.m)} ${a.good} → ${mName(b.m)} ${b.good}）`);
     }
-    const table = `<div class="tablewrap"><table class="reftable"><thead><tr><th>模考</th>${subs.map(k => `<th>${ABBR[k]}</th>`).join('')}<th>英聽</th><th>總和</th><th>最強組合</th></tr></thead><tbody>
-      ${ms.map(m => { const b = bestCombo(m.s); return `<tr><th>${esc(mName(m))}<small>${mdText(m.d)}</small></th>${subs.map(k => { const v = L.val(m.s, k), lv = lvOf(m, k, v); return `<td class="num">${v ?? '—'}${lv ? `<small class="lv">${lv}</small>` : ''}</td>`; }).join('')}<td>${m.s.聽 || '—'}</td><td class="num">${mockTotal(m)}</td><td>${b ? `${esc(comboName(b.k))} ${fmtTop(b.top)}` : '—'}</td></tr>`; }).join('')}
-      </tbody></table></div>`;
-    // Latest 模考 at a glance: each subject's 標 on that 模考's own 五標 and how far the next 標 is.
-    const lm = ms[ms.length - 1], lt = tierRows[tierRows.length - 1], lb = bestCombo(lm.s);
-    const cells = SCORE_KEYS.filter(k => L.val(lm.s, k) != null).map(k => {
-      const v = L.val(lm.s, k), lv = lvOf(lm, k, v);
-      const lp = mockPreset(lm);
-      let next = lp && lp.std && !lp.std[k] ? '翰林沒公開這科五標：按「修改」照成績總覽補上' : '沒有這次的五標';
-      if (lv) {
-        const i = L.LEVELS.indexOf(lv), up = i === -1 ? '底標' : i > 0 ? L.LEVELS[i - 1] : null;
-        next = up ? `再 ${lm.std[k][up] - v} 級分到${up}` : '已到頂標';
-      }
-      return `<div class="lt"><span class="k">${subj(k)}</span><span class="v"><b class="num">${v}</b>${lv ? `<span class="lvt">${lv}</span>` : ''}</span><small>${next}</small></div>`;
+
+    // ---- one chart per subject, on the 學測 scale when possible
+    const all = ms.flatMap(m => subs.map(k => valOf(m, k)).filter(v => v != null));
+    const lo = Math.max(0, Math.min(...all) - 2), hi = 15;
+    const W = 240, H = 104, PL = 6, PR = 38, PT = 16, PB = 8;
+    const X = i => (ms.length === 1 ? (PL + W - PR) / 2 : PL + (i * (W - PL - PR)) / (ms.length - 1));
+    const Y = v => PT + ((hi - v) * (H - PT - PB)) / (hi - lo || 1);
+    const panels = subs.map(k => {
+      const test = onTest(k);
+      const refStd = test ? std : (ms.slice().reverse().find(m => m.std && m.std[k]) || {}).std;
+      const pts = ms.map((m, i) => ({ i, m, v: valOf(m, k), raw: L.val(m.s, k) })).filter(p => p.v != null);
+      const last = pts[pts.length - 1], prev = pts[pts.length - 2], first = pts[0];
+      const ref = refStd && refStd[k] ? [['前標', refStd[k].前標], ['均標', refStd[k].均標]].filter(([, v]) => v >= lo && v <= hi) : [];
+      const refs = ref.map(([l, v], j) => `<line class="ref" x1="${PL}" x2="${W - PR}" y1="${Y(v)}" y2="${Y(v)}"/>${j && Math.abs(Y(v) - Y(ref[0][1])) < 11 ? '' : `<text class="reft" x="${W - PR + 4}" y="${Y(v) + 3.5}">${l} ${v}</text>`}`).join('');
+      const path = pts.map((p, j) => `${j ? 'L' : 'M'}${X(p.i).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
+      const tip = p => { const lv = lvOf(p.m, k, p.raw); return `${mName(p.m)}（${mdText(p.m.d)}）：${subj(k)} ${p.raw} 級分${lv ? `（這次的${lv}）` : ''}${test ? `，學測約 ${p.v} 級分` : ''}`; };
+      const dots = pts.map(p => `<circle class="pt" cx="${X(p.i)}" cy="${Y(p.v)}" r="4"/>`).join('');
+      const hits = pts.map(p => `<circle class="hit" cx="${X(p.i)}" cy="${Y(p.v)}" r="13" data-tip="${esc(tip(p))}" tabindex="0" aria-label="${esc(tip(p))}"/>`).join('');
+      const lab = pts.length > 1 ? `<text class="vlab" x="${X(last.i) - 7}" y="${Y(last.v) - 7}" text-anchor="end">${last.v}</text>` : '';
+      return `<figure class="spark"><figcaption><span class="sk">${subj(k)}</span><span class="sv num">${last.v}</span>${deltaChip(prev ? last.v - prev.v : null)}</figcaption>
+        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${subj(k)}：` + pts.map(p => `${mName(p.m)} ${p.v}`).join('、'))}"><line class="base" x1="${PL}" x2="${W - PR}" y1="${H - PB}" y2="${H - PB}"/>${refs}<path class="ln" d="${path}"/>${dots}${lab}${hits}</svg>
+        <span class="sx">${test ? '換算成學測級分' : '模考原始級分'} · ${mdText(first.m.d)}${pts.length > 1 ? ` → ${mdText(last.m.d)}` : ''} · 虛線：${test ? esc(stdName()) : refStd ? '模考五標' : '無'}</span></figure>`;
     }).join('');
-    const latest = `<div class="latest"><h3 class="sec-h3">最近一次：${esc(mName(lm))}<small>${mdText(lm.d)}</small></h3><div class="lt-grid">${cells}</div>
-      <p class="sub">「找校系」目前範圍裡「穩＋適中」<b>${lt.good}</b> 個${lb ? `；最強的一階組合是 <b>${esc(comboName(lb.k))}</b>（換算 115 考生${fmtTop(lb.top)}）` : ''}。${lm.std ? '' : '這次沒有五標，標不出頂標、前標，可以在「修改」補上。'}</p></div>`;
+    const allTest = subs.every(onTest);
+
+    // ---- 落點 per 模考 and the table
+    const bars = tierRows.map(x => `<div class="mt-row"><span class="mt-l"><b>${esc(mName(x.m))}</b><small>${mdText(x.m.d)}</small></span>${tierBarHTML(x.c, scope.length, { small: true, label: mName(x.m) })}<span class="mt-n num">穩＋適中 <b>${x.good}</b></span></div>`).join('');
+    const table = `<div class="tablewrap"><table class="reftable"><thead><tr><th>模考</th>${subs.map(k => `<th>${ABBR[k]}</th>`).join('')}<th>英聽</th><th>最強組合</th></tr></thead><tbody>
+      ${ms.map(m => { const c = conv.get(m.id), b = bestCombo(c.S); return `<tr><th>${esc(mName(m))}<small>${mdText(m.d)}</small></th>${subs.map(k => { const v = L.val(m.s, k), lv = lvOf(m, k, v), e = c.eq[k]; return `<td class="num">${v ?? '—'}${lv ? `<small class="lv">${lv}</small>` : ''}${e ? `<small class="lv eq">學測≈${e.g}</small>` : ''}</td>`; }).join('')}<td>${m.s.聽 || '—'}</td><td>${b ? `${esc(comboName(b.k))} ${fmtTop(b.top)}` : '—'}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
     return `<section class="sec" id="trendSec"><h2>模考分析</h2>${latest}
       ${notes.length ? `<h3 class="sec-h3">跟之前比</h3><ul class="trendnotes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-      <h3 class="sec-h3">每一科的變化</h3><p class="sub">${ms.length} 次模考，每格同一個級分刻度。點圓點看那次的級分和那次模考的標。</p>
+      <h3 class="sec-h3">每一科的變化</h3><p class="sub">${allTest ? '每次都換算成學測級分，範圍不同的模考才能放在一起比；虛線是學測的前標、均標。' : '有五標的科目換算成學測級分，沒有的畫原始級分。'}點圓點看那次的原始級分和標。</p>
       <div class="sparks">${panels}</div>
-      <h3 class="sec-h3">每次模考的落點</h3><p class="sub">用每次的成績算「找校系」目前範圍（${fmtN(scope.length)} 個校系）的落點${ms.some(m => m.std) ? '；有五標的科目用那次模考的五標判斷檢定' : ''}。</p>
+      <h3 class="sec-h3">每次模考的落點</h3><p class="sub">每一次都用換算後的學測級分、${esc(stdName())}判斷，範圍是「找校系」目前的篩選（${fmtN(scope.length)} 個校系）。</p>
       <div class="mtiers">${bars}</div>
-      <h3 class="sec-h3">成績表</h3>${ms.some(m => m.std) ? '<p class="sub">小字是那次模考五標的標。</p>' : '<p class="sub">每一次按「修改」補上那次模考的五標，這裡就會標出頂標、前標還是均標。</p>'}${table}
+      <h3 class="sec-h3">成績表</h3><p class="sub">大字是模考原始級分，小字是那次的標和換算成學測的級分。</p>${table}
       </section>`;
   }
-
+  /** Each subject across the saved 模考, as 學測 級分 where the 模考 has 五標 (raw otherwise). */
+  function mockSeries() {
+    const ms = mocksByDate();
+    const conv = ms.map(m => mockAsTest(m));
+    const out = {};
+    for (const k of SCORE_KEYS) {
+      const vals = ms.map((m, i) => { const v = L.val(m.s, k); if (v == null) return null; const e = conv[i].eq[k]; return e ? e.g : v; });
+      const have = vals.filter(v => v != null);
+      if (!have.length) continue;
+      out[k] = { vals, last: have[have.length - 1], first: have[0], n: have.length, eq: ms.every((m, i) => L.val(m.s, k) == null || conv[i].eq[k]) };
+    }
+    return { ms, out };
+  }
+  const trendWord = x => (!x || x.n < 2 ? '' : x.last > x.first ? `模考換算一路從 ${x.first} 到 ${x.last}，在進步` : x.last < x.first ? `模考換算從 ${x.first} 掉到 ${x.last}，要注意` : `模考換算持平在 ${x.last}`);
+  /** 各科一覽: what you entered, how the 模考 went (on the 學測 scale), and what 1–2 more 級分 would do. */
+  function boardHTML(rows, series) {
+    const max1 = Math.max(1, ...rows.map(r => (r.cells[0] ? r.cells[0].up : 0)));
+    const best = rows.reduce((a, r) => (r.cells[0] && (!a || r.cells[0].up > a.cells[0].up) ? r : a), null);
+    const heat = (c, mx) => (c ? `<span class="bd-n" style="--h:${(c.up / mx).toFixed(3)}"><b>${c.up}</b>${c.unlock ? `<small>解鎖 ${c.unlock}</small>` : ''}</span>` : '<span class="bd-n none">—</span>');
+    const body = rows.filter(r => r.cur || series.out[r.k]).map(r => {
+      const x = series.out[r.k], lv = r.cur ? levelOf(r.k, r.cur) : '';
+      const gap = x && r.cur ? x.last - r.cur : null;
+      const mock = x ? `${miniSpark(x.vals, subj(r.k) + ' 模考：' + x.vals.filter(v => v != null).join('、'))}<span class="bd-m"><b class="num">${x.last}</b>${gap ? `<small class="${gap > 0 ? 'up' : 'down'}" title="比現在填的${gap > 0 ? '高' : '低'} ${Math.abs(gap)} 級分">${gap > 0 ? '+' + gap : gap}</small>` : ''}</span>` : '<span class="muted">—</span>';
+      return `<div class="bd-row${best === r && best.cells[0].up ? ' top' : ''}" role="row"><span class="bd-k" role="rowheader">${subj(r.k)}</span><span class="bd-c" role="cell"><b class="num">${r.cur || '—'}</b>${lv && lv !== '未達底標' ? `<small>${lv}</small>` : !r.cur ? '<small>沒考</small>' : ''}</span><span class="bd-c bd-mock" role="cell">${mock}</span><span role="cell">${heat(r.cells[0], max1)}</span><span role="cell">${heat(r.cells[1], max1)}</span></div>`;
+    }).join('');
+    const hasMock = Object.keys(series.out).length > 0;
+    return `<section class="sec"><h2>各科一覽</h2><p class="sub">你填的級分、${hasMock ? '模考換算成學測的趨勢、' : ''}多考 1、2 級分會讓幾個校系落點變好，放在一起看。${hasMock ? '' : '存了模考，這裡會多一欄每科的模考趨勢。'}</p>
+      <div class="board" role="table" aria-label="各科一覽"><div class="bd-row bd-h" role="row"><span role="columnheader">科目</span><span role="columnheader">現在</span><span role="columnheader">${hasMock ? '模考換算' : '模考'}</span><span role="columnheader">多 1 級分</span><span role="columnheader">多 2 級分</span></div>${body}</div>
+      ${hasMock ? `<p class="hint">「模考換算」是每次模考照排名換算成的學測級分，小字 +1／−1 是最近一次跟你現在填的差多少。<button class="textbtn" type="button" data-tab="mock">${icon('mock', 'sm')}看模考分析</button></p>` : `<button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}新增模考</button>`}</section>`;
+  }
   function renderBoost() {
     const el = $('#boost');
     const head = `<header class="page-h"><div><h1>怎麼進步</h1><p>還有時間準備的話，哪一科多考幾級分最划算？用你現在的成績和「找校系」的篩選範圍來算。</p></div></header>`;
     if (!hasScores()) {
-      el.innerHTML = head + `<div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（還沒考可以填模考或目標分數），這裡才能算每一科多考幾級分會多出哪些機會。</div><button class="btn primary" type="button" data-act="goScores">輸入成績</button></div>` + mockLinkHTML();
+      el.innerHTML = head + `<div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（還沒考可以填模考或目標分數），這裡才能算每一科多考幾級分會多出哪些機會。</div><button class="btn primary" type="button" data-act="goScores">輸入成績</button>${st.mocks.length ? `<button class="btn" type="button" data-mockuse="${mocksByDate().pop().id}">用最近一次模考（換算成學測級分）</button>` : ''}</div>` + mockLinkHTML();
       return;
     }
     const scope = baseFiltered();
@@ -1429,6 +1521,7 @@
     renderBoost.t = setTimeout(() => {
       if (ui.tab !== 'boost') return;
       const { rows, blockers } = boostData(scope);
+      const series = mockSeries();
       const all = rows.flatMap(r => r.cells.filter(Boolean).map(c => ({ ...c, k: r.k, cur: r.cur })));
       const maxUp = Math.max(1, ...all.map(c => c.up));
       // "6 級分" is above 均標 5, not equal to it: say "達到" unless it is exactly the line.
@@ -1444,7 +1537,7 @@
         const { r, b } = ranked[0];
         const lv = levelOf(r.k, b.to);
         hero = `<section class="hero"><span class="eyebrow">最值得補強</span><h2>${subj(r.k)} 從 ${r.cur || '沒考'} 考到 ${b.to} 級分</h2>
-          <p>在${esc(sl || '目前的範圍')}（${fmtN(scope.length)} 個校系）裡，<b>${b.up}</b> 個校系落點變好${b.unlock ? `，其中 <b>${b.unlock}</b> 個從「不符」變成可以報` : ''}。${lvSentence(r.k, b.to, lv)}</p>
+          <p>在${esc(sl || '目前的範圍')}（${fmtN(scope.length)} 個校系）裡，<b>${b.up}</b> 個校系落點變好${b.unlock ? `，其中 <b>${b.unlock}</b> 個從「不符」變成可以報` : ''}。${lvSentence(r.k, b.to, lv)}${trendWord(series.out[r.k]) ? `${esc(trendWord(series.out[r.k]))}。` : ''}</p>
           ${ranked.length > 1 ? `<div class="alts">${ranked.slice(1, 4).map(x => `<span>${subj(x.r.k)} ${x.r.cur || '沒考'} → ${x.b.to}：${x.b.up} 個</span>`).join('')}</div>` : ''}</section>`;
       } else hero = `<section class="hero"><span class="eyebrow">最值得補強</span><h2>這個範圍裡，每科多考 1–5 級分都不會改變落點</h2><p>可以換個學群或放寬篩選再看看。</p></section>`;
       const grid = `<div class="heat" role="table" aria-label="每科多考幾級分，落點變好的校系數"><div role="row" style="display:contents"><span class="hh" role="columnheader">科目</span>${[1, 2, 3, 4, 5].map(i => `<span class="hh" role="columnheader">+${i}</span>`).join('')}</div>
@@ -1453,11 +1546,10 @@
       const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">檢定沒過就不能參加篩選。116 五標 2027/2/25 才公布，這裡用${stdName()}換算。</p>` : '<p class="hint" style="margin-top:12px">這個範圍裡沒有被檢定或科目擋住的校系。</p>';
       if (!ui.tryS) ui.tryS = { ...st.scores };
       const tryGrid = SCORE_KEYS.map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
-      el.innerHTML = head + hero +
+      el.innerHTML = head + hero + boardHTML(rows, series) +
         `<section class="sec"><h2>每科多考幾級分，會多出多少機會？</h2><p class="sub">格子裡是「落點變好的校系數」，顏色越深越多；「解鎖」是從不符變成可以報的數量。範圍：${esc(sl || '全部（一般組、公費、APCS）')}，${fmtN(scope.length)} 個校系。</p>${grid}</section>
         <section class="sec"><h2>擋住你的檢定</h2><p class="sub">這個範圍裡，因為檢定或沒考的科目而「一定進不了一階」的校系</p>${blockHTML}</section>
-        ${mockLinkHTML()}
-        <section class="sec" id="trySec"><h2>試算</h2><p class="sub">暫時改成績看結果，不會改掉你存的成績。<button class="textbtn" type="button" data-act="tryReset">${icon('reset', 'sm')}改回我的成績</button></p><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
+        <section class="sec" id="trySec"><h2>試算</h2>${ui.tryFrom ? `<p class="note-inline">${icon('mock', 'sm')}已帶入「${esc(ui.tryFrom)}」換算成學測的級分，跟你現在的成績比。</p>` : ''}<p class="sub">暫時改成績看結果，不會改掉你存的成績。${st.mocks.length ? ` <button class="textbtn" type="button" data-mocktry="${mocksByDate().pop().id}">${icon('mock', 'sm')}帶入最近一次模考</button>` : ''}<button class="textbtn" type="button" data-act="tryReset">${icon('reset', 'sm')}改回我的成績</button></p><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();
     }, 30);
   }
@@ -1591,7 +1683,8 @@
     ui.tab = name;
     ['explore', 'plan', 'boost', 'mock', 'guide'].forEach(v => { $('#view-' + v).hidden = v !== name; });
     if (!fromRoute && !/^#d=/.test(location.hash)) history.replaceState(null, '', tabHash(name));
-    if (name === 'boost') ui.tryS = null;
+    if (name === 'boost' && !ui.keepTry) { ui.tryS = null; ui.tryFrom = null; }
+    ui.keepTry = false;
     render();
     if (changed) window.scrollTo(0, 0);
   }
@@ -1738,7 +1831,7 @@
     csvPlan: () => download('apply116-plan.csv', csv(), 'text/csv;charset=utf-8'),
     printPlan: () => { if (ui.tab !== 'plan') setTab('plan'); setTimeout(() => window.print(), 60); },
     exportState: () => download('apply116-backup.json', JSON.stringify(st, null, 1), 'application/json'),
-    tryReset: () => { ui.tryS = { ...st.scores }; $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
+    tryReset: () => { ui.tryS = { ...st.scores }; ui.tryFrom = null; const n = $('#trySec .note-inline'); if (n) n.remove(); $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
   };
   /** Chart tooltips: any element with data-tip, on hover, keyboard focus or tap. */
   function bindTips() {
@@ -1787,6 +1880,7 @@
         if (tab) for (const k of SCORE_KEYS) Object.assign(tab[k], D.std[y][k]);
         keepEditorOpen(); render(); toast(`已填入 ${y} 學年度學測五標`); return;
       }
+      if (ds.mocktry) { tryMock(ds.mocktry); return; }
       if (ds.mockedit) { const m = st.mocks.find(x => x.id === ds.mockedit); if (m) { ui.mf = editMockDraft(m); render(); requestAnimationFrame(() => $('#mockForm') && $('#mockForm').scrollIntoView({ behavior: 'smooth', block: 'start' })); } return; }
       if (ds.combo) { toggle(f.combos, ds.combo); ui.shown = PAGE; render(); return; }
       if (ds.listen) { keepEditorOpen(); st.scores.聽 = ds.listen === 'none' ? '' : ds.listen; render(); return; }
@@ -1880,12 +1974,12 @@
       if (t.dataset.mf && t.dataset.mf !== '聽') {
         const k = t.dataset.mf, n = Math.round(Number(t.value));
         if (t.value === '' || !Number.isFinite(n) || n <= 0) delete f.s[k]; else f.s[k] = Math.min(15, n);
-        const lab = $(`[data-mflv="${k}"]`); if (lab) lab.textContent = mfLevel(f, k);
+        const lab = $(`[data-mflv="${k}"]`); if (lab) lab.innerHTML = mfLevel(f, k);
       } else if (t.dataset.mfstd) {
         const [k, l] = t.dataset.mfstd.split(':'), n = Math.round(Number(t.value));
         f.std[k] = f.std[k] || {};
         if (Number.isFinite(n) && n >= 1 && n <= 15) f.std[k][l] = n; else delete f.std[k][l];
-        const lab = $(`[data-mflv="${k}"]`); if (lab) lab.textContent = mfLevel(f, k);
+        const lab = $(`[data-mflv="${k}"]`); if (lab) lab.innerHTML = mfLevel(f, k);
       }
     });
     $('#q').addEventListener('input', ev => {

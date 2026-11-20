@@ -410,6 +410,31 @@
   }
 
   /** 115 expected interviewees ≈ quota × lowest multiple. */
+  /**
+   * 模考 → 學測 by rank. A 模考's 五標 give its score at five ranks (頂標 = top 12%, 前標 25%, 均標 50%,
+   * 後標 75%, 底標 88%); a score between them is placed by straight-line interpolation (15 級分 ≈ top 1%,
+   * 0 = everyone). That rank is then read off the 115 學測 級分人數累計表: the highest 學測 級分 that at
+   * least that share of 115 考生 reached. Returns { g: 學測級分, top: 模考排名前 x% } or null.
+   * It is an estimate: 模考 takers and 範圍 differ from the 學測.
+   */
+  const RANK_AT = { 頂標: 12, 前標: 25, 均標: 50, 後標: 75, 底標: 88 };
+  function mockToTest(std, k, v, pct) {
+    const r = std && std[k];
+    if (!r || v == null || !(v > 0) || LEVELS.some(l => !(r[l] >= 1))) return null;
+    const at = new Map([[15, [1]], [0, [100]]]);
+    for (const l of LEVELS) at.set(r[l], [...(at.get(r[l]) || []), RANK_AT[l]]);
+    const pts = [...at].map(([g, xs]) => [g, xs.reduce((a, b) => a + b, 0) / xs.length]).sort((a, b) => a[0] - b[0]);
+    let top = null;
+    for (let i = 0; i < pts.length - 1 && top == null; i++) {
+      const [g0, x0] = pts[i], [g1, x1] = pts[i + 1];
+      if (v >= g0 && v <= g1) top = g1 === g0 ? x0 : x0 + ((x1 - x0) * (v - g0)) / (g1 - g0);
+    }
+    if (top == null) top = pts[pts.length - 1][1];
+    let g = 1;
+    for (let s = 15; s >= 1; s--) { const t = topPercent(pct, [k], s); if (t != null && t >= top) { g = s; break; } }
+    return { g, top };
+  }
+
   function expected115(r) {
     const ms = Object.values(r.mult || {}).filter(v => typeof v === 'number');
     if (!ms.length || !r.q) return null;
@@ -664,7 +689,7 @@
   return {
     SUBJ, SUBJ_NAME, LEVELS, TIERS, SAFE_RATIO, REACH_RATIO,
     val, sumOf, checkThreshold, countAtOrAbove, topPercent, compareCuts, screenPlan, missingUse, stage1Groups, stage1Uses,
-    screenSubjects, comboKey, comboRank,
+    screenSubjects, comboKey, comboRank, mockToTest,
     partsText, align116, compare116, screenChanges, unknownText, cutReason, flowText,
     expected115, thresholdRisk, evaluate, chanceKey, selectivity, satShare, targets, conflicts, fmtDay,
     splitTop, reviewGroups, stage2Kind, stage2, hasInterview, hasWritten, noVisit,
