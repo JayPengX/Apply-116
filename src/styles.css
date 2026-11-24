@@ -1123,3 +1123,14 @@ details.fold.chg .long{color:var(--text-2);margin-top:6px}
 .gb.na i{height:0}
 .gi-say{font-size:13.5px;color:var(--text-2);line-height:1.6}
 .gi-say b{color:var(--text)}
+.gb small.ul{margin-top:3px;color:var(--ok);font-weight:650;font-size:11px;white-space:nowrap}
+.gi-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.gi-stats>span{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:10px;background:var(--surface-2);min-width:0}
+.gi-stats b{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap}
+.gi-stats small{font-size:11.5px;color:var(--text-3);line-height:1.35}
+.gains-base{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface-2);font-size:13.5px;color:var(--text-2)}
+.gains-base b{color:var(--text);font-variant-numeric:tabular-nums}
+.gi-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.gi-stats>span.wide{grid-column:1 / -1;flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
+.gi-stats>span.wide small{font-size:12.5px;color:var(--text-2)}
+.gi-stats em{font-style:normal;font-size:12.5px;font-weight:750;color:var(--ok);background:var(--ok-bg);border-radius:6px;padding:1px 7px}

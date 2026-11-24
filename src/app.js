@@ -1462,13 +1462,14 @@
         const to = now + inc;
         if (to > 15) return null;
         const S2 = { ...c.S, [k]: String(to) };
-        let up = 0, unlock = 0;
+        let up = 0, unlock = 0, good = 0;
         for (const d of scope) {
           const t0 = tierOf(d), t1 = evalAt(d, c, S2).tier;
           if (TIERS.indexOf(t1) < TIERS.indexOf(t0) && t1 !== '無資料') up++;
           if (t0 === '不符' && t1 !== '不符') unlock++;
+          if (t1 === '穩' || t1 === '適中') good++;
         }
-        return { to, up, unlock };
+        return { to, up, unlock, good };
       });
       return { k, cur: now, cells };
     });
@@ -1716,31 +1717,34 @@
         return { r, valid, max, best: max ? valid.find(x => x.up === max) : null };
       }).sort((a, b) => b.max - a.max || (a.best && b.best ? (a.best.to - a.r.cur) - (b.best.to - b.r.cur) : 0));
       const top = Math.max(1, ...cards.map(x => x.max));
+      const good0 = scope.filter(d => { const t = tierOf(d); return t === '穩' || t === '適中'; }).length;
       const trendTag = x => (!x || x.n < 2 ? '' : x.last > x.first ? '<span class="gi-tr up">模考進步中</span>' : x.last < x.first ? '<span class="gi-tr down">模考退步</span>' : '<span class="gi-tr">模考持平</span>');
       const say = ({ r, valid, max, best }) => {
         if (!valid.length) return '已經 15 級分（滿級分）。';
         if (!best) return '多考 1–5 級分，這些校系的落點都不會變。';
         const more = best.to - r.cur, plateau = valid.some(x => x.to > best.to);
-        return `考到 <b>${best.to}</b>（多 ${more} 級分）：<b>${max}</b> 個系變好${best.unlock ? `，其中 ${best.unlock} 個原本過不了` : ''}${plateau ? '；再多考也不會更多' : ''}。`;
+        return `考到 <b>${best.to}</b> 級分（多 ${more}）最划算${plateau ? '，再多也不會更多' : ''}。`;
       };
       const grid = `<ol class="gains">${cards.map(x => {
         const lv = x.r.cur ? levelOf(x.r.k, x.r.cur) : '';
         const bars = [0, 1, 2, 3, 4].map(i => {
           const cl = x.r.cells[i];
           if (!cl) return '<span class="gb na"><i></i><small>—</small></span>';
-          return `<span class="gb${x.best === cl ? ' best' : ''}${cl.up ? '' : ' zero'}"><em>${cl.up || ''}</em><i style="height:${Math.max(cl.up ? 5 : 3, (cl.up / top) * 64).toFixed(1)}px"></i><small>${cl.to}</small></span>`;
+          return `<span class="gb${x.best === cl ? ' best' : ''}${cl.up ? '' : ' zero'}"><em>${cl.up}</em><i style="height:${Math.max(cl.up ? 5 : 3, (cl.up / top) * 64).toFixed(1)}px"></i><small>${cl.to}</small></span>`;
         }).join('');
-        const label = `${subj(x.r.k)}：` + x.valid.map(cl => `考到 ${cl.to}，${cl.up} 個系變好`).join('；');
+        const label = `${subj(x.r.k)}：` + x.valid.map(cl => `考到 ${cl.to}，${cl.up} 個系變好${cl.unlock ? `，${cl.unlock} 個變成可以報` : ''}`).join('；');
+        const b = x.best;
+        const stats = b ? `<div class="gi-stats"><span><b>${b.up}</b><small>個系變好</small></span><span><b>${b.unlock}</b><small>個原本過不了</small></span><span class="wide"><small>${GOOD}</small><b>${good0} → ${b.good}</b>${b.good > good0 ? `<em>+${b.good - good0}</em>` : ''}</span></div>` : '';
         return `<li class="gi${x.max ? '' : ' none'}"><div class="gi-h"><b>${subj(x.r.k)}</b><span class="gi-now">${x.r.cur ? `現在 ${x.r.cur}${lv && lv !== '未達底標' ? `・${lv}` : ''}` : '沒考'}</span>${trendTag(series.out[x.r.k])}</div>
           <div class="gi-bars" role="img" aria-label="${esc(label)}">${bars}</div>
-          <p class="gi-say">${say(x)}</p></li>`;
+          ${stats}<p class="gi-say">${say(x)}</p></li>`;
       }).join('')}</ol>`;
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
       const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${esc(c.stdName)}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
       if (!ui.tryS || ui.trySig !== c.sig) { ui.tryS = { ...c.S }; ui.trySig = c.sig; }
       const tryGrid = SCORE_KEYS.filter(k => ui.boostAll || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
       el.innerHTML = head + ctxBarHTML() + scopeBarHTML(scope.length) + allToggle + hero +
-        `<section class="sec">${hIcon('boost', '每一科多考幾級分，有幾個系變好？')}<p class="sub">柱子越高，越多系的落點變好；柱子下面是考到幾級分${c.mock ? '（從這次模考換算的學測級分往上加）' : ''}。</p>${grid}</section>
+        `<section class="sec">${hIcon('boost', '每一科多考幾級分，有幾個系變好？')}<p class="sub">柱子上的數字是落點變好的系數，下面是考到幾級分${c.mock ? '（從這次模考換算的學測級分往上加）' : ''}。</p><p class="gains-base">現在${esc(GOOD)} <b>${fmtN(good0)}</b> 個・過不了 <b>${fmtN(scope.filter(d => tierOf(d) === '不符').length)}</b> 個・共 ${fmtN(scope.length)} 個系</p>${grid}</section>
         <section class="sec">${hIcon('alert', '擋住你的檢定')}<p class="sub">因此進不了一階的校系數</p>${blockHTML}</section>
         <section class="sec" id="trySec">${hIcon('sliders', '試算')}<p class="sub">暫時改級分看落點怎麼變，不會改掉你存的成績。${c.mock ? '這裡是換算的學測級分，檢定照這次模考的五標同步加減。' : ''}</p><div class="try-act"><button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回「${esc(c.name)}」</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();
