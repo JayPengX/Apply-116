@@ -10,12 +10,11 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: true
+# Upload and deploy are separate jobs (GitHub's own Pages layout): deploying in the same job a second after the
+# upload sometimes found "0 artifacts" and failed until re-run.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
@@ -24,5 +23,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
