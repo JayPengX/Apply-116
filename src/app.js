@@ -1709,20 +1709,38 @@
           ${ranked.length > 1 ? `<div class="alts">${ranked.slice(1, 4).map(x => `<span>${subj(x.r.k)} ${x.r.cur || '沒考'} → ${x.b.to}：${x.b.up} 個</span>`).join('')}</div>` : ''}</section>`;
       } else hero = `<section class="hero"><span class="eyebrow">${icon('target', 'sm')}最值得補強</span><h2>這些校系裡，每科多考 1–5 級分都不會改變落點</h2><p>換一個範圍看看（上面的「算哪些校系」）。</p></section>`;
       // one table: each subject now (with its 模考 trend), then what 1–5 more 級分 would do
-      const subjCell = r => {
-        const x = series.out[r.k], lv = r.cur ? levelOf(r.k, r.cur) : '';
-        const spark = x ? miniSpark(x.vals, subj(r.k) + ' 模考：' + x.vals.filter(v => v != null).join('、')) : '';
-        return `<span class="hs" role="rowheader">${subj(r.k)}<small>${r.cur ? `${r.cur}${lv && lv !== '未達底標' ? ` ${LV_SHORT[lv]}` : ''}` : '沒考'}</small>${spark ? `<span class="hs-m" title="${esc(trendWord(x) || '')}">${spark}</span>` : ''}</span>`;
+      // One card per subject, most useful first: a small bar chart (taller = more 系 get a better 落點; the
+      // number under a bar is the 級分 you would reach) and one sentence saying what it adds up to.
+      const cards = rows.map(r => {
+        const valid = r.cells.filter(Boolean), max = Math.max(0, ...valid.map(x => x.up));
+        return { r, valid, max, best: max ? valid.find(x => x.up === max) : null };
+      }).sort((a, b) => b.max - a.max || (a.best && b.best ? (a.best.to - a.r.cur) - (b.best.to - b.r.cur) : 0));
+      const top = Math.max(1, ...cards.map(x => x.max));
+      const trendTag = x => (!x || x.n < 2 ? '' : x.last > x.first ? '<span class="gi-tr up">模考進步中</span>' : x.last < x.first ? '<span class="gi-tr down">模考退步</span>' : '<span class="gi-tr">模考持平</span>');
+      const say = ({ r, valid, max, best }) => {
+        if (!valid.length) return '已經 15 級分（滿級分）。';
+        if (!best) return '多考 1–5 級分，這些校系的落點都不會變。';
+        const more = best.to - r.cur, plateau = valid.some(x => x.to > best.to);
+        return `考到 <b>${best.to}</b>（多 ${more} 級分）：<b>${max}</b> 個系變好${best.unlock ? `，其中 ${best.unlock} 個原本過不了` : ''}${plateau ? '；再多考也不會更多' : ''}。`;
       };
-      const grid = `<div class="heat" role="table" aria-label="每科多考幾級分，落點變好的校系數"><div role="row" style="display:contents"><span class="hh" role="columnheader">現在</span>${[1, 2, 3, 4, 5].map(i => `<span class="hh" role="columnheader">+${i}</span>`).join('')}</div>
-        ${rows.map(r => `<div role="row" style="display:contents">${subjCell(r)}${r.cells.map(x => x ? `<span class="hc" role="cell" style="--h:${(x.up / maxUp).toFixed(3)}" title="${subj(r.k)} 考到 ${x.to} 級分：${x.up} 個校系落點變好${x.unlock ? `，${x.unlock} 個從過不了變成可以報` : ''}"><span class="to">→ ${x.to}</span><span class="n">${x.up}</span>${x.unlock ? `<span class="u">解鎖 ${x.unlock}</span>` : ''}</span>` : '<span class="hc na" role="cell">—</span>').join('')}</div>`).join('')}</div>
-        <p class="hint" style="margin-top:10px">格子裡是落點變好的校系數；解鎖＝從「過不了」變成可以報。${Object.keys(series.out).length ? '科目下的小線是模考趨勢。' : ''}</p>`;
+      const grid = `<ol class="gains">${cards.map(x => {
+        const lv = x.r.cur ? levelOf(x.r.k, x.r.cur) : '';
+        const bars = [0, 1, 2, 3, 4].map(i => {
+          const cl = x.r.cells[i];
+          if (!cl) return '<span class="gb na"><i></i><small>—</small></span>';
+          return `<span class="gb${x.best === cl ? ' best' : ''}${cl.up ? '' : ' zero'}"><em>${cl.up || ''}</em><i style="height:${Math.max(cl.up ? 5 : 3, (cl.up / top) * 64).toFixed(1)}px"></i><small>${cl.to}</small></span>`;
+        }).join('');
+        const label = `${subj(x.r.k)}：` + x.valid.map(cl => `考到 ${cl.to}，${cl.up} 個系變好`).join('；');
+        return `<li class="gi${x.max ? '' : ' none'}"><div class="gi-h"><b>${subj(x.r.k)}</b><span class="gi-now">${x.r.cur ? `現在 ${x.r.cur}${lv && lv !== '未達底標' ? `・${lv}` : ''}` : '沒考'}</span>${trendTag(series.out[x.r.k])}</div>
+          <div class="gi-bars" role="img" aria-label="${esc(label)}">${bars}</div>
+          <p class="gi-say">${say(x)}</p></li>`;
+      }).join('')}</ol>`;
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
       const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${esc(c.stdName)}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
       if (!ui.tryS || ui.trySig !== c.sig) { ui.tryS = { ...c.S }; ui.trySig = c.sig; }
       const tryGrid = SCORE_KEYS.filter(k => ui.boostAll || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
       el.innerHTML = head + ctxBarHTML() + scopeBarHTML(scope.length) + allToggle + hero +
-        `<section class="sec">${hIcon('boost', '每科多考幾級分，會多出多少機會？')}<p class="sub">${c.mock ? '從這次模考換算的學測級分往上加。' : '從你填的學測級分往上加。'}</p>${grid}</section>
+        `<section class="sec">${hIcon('boost', '每一科多考幾級分，有幾個系變好？')}<p class="sub">柱子越高，越多系的落點變好；柱子下面是考到幾級分${c.mock ? '（從這次模考換算的學測級分往上加）' : ''}。</p>${grid}</section>
         <section class="sec">${hIcon('alert', '擋住你的檢定')}<p class="sub">因此進不了一階的校系數</p>${blockHTML}</section>
         <section class="sec" id="trySec">${hIcon('sliders', '試算')}<p class="sub">暫時改級分看落點怎麼變，不會改掉你存的成績。${c.mock ? '這裡是換算的學測級分，檢定照這次模考的五標同步加減。' : ''}</p><div class="try-act"><button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回「${esc(c.name)}」</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();

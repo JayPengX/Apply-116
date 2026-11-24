@@ -1101,3 +1101,25 @@ details.fold.chg .long{color:var(--text-2);margin-top:6px}
 }
 .cmptable th{white-space:nowrap}
 @media (max-width:719px){.cmptable th,.cmptable td{padding:7px 3px;font-size:12.5px}}
+
+/* 怎麼進步: one card per subject — bars (taller = more 系 get better), then one sentence */
+.gains{list-style:none;margin:16px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.gi{border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.gi.none{opacity:.6}
+.gi-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
+.gi-h b{font-size:16px}
+.gi-now{font-size:13px;color:var(--text-2);white-space:nowrap}
+.gi-tr{margin-left:auto;font-size:12px;font-weight:650;padding:1px 8px;border-radius:999px;background:var(--surface-3);color:var(--text-2);white-space:nowrap}
+.gi-tr.up{background:var(--ok-bg);color:var(--ok)}
+.gi-tr.down{background:var(--bad-bg);color:var(--bad)}
+.gi-bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;align-items:end}
+.gb{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0}
+.gb em{font-style:normal;font-size:13px;font-weight:750;font-variant-numeric:tabular-nums;color:var(--text-2);line-height:1;margin-bottom:4px;min-height:13px}
+.gb i{display:block;width:100%;max-width:34px;border-radius:5px 5px 2px 2px;background:color-mix(in srgb,var(--heat) 45%,var(--surface-3))}
+.gb.best i{background:var(--heat)}
+.gb.best em{color:var(--text)}
+.gb.zero i{background:var(--surface-3)}
+.gb small{font-size:12px;color:var(--text-3);margin-top:5px;font-variant-numeric:tabular-nums;line-height:1}
+.gb.na i{height:0}
+.gi-say{font-size:13.5px;color:var(--text-2);line-height:1.6}
+.gi-say b{color:var(--text)}

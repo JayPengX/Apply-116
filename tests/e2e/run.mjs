@@ -202,23 +202,23 @@ try {
     // boost tab: its own scope, not 找校系's filters (法政 is still on there)
     ok((await page.evaluate(() => window.__app.st().f.groups)).includes('法政'), '找校系 still filtered to 法政');
     await page.click('#tabs [data-tab="boost"]');
-    await page.waitForSelector('#boost .heat');
+    await page.waitForSelector('#boost .gains');
     const btxt = await page.locator('#boost').innerText();
     ok(btxt.includes('擋住') && btxt.includes('數學B'), 'boost tab names the 數B blocker');
     const nAll = Number((/共 ([\d,]+) 個/.exec(await page.locator('#boost .scopebar').innerText()) || [])[1].replace(/,/g, ''));
     ok(nAll > 1000, `怎麼進步 counts all 校系, not 找校系's 法政 filter (${nAll})`);
     await page.click('#boost [data-bscope="plan"]');
-    await page.waitForSelector('#boost .heat');
+    await page.waitForSelector('#boost .gains');
     ok(/共 6 個/.test(await page.locator('#boost .scopebar').innerText()), '怎麼進步 can be scoped to the 6 志願');
     await page.selectOption('#bGroup', '資訊').catch(() => {});
     await page.click('#boost [data-bscope="all"]');
     await page.waitForSelector('#boost #bGroup');
     await page.selectOption('#bGroup', '資訊');
-    await page.waitForSelector('#boost .heat');
+    await page.waitForSelector('#boost .gains');
     const nInfo = Number((/共 ([\d,]+) 個/.exec(await page.locator('#boost .scopebar').innerText()) || [])[1].replace(/,/g, ''));
     ok(nInfo > 0 && nInfo < nAll, `and to one 學群 (資訊 ${nInfo})`);
     await page.selectOption('#bGroup', '');
-    await page.waitForSelector('#boost .heat');
+    await page.waitForSelector('#boost .gains');
     await setSlider(page, '#boost [data-try="數B"]', 6);
     await page.waitForTimeout(300);
     ok((await page.locator('#tryOut').innerText()).includes('→'), 'what-if lists improved departments');
@@ -340,7 +340,7 @@ try {
     for (const tab of ['scores', 'explore', 'plan', 'boost', 'guide']) {
       await page.click(`#bottomnav [data-tab="${tab}"]`);
       if (tab === 'plan') ok((await page.locator('#prep .rmx').count()) === 1, '二階準備 matrix on phone');
-      if (tab === 'boost') await page.waitForSelector('#boost .heat');
+      if (tab === 'boost') await page.waitForSelector('#boost .gains');
       await page.waitForTimeout(100);
       const sw = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok(sw <= 0, `no horizontal scroll on phone: ${tab} (overflow ${sw})`);
