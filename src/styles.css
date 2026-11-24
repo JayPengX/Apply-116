@@ -1029,3 +1029,75 @@ p,li,dd,td,.hint,.sub,.step-d,.rv-h,.rv-v,.rv-note,.ctx-note,.sc-sub,.long,.s2le
 .rmx tr.gh small{text-wrap:pretty}
 .reftable th{white-space:nowrap}
 .d-meta{display:flex;flex-wrap:wrap}
+
+/* ================================================================ 落點: 「一階過得了嗎？」
+   穩過 ▮▮▮▮ · 應該過 ▮▮▮ · 邊緣 ▮▮ · 機會低 ▮ · 過不了 ✕ · 看不出 ?  — the signal reads before the word does. */
+.pill{display:inline-flex;align-items:center;justify-content:center;gap:5px;width:auto;min-width:76px;padding:0 9px;height:28px;font-size:13px;letter-spacing:0;border-radius:8px}
+.sig{display:inline-flex;align-items:flex-end;gap:1.5px;height:12px;flex:none;font-style:normal}
+.sig b{display:block;width:3px;border-radius:1px;background:currentColor;opacity:.3}
+.sig b:nth-child(1){height:4px}.sig b:nth-child(2){height:6.5px}.sig b:nth-child(3){height:9px}.sig b:nth-child(4){height:12px}
+.sig b.on{opacity:1}
+.sig.x{align-items:center}
+.sig.x .i{width:12px;height:12px;stroke-width:3.2;vertical-align:0}
+.sig.q{align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1.7px solid currentColor}
+.sig.q::before{content:"?";font-size:9px;font-weight:900;line-height:1}
+.pill.lg2{height:38px;min-width:100px;padding:0 13px;font-size:16px;border-radius:10px;gap:7px}
+.pill.lg2 .sig{transform:scale(1.25);margin-right:2px}
+.ghead .pill,.better .pill{min-width:0}
+.better .pill .sig{display:none}
+.legend .lg{gap:6px}
+.lg.t1 .sig{color:var(--t1)}.lg.t2 .sig{color:var(--t2)}.lg.t3 .sig{color:var(--t3)}.lg.t4 .sig{color:var(--t4)}.lg.t5 .sig{color:var(--t5)}.lg.t6 .sig{color:var(--t6)}
+.lg[aria-pressed="false"] .sig{opacity:.35}
+.lg .sw{display:none}
+.rc-t{display:inline-flex;align-items:center;gap:5px}
+.rc-t.t1 .sig{color:var(--t1)}.rc-t.t2 .sig{color:var(--t2)}.rc-t.t3 .sig{color:var(--t3)}.rc-t.t4 .sig{color:var(--t4)}.rc-t.t5 .sig{color:var(--t5)}.rc-t.t6 .sig{color:var(--t6)}
+.mix span .sig{transform:scale(1.1)}
+
+/* rows: verdict line, then one line of facts */
+.rm-s2{display:inline-flex;align-items:baseline;white-space:nowrap}
+.rm-s2 .lab{display:inline-block;margin-right:7px;padding:0 6px;border-radius:5px;background:var(--surface-3);color:var(--text-2);font-size:11.5px;font-weight:650;line-height:18px}
+.rm-facts{row-gap:4px}
+
+/* detail verdict: label, what it means, the one reason; caveats fold away */
+.verdict{display:block;padding:16px 18px}
+.v-top{display:flex;align-items:center;gap:14px}
+.verdict .v-t{font-size:16.5px;font-weight:750;line-height:1.4}
+.verdict .v-src{font-size:12.5px;color:var(--text-2);font-weight:500;margin:2px 0 0}
+.v-why{margin-top:12px;font-size:14.5px;color:var(--text);line-height:1.6}
+.v-more{margin-top:10px}
+.v-more>summary{list-style:none;display:flex;align-items:center;gap:6px;color:var(--warn);font-size:13.5px;font-weight:650;cursor:pointer;border-radius:6px}
+.v-more>summary::-webkit-details-marker{display:none}
+.v-more>summary span{flex:1;min-width:0}
+.v-more>summary .i:last-child{transition:transform .15s}
+.v-more[open]>summary .i:last-child{transform:rotate(180deg)}
+.v-more ul{margin:8px 0 0;padding-left:20px;font-size:13.5px;color:var(--text-2);line-height:1.6}
+.v-more li+li{margin-top:4px}
+details.fold.chg{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-bg)}
+details.fold.chg>summary{display:flex;align-items:center;gap:6px;color:var(--warn);font-weight:650}
+details.fold.chg>summary .i:last-child{margin-left:auto}
+details.fold.chg .long{color:var(--text-2);margin-top:6px}
+
+/* rank among 115 考生: the shaded part got through; the dot is you */
+.rkbar{margin-top:10px;max-width:380px}
+.rk-track{position:relative;height:8px;border-radius:4px;background:var(--surface-3)}
+.rk-ok{position:absolute;left:0;top:0;bottom:0;border-radius:4px 0 0 4px;background:color-mix(in srgb,var(--t1) 38%,transparent)}
+.rk-cut{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--text-2);border-radius:1px}
+.rk-me{position:absolute;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line-2)}
+.rk-me.in{background:var(--t1)}
+.rk-me.out{background:var(--t4)}
+.rk-lab{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:7px;font-size:12.5px;color:var(--text-2);white-space:nowrap}
+.rk-lab b{color:var(--text);font-variant-numeric:tabular-nums}
+.rk-lab .muted{margin-left:auto}
+
+/* 落點依據: the explanation is one tap away */
+.ctx-how>summary{list-style:none;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--text-3);cursor:pointer;border-radius:6px}
+.ctx-how>summary::-webkit-details-marker{display:none}
+.ctx-how>summary:hover{color:var(--text)}
+.ctx-how .ctx-note{margin-top:4px}
+
+@media (max-width:719px){
+  .pill{min-width:72px;height:28px;font-size:13px;padding:0 8px}
+  .pill.lg2{min-width:94px;height:36px;font-size:15.5px}
+}
+.cmptable th{white-space:nowrap}
+@media (max-width:719px){.cmptable th,.cmptable td{padding:7px 3px;font-size:12.5px}}

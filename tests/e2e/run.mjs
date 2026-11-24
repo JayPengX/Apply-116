@@ -13,7 +13,8 @@ const SHOTS = process.env.SHOTS || join(root, 'build', 'shots');
 mkdirSync(SHOTS, { recursive: true });
 let failures = 0;
 const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { failures++; console.log('  ✗ ' + msg); } };
-const TIER_ORDER = ['穩', '適中', '衝', '難', '不符', '無資料'];
+// 落點 labels as students see them (internal keys 穩 適中 衝 難 不符 無資料)
+const TIER_ORDER = ['穩過', '應該過', '邊緣', '機會低', '過不了', '看不出'];
 
 async function newPage(browser, ctxOpts = {}) {
   const ctx = await browser.newContext({ acceptDownloads: true, ...ctxOpts });
@@ -101,9 +102,11 @@ try {
 
     await page.click('#filterPanel [data-group="法政"]');
     const ov = await page.locator('#overview').innerText();
-    ok(ov.includes('法政') && /穩\s*\d+/.test(ov) && /適中\s*\d+/.test(ov), 'overview shows the scope and tier counts');
+    ok(ov.includes('法政') && /穩過\s*\d+/.test(ov) && /應該過\s*\d+/.test(ov), 'overview shows the scope and tier counts');
     const pills = await page.locator('#list .row .pill').allInnerTexts();
-    ok(pills.length > 10 && !pills.includes('不符'), '不符 hidden by default');
+    ok(pills.length > 10 && pills.every(p => TIER_ORDER.includes(p)), 'rows show the 一階 labels (穩過、應該過…): ' + [...new Set(pills)].join(' '));
+    ok(!pills.includes('過不了'), '過不了 hidden by default');
+    ok((await page.locator('#list .row .pill .sig').count()) === pills.length, 'every label carries its signal icon');
     ok(pills.every((b, i) => i === 0 || TIER_ORDER.indexOf(pills[i - 1]) <= TIER_ORDER.indexOf(b)), 'sorted by tier');
 
     // 第二階段 filters: one 學測-share choice at a time, plus 甄試 chips whose counts match the list they produce
@@ -135,7 +138,7 @@ try {
     await page.fill('#q', '臺灣大學 法律');
     await page.waitForTimeout(400);
     const why = await page.locator('#list .row').first().innerText();
-    ok(why.includes('不符') && why.includes('數學B'), 'NTU law blocked by 數B 檢定');
+    ok(why.includes('過不了') && why.includes('數學B'), 'NTU law blocked by 數B 檢定');
     await page.fill('#q', '');
     await page.waitForTimeout(400);
 

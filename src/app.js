@@ -34,16 +34,24 @@
   const SORTS = ['chance', 'select', 'sat', 'satLow', 'date', 'quota', 'code'];
   const TIERS = L.TIERS;
   const TC = { 穩: 't1', 適中: 't2', 衝: 't3', 難: 't4', 不符: 't5', 無資料: 't6' };
-  // one-liners for group headers
-  const TIER_SHORT = { 穩: '每關都有餘裕', 適中: '都達到，差距小', 衝: '剛好或差一點', 難: '明顯不夠', 不符: '進不了一階', 無資料: '沒有可比的門檻' };
+  // The 落點 as students read them: each label answers 「一階過得了嗎？」, with a signal-strength icon (4 bars =
+  // safest). Internally the tiers keep their short keys (穩 適中 衝 難 不符 無資料; see src/logic.js).
+  const TL = { 穩: '穩過', 適中: '應該過', 衝: '邊緣', 難: '機會低', 不符: '過不了', 無資料: '看不出' };
+  const TSIG = { 穩: 4, 適中: 3, 衝: 2, 難: 1, 不符: 0, 無資料: -1 };
+  // one line, for group headers and tooltips
+  const TIER_SHORT = { 穩: '去年門檻再漲也過', 適中: '過得了去年門檻，但差距小', 衝: '卡在去年門檻上下', 難: '比去年門檻低不少', 不符: '檢定沒過或沒考要用的科目', 無資料: '去年沒有能比的門檻' };
+  // the rule behind each label, for the legend and the guide
   const TIER_HELP = {
-    穩: '每關都高過 115 最低，門檻漲 1 也會過',
-    適中: '每一關都達到，但差距小或 116 規則有變',
-    衝: '剛好等於門檻（看超額篩選）或差一點',
-    難: '明顯低於 115 門檻',
-    不符: '檢定沒過或沒考用到的科目，進不了一階',
-    無資料: '沒有可比的 115 門檻（新科目組合、新設或術科）',
+    穩: '每一關都高出去年（115）最低級分，最後一關至少高 2 級分，門檻漲 1 也過',
+    適中: '每一關都過去年最低，但只高一點，或 116 篩選有改',
+    衝: '剛好等於去年最後一關（要比同級分超額篩選），或只差一點',
+    難: '比去年最低差不少，排在你前面的人明顯比門檻多',
+    不符: '檢定沒過，或要用的科目你沒考：一定進不了一階',
+    無資料: '116 用了去年沒篩過的科目、新設系或只看術科，沒得比',
   };
+  const GOOD = '穩過＋應該過';
+  /** Logic text names the tiers by their keys (「適中」); show the student-facing names. */
+  const tw = t => String(t).replace(/「(穩|適中|衝|難|不符|無資料)」/g, (_, k) => `「${TL[k]}」`);
   // 116 學測模擬考 (115 學年度高三): dates and 範圍 from several high schools' 115 學年度 notices (台南、高雄、新竹).
   // Schools sit the same papers on nearby days, so a school's own notice wins.
   // 翰林 學測模擬考 五標 (頂/前/均/後/底), as 翰林高中試務中心 names them. Primary source: 翰林's own
@@ -484,7 +492,16 @@
   }
 
   // ------------------------------------------------------------------ small components
-  const pillHTML = (t, cls) => `<span class="pill ${t ? TC[t] : 't0'}${cls ? ' ' + cls : ''}">${t || '—'}</span>`;
+  /** Signal bars (4 = safest), ✕ for 過不了, ? for 看不出. */
+  const sigHTML = t => {
+    const n = TSIG[t];
+    if (n === 0) return `<i class="sig x" aria-hidden="true">${icon('x')}</i>`;
+    if (n < 0) return '<i class="sig q" aria-hidden="true"></i>';
+    return `<i class="sig" aria-hidden="true">${[1, 2, 3, 4].map(i => `<b class="${i <= n ? 'on' : ''}"></b>`).join('')}</i>`;
+  };
+  const pillHTML = (t, cls) => `<span class="pill ${t ? TC[t] : 't0'}${cls ? ' ' + cls : ''}" title="${t ? esc(TIER_SHORT[t]) : ''}">${t ? sigHTML(t) + TL[t] : '—'}</span>`;
+  /** Where you rank among 115 考生 against where the cut fell: the shaded part got through. */
+  const rankBar = (me, cut) => `<div class="rkbar" role="img" aria-label="你在 115 考生${fmtTop(me)}，門檻是${fmtTop(cut)}"><div class="rk-track"><span class="rk-ok" style="width:${cut.toFixed(1)}%"></span><span class="rk-cut" style="left:${cut.toFixed(1)}%"></span><span class="rk-me ${me <= cut ? 'in' : 'out'}" style="left:${Math.min(98.5, me).toFixed(1)}%"></span></div><div class="rk-lab"><span>你 <b>${fmtTop(me)}</b></span><span>門檻 <b>${fmtTop(cut)}</b></span><span class="muted">115 考生排名</span></div></div>`;
   function deltaHTML(diff, last) {
     if (diff == null) return '';
     if (diff > 0) return `<span class="delta up">+${diff}</span>`;
@@ -584,7 +601,7 @@
     } else if (has) note = `檢定用${stdName()}。`;
     return `<div class="ctxbar"><div class="ctx-top"><span class="ctx-lab">${icon('target', 'sm')}落點依據</span>${pick}<button class="btn sm ctx-edit" type="button" data-tab="scores" aria-label="${has ? '改成績' : '輸入成績'}" title="${has ? '改成績' : '輸入成績'}">${icon('edit', 'sm')}<span class="lbl">${has ? '改成績' : '輸入成績'}</span></button></div>
       ${has ? `<div class="mc-s">${chipsHTML(c.thS, c.std, c.eq)}</div>` : '<p class="ctx-none">還沒有成績：先到「我的成績」填學測級分（或目標分數），或存一次模考。</p>'}
-      ${note ? `<p class="ctx-note">${esc(note)}</p>` : ''}</div>`;
+      ${note ? (c.mock ? `<details class="ctx-how"><summary>${icon('info', 'sm')}模考怎麼看落點</summary><p class="ctx-note">${esc(note)}</p></details>` : `<p class="ctx-note">${esc(note)}</p>`) : ''}</div>`;
   }
   // ------------------------------------------------------------------ 模考紀錄
   const mocksByDate = () => st.mocks.slice().sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
@@ -710,7 +727,7 @@
     scope.forEach(d => { const t = tierOf(d); n[t] = (n[t] || 0) + 1; });
     return `<section class="sec result-card">${hIcon('target', '落點分布')}<p class="sub">用「${esc(c.name)}」看 ${fmtN(scope.length)} 個一般校系</p>
       ${tierBarHTML(n, scope.length, { label: '落點分布' })}
-      <p class="rc-n">${TIERS.filter(t => n[t]).map(t => `<span><i class="sw ${TC[t]}"></i>${t} <b>${n[t]}</b></span>`).join('')}</p>
+      <p class="rc-n">${TIERS.filter(t => n[t]).map(t => `<span class="rc-t ${TC[t]}">${sigHTML(t)}${TL[t]} <b>${n[t]}</b></span>`).join('')}</p>
       <div class="rc-act"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}看校系</button><button class="btn" type="button" data-tab="boost">${icon('boost', 'sm')}怎麼進步</button></div></section>`;
   }
   function renderScores() {
@@ -816,11 +833,11 @@
   // ------------------------------------------------------------------ overview (落點分布)
   function tierBarHTML(c, total, opts) {
     const W = (opts && opts.width) || 600;
-    return `<div class="tierbar${opts && opts.small ? ' sm' : ''}" role="img" aria-label="${esc((opts && opts.label ? opts.label + '：' : '') + TIERS.map(t => `${t} ${c[t] || 0} 個`).join('，'))}">${TIERS.filter(t => c[t]).map(t => {
+    return `<div class="tierbar${opts && opts.small ? ' sm' : ''}" role="img" aria-label="${esc((opts && opts.label ? opts.label + '：' : '') + TIERS.map(t => `${TL[t]} ${c[t] || 0} 個`).join('，'))}">${TIERS.filter(t => c[t]).map(t => {
       const share = c[t] / (total || 1);
       const fits = !(opts && opts.small) && share * W >= String(c[t]).length * 8 + 16;
       const off = opts && opts.tiers ? !opts.tiers.includes(t) : false;
-      return `<span class="tb-s ${TC[t]}${off ? ' off' : ''}" style="flex-grow:${c[t]}" title="${t} ${c[t]} 個（${Math.round(share * 100)}%）">${fits ? c[t] : ''}</span>`;
+      return `<span class="tb-s ${TC[t]}${off ? ' off' : ''}" style="flex-grow:${c[t]}" title="${TL[t]} ${c[t]} 個（${Math.round(share * 100)}%）">${fits ? c[t] : ''}</span>`;
     }).join('')}</div>`;
   }
   /** First visit: the whole tool in three steps. */
@@ -840,12 +857,11 @@
     }
     const c = {};
     base.forEach(d => { const t = tierOf(d); c[t] = (c[t] || 0) + 1; });
-    const good = (c['穩'] || 0) + (c['適中'] || 0);
     const W = el.clientWidth || 600;
-    el.innerHTML = `<div class="ov-h">${head}<p>穩＋適中 <b>${good}</b> 個${c['不符'] ? ` · <b>${c['不符']}</b> 個進不了一階` : ''}</p></div>
+    el.innerHTML = `<div class="ov-h">${head}</div>
       ${tierBarHTML(c, base.length, { width: W, tiers: st.f.tiers, label: '落點分布' })}
-      <div class="legend" role="group" aria-label="要顯示哪些落點">${TIERS.map(t => `<button type="button" class="lg" data-tier="${t}" aria-pressed="${st.f.tiers.includes(t)}" title="${esc(TIER_HELP[t])}"><span class="sw ${TC[t]}"></span>${t}<b>${c[t] || 0}</b></button>`).join('')}</div>
-      <details class="tierhelp" id="tierHelp" ${ui.helpOpen ? 'open' : ''}><summary>${icon('info', 'sm')}落點怎麼判斷？按標籤可以隱藏或顯示</summary><ul class="tierdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul></details>`;
+      <div class="legend" role="group" aria-label="一階過得了嗎？按一下隱藏或顯示">${TIERS.map(t => `<button type="button" class="lg ${TC[t]}" data-tier="${t}" aria-pressed="${st.f.tiers.includes(t)}" title="${esc(TIER_SHORT[t])}">${sigHTML(t)}${TL[t]}<b>${c[t] || 0}</b></button>`).join('')}</div>
+      <details class="tierhelp" id="tierHelp" ${ui.helpOpen ? 'open' : ''}><summary>${icon('info', 'sm')}這些標籤怎麼判斷？</summary><ul class="tierdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul><p class="hint">標籤也是篩選：按一下隱藏或顯示。只是一階的估計，不是錄取機率。</p></details>`;
   }
 
   // ------------------------------------------------------------------ result rows
@@ -892,11 +908,11 @@
         if (s.scaled) notes.push(`收 ${s.n115} → ${s.n116} 人`);
         else if (s.kind === 'mult' && s.scale == null && !e.warnings.some(w => w.includes(`116 ×${s.m}`))) notes.push(`116 倍率 ×${s.ref.m} → ×${s.m}`);
         if (n > 1) notes.push(`第 ${c.stages.indexOf(s) + 1}／${n} 關`);
-        const head = `<span class="rv-subj">${esc(partsLabel(s.parts))}</span><span class="rv-num"><span class="lab">115 最低</span><b>${s.v}</b><span class="lab">你</span><b>${s.mine}</b></span>${delta}`;
+        const head = `<span class="rv-subj">${esc(partsLabel(s.parts))}</span><span class="rv-num"><span class="lab">去年最低</span><b>${s.v}</b><span class="lab">你</span><b>${s.mine}</b></span>${delta}`;
         return verdict(e.tier, head, notes.length ? `<div class="rv-note">${esc(notes.join('・'))}</div>` : '');
       }
     }
-    return verdict(e.tier, `<span class="rv-text">${esc(e.reasons[0] || '')}</span>`);
+    return verdict(e.tier, `<span class="rv-text">${esc(tw(e.reasons[0] || ''))}</span>`);
   }
   function reqHTML(d) {
     const th = thList(d);
@@ -908,11 +924,17 @@
     else v = A.stages.map(s => { const tag = s.ref ? changeTag(s) : ''; return `${partsLabel(s.parts)} ${s.ref ? s.ref.v + (tag ? `（${tag}）` : '') : s.kind === 'open' ? '沒篩人' : s.open ? '沒篩人（116 收得比較少）' : '（115 沒有）'}`; }).join(' → ');
     return `<div class="rv-grid plain"><div class="rv-k">檢定</div><div class="rv-v">${th.length ? esc(th.join('、')) : '不設'}</div><div class="rv-k">${esc(k)}</div><div class="rv-v">${esc(v)}</div></div>`;
   }
+  /** 二階 in two facts: how much 學測 counts, and the biggest other part (the full mix is in the detail). */
+  function stage2Key(d) {
+    const parts = L.stage2(d), sat = parts.find(x => x.kind === 'sat');
+    const big = parts.filter(x => x.kind !== 'sat').sort((a, b) => b.p - a.p)[0];
+    return [sat ? `學測 ${sat.p}%` : '不計學測', big ? `${shortItem(big.n)} ${big.p}%` : ''].filter(Boolean);
+  }
   function metaHTML(d) {
-    const parts = partsLine(d);
     // Weekdays live in the detail drawer; the row keeps dates short.
-    const facts = [['users', `名額 ${d.q}`], ['cal', daysText(d).replace(/\([一二三四五六日]\)/g, '')], ['pin', d.city]].filter(x => x[1]);
-    return `<div class="rm-facts">${facts.map(([ic, x]) => `<span>${icon(ic, 'xs')}${esc(x)}</span>`).join('')}</div>${parts ? `<div class="rm-parts"><span class="lab">二階</span><span class="pts">${partsHTML(d)}</span></div>` : ''}`;
+    const facts = [['cal', daysText(d).replace(/\([一二三四五六日]\)/g, '')], ['pin', d.city], ['users', `名額 ${d.q}`]].filter(x => x[1]);
+    const s2 = L.stage2(d).length ? `<span class="rm-s2"><span class="lab">二階</span>${stage2Key(d).map(x => `<span class="pt${x === '不計學測' ? ' nosat' : ''}">${esc(x)}</span>`).join('')}</span>` : '';
+    return `<div class="rm-facts">${facts.map(([ic, x]) => `<span>${icon(ic, 'xs')}${esc(x)}</span>`).join('')}${s2}</div>`;
   }
   /** 「一、面試 二、審查資料 三、…」 → one item per line. */
   function orderList(t) {
@@ -923,7 +945,8 @@
   /** Short labels for a row's warnings; the full sentences stay in the detail view. */
   function warnTags(e) {
     const out = [];
-    for (const w of e.warnings) {
+    for (const w0 of e.warnings) {
+      const w = tw(w0);
       if (/^沒考 (.+)，116 倍率/.test(w)) out.push(w.replace(/^沒考 (.+)，116.*/, '$1 以 0 級分篩選'));
       else if (/^沒考 (.+)，二階/.test(w)) out.push(w.replace(/^沒考 (.+)，二階.*/, '二階 $1 以 0 計'));
       else if (/^檢定邊緣/.test(w)) out.push('檢定邊緣');
@@ -969,14 +992,14 @@
     }
     if (!h) {
       const hiddenTiers = has && base.length > 0;
-      h = `<li class="empty"><b>沒有符合的校系</b><span>${hiddenTiers ? '目前的落點標籤都被隱藏了，或篩選太嚴。' : '試著放寬篩選或換個關鍵字。'}</span><button class="btn sm" type="button" data-act="${hiddenTiers ? 'showTiers' : 'resetAll'}">${hiddenTiers ? '顯示所有落點' : '清除所有篩選'}</button></li>`;
+      h = `<li class="empty"><b>沒有符合的校系</b><span>${hiddenTiers ? '這些落點標籤都被隱藏了，或篩選太嚴。' : '試著放寬篩選或換個關鍵字。'}</span><button class="btn sm" type="button" data-act="${hiddenTiers ? 'showTiers' : 'resetAll'}">${hiddenTiers ? '顯示所有落點' : '清除所有篩選'}</button></li>`;
     }
     $('#list').innerHTML = h;
     const sortName = $('#sort').selectedOptions[0] ? $('#sort').selectedOptions[0].textContent : '';
     const hidden = has ? TIERS.filter(t => !st.f.tiers.includes(t)) : [];
     const nUntaken = has && !st.f.untaken ? baseFiltered('untaken').filter(d => usesUntaken(d) && st.f.tiers.includes(tierOf(d))).length : 0;
     const untakenNote = nUntaken ? `<button class="textbtn" type="button" data-act="showUntaken">＋${fmtN(nUntaken)} 個用到沒考科目</button>` : '';
-    $('#listbar').innerHTML = `<span>顯示 <b class="num">${fmtN(s.length)}</b> 個${hidden.length ? `（隱藏了${hidden.join('、')}）` : ''}${untakenNote ? ' ' + untakenNote : ''}</span><span class="lb-sort">${esc(sortName)}</span>`;
+    $('#listbar').innerHTML = `<span>顯示 <b class="num">${fmtN(s.length)}</b> 個${hidden.length ? `（隱藏了${hidden.map(t => TL[t]).join('、')}）` : ''}${untakenNote ? ' ' + untakenNote : ''}</span><span class="lb-sort">${esc(sortName)}</span>`;
     $('#more').innerHTML = s.length > ui.shown ? `<button class="btn" type="button" data-act="more">再顯示 ${Math.min(PAGE, s.length - ui.shown)} 個（還有 ${fmtN(s.length - ui.shown)} 個）</button>` : '';
     if (ui.sheet) $('#sheetDone').textContent = `看 ${fmtN(s.length)} 個結果`;
   }
@@ -1059,9 +1082,9 @@
         }
         if (s.kind === 'mult' || s.scaled) notes.push(flowNote(s, has));
         else if (!s.apcs) notes.push(s.last ? `剛好 ${s.v} 要比同級分超額篩選，${s.v + 1} 以上直接過` : `${s.v} 以上進下一關，同分的人一起過`);
-        if (has && s.topCut != null) notes.push(`你在 115 考生${fmtTop(s.topMine)}，門檻是${fmtTop(s.topCut)}`);
-        else if (!s.apcs) { const p = L.topPercent(D.pct, s.parts, s.v); if (p != null) notes.push(`門檻是 115 考生${fmtTop(p)}`); }
-        return stepHTML(cls, no, title, `<div class="reqs"><div class="req"><span class="what">115 最低 ${s.v}${unit}</span>${you}</div></div><p class="step-d">${esc(notes.join('。'))}</p>`);
+        const rank = has && s.topCut != null && s.topMine != null ? rankBar(s.topMine, s.topCut) : '';
+        if (!rank && !s.apcs) { const p = L.topPercent(D.pct, s.parts, s.v); if (p != null) notes.push(`門檻是 115 考生${fmtTop(p)}`); }
+        return stepHTML(cls, no, title, `<div class="reqs"><div class="req"><span class="what">去年最低 ${s.v}${unit}</span>${you}</div></div>${rank}${notes.length ? `<p class="step-d">${esc(notes.join('。'))}</p>` : ''}`);
       }
       // No 115 cut for these subjects: say why, and show where you stand among 115 考生 on them.
       const what = s.open ? '115 這一關沒有篩掉人' : !r ? '沒有 115 資料' : '115 沒有同樣科目的門檻';
@@ -1083,7 +1106,8 @@
     const cmp = e && e.cmp && e.cmp.stages ? e.cmp : L.compare116(d, cur().S, D.pct);
     let h = `<section class="d-sec">${hIcon('funnel', '第一階段：一階篩選', 'h3', '<small>檢定 → 倍率篩選 → 同級分超額篩選</small>')}`;
     const arts = d.arts ? d.arts.items.filter(i => i.i && i.i !== '--').map(i => `<span class="tagc">${esc(i.i)}${i.t ? ' 檢定' + esc(i.t) : ''}${i.m != null ? ' 倍率' + esc(i.m) : ''}</span>`).join('') : '';
-    h += `<div class="plan116"><span>116 倍率篩選</span>${plan.length ? plan.map((p, i) => `<span class="tagc">${i + 1}. ${esc(partsLabel(p.parts))} × ${p.m}</span>`).join('') : '<span class="tagc">不篩學測</span>'}${arts}</div>`;
+    // the steps below already list each 學測 stage; say it here only when 術科 also screens, or nothing does
+    if (arts || !plan.length) h += `<div class="plan116"><span>116 倍率篩選</span>${plan.length ? plan.map((p, i) => `<span class="tagc">${i + 1}. ${esc(partsLabel(p.parts))} × ${p.m}</span>`).join('') : '<span class="tagc">不篩學測</span>'}${arts}</div>`;
     if (r && r.cut.length && cmp.stages.length) {
       // 116 is the rule; say exactly how it differs from 115 and what 115 was.
       const none = cmp.stages.filter(s => s.kind === 'none' && !s.open), mult = cmp.stages.filter(s => s.kind === 'mult');
@@ -1095,7 +1119,7 @@
       if (cmp.dropped.length) parts.push(`115 的${cmp.dropped.map(c => `${partsLabel(c.parts)} × ${c.m ?? '?'}`).join('、')} 這${cmp.dropped.length > 1 ? '幾' : '一'}關，116 拿掉了`);
       if (parts.length) {
         const was = cmp.cuts.map(c => (c.k ? `${partsLabel(c.parts)} × ${c.m ?? '?'}（最低 ${c.v}${c.apcs ? ' 級' : ''}）` : c.raw)).join(' → ');
-        h += noteHTML('warn', `116 的一階篩選跟 115 不同：${esc(parts.join('；'))}。下面每一關只跟 115 用同樣科目篩選的門檻比。<br><span class="muted">115 是：${esc(was)}</span>`);
+        h += `<details class="fold chg">${'<summary>' + icon('alert', 'sm') + '116 的篩選跟 115 不一樣' + icon('chevD', 'sm') + '</summary>'}<div class="long">${esc(parts.join('；'))}。下面每一關只跟 115 用同樣科目篩選的門檻比。\n115 是：${esc(was)}</div></details>`;
       }
     }
     if (r && r.via) h += noteHTML('warn', `這裡用的是${esc(r.via)}的 115 資料，不是同一個系組。`);
@@ -1169,7 +1193,11 @@
     const e = EV.get(d.c);
     let h = '';
     if (e) {
-      h += `<div class="verdict ${TC[e.tier]}">${pillHTML(e.tier, 'lg2')}<div><p class="v-src">用「${esc(cur().name)}」</p><p class="v-t">${esc(TIER_HELP[e.tier])}</p>${e.reasons.length ? `<ul>${e.reasons.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${e.warnings.length ? `<ul class="warns">${e.warnings.map(x => `<li>${icon('alert')}<span>${esc(x)}</span></li>`).join('')}</ul>` : ''}</div></div>`;
+      const more = [...e.reasons.slice(1).map(tw), ...e.warnings.map(tw)];
+      const tags = warnTags(e);
+      h += `<div class="verdict ${TC[e.tier]}"><div class="v-top">${pillHTML(e.tier, 'lg2')}<div><p class="v-t">${esc(TIER_SHORT[e.tier])}</p><p class="v-src">一階過得了嗎？用「${esc(cur().name)}」看</p></div></div>
+        ${e.reasons[0] ? `<p class="v-why">${esc(tw(e.reasons[0]))}</p>` : ''}
+        ${more.length ? `<details class="v-more"><summary>${icon('alert', 'sm')}<span>${tags.length ? esc(tags.join('・')) : `還有 ${more.length} 件事`}</span>${icon('chevD', 'sm')}</summary><ul>${more.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}</div>`;
     } else {
       h += `<div style="margin-top:18px">${noteHTML('info', '輸入成績後，這裡會逐關比較你和 115 的門檻，判斷落點。 <button class="textbtn" type="button" data-tab="scores">去輸入成績</button>')}</div>`;
     }
@@ -1247,14 +1275,14 @@
     const ck = (state, title, body) => out.push({ state, title, body });
     if (!P.length) return out;
     if (hasScores()) {
-      if (c('不符')) ck('bad', `${c('不符')} 個志願一定進不了一階`, '一定進不了一階，建議換掉。');
+      if (c('不符')) ck('bad', `${c('不符')} 個「過不了」`, '檢定沒過或沒考要用的科目，一定進不了一階，建議換掉。');
       else ck('ok', '沒有一定進不了的志願', '每個志願都通過檢定、也考了要篩選的科目。');
-      if (!c('穩') && !c('適中')) ck('bad', '沒有「穩」或「適中」', '如果一階全部沒過，就只剩分科測驗。建議至少放 1–2 個穩的。');
-      else if (!c('穩')) ck('warn', '沒有「穩」的志願', '很多學長姐會留 1 個保底，避免一階全落。');
-      else ck('ok', `有 ${c('穩')} 個「穩」保底`, '');
-      if (c('衝') + c('難') >= 4) ck('warn', `${c('衝') + c('難')} 個是「衝」或「難」`, '2 衝 2 適中 2 穩比較安全。');
-      if (c('穩') >= 4) ck('warn', `${c('穩')} 個都是「穩」`, '可能浪費機會。考慮把 1–2 個換成更想讀、但要衝一下的系。');
-      if (c('無資料')) ck('info', `${c('無資料')} 個沒有可以比的 115 門檻`, '沒有可比的 115 門檻，點進去看原因。');
+      if (!c('穩') && !c('適中')) ck('bad', '沒有「穩過」或「應該過」', '如果一階全部沒過，就只剩分科測驗。建議至少放 1–2 個穩過的。');
+      else if (!c('穩')) ck('warn', '沒有「穩過」的志願', '很多學長姐會留 1 個保底，避免一階全落。');
+      else ck('ok', `有 ${c('穩')} 個「穩過」保底`, '');
+      if (c('衝') + c('難') >= 4) ck('warn', `${c('衝') + c('難')} 個是「邊緣」或「機會低」`, '大約 2 個穩過、2 個應該過、2 個邊緣比較安全。');
+      if (c('穩') >= 4) ck('warn', `${c('穩')} 個都是「穩過」`, '可能浪費機會。考慮把 1–2 個換成更想讀、但要拚一下的系。');
+      if (c('無資料')) ck('info', `${c('無資料')} 個「看不出」`, '去年沒有能比的門檻，點進去看原因。');
     } else ck('info', '輸入成績才能檢查穩衝搭配', '在「我的成績」填學測級分（或模考、目標分數）。');
     const cf = L.conflicts(P);
     if (cf.length) {
@@ -1362,7 +1390,7 @@
         <div class="s-main" data-open="${d.c}" role="button" tabindex="0"><div class="s-t"><span class="sch">${esc(sch(d))}</span>${nameHTML(d.n)}</div><div class="s-d"><span>${icon('cal', 'xs')}${esc(daysText(d))}</span><span>${icon('doc', 'xs')}截止 ${esc(rocDate(d.dd))}</span><span>${icon('flag', 'xs')}放榜 ${esc(rocDate(d.rd))}</span></div></div>
         <div class="ctrl"><button type="button" data-up="${d.c}" aria-label="上移" title="上移" ${i === 0 ? 'disabled' : ''}>${icon('up', 'sm')}</button><button type="button" data-down="${d.c}" aria-label="下移" title="下移" ${i === P.length - 1 ? 'disabled' : ''}>${icon('down', 'sm')}</button><button type="button" data-plan="${d.c}" aria-label="移出志願" title="移出志願">${icon('x', 'sm')}</button></div></li>`;
     }
-    const mix = Array.from({ length: 6 }, (_, i) => { const d = P[i]; if (!d) return '<span class="e">空</span>'; const t = tierOf(d); return `<span class="${t ? TC[t] : 't0'}">${t || '—'}</span>`; }).join('');
+    const mix = Array.from({ length: 6 }, (_, i) => { const d = P[i]; if (!d) return '<span class="e">空</span>'; const t = tierOf(d); return `<span class="${t ? TC[t] : 't0'}" title="${t ? TL[t] : ''}">${t ? sigHTML(t) : '—'}</span>`; }).join('');
     const checks = planChecks(P);
     const IC = { ok: 'check', warn: 'alert', bad: 'x', info: 'info' };
     const favRows = favs.map(d => {
@@ -1392,13 +1420,13 @@
       `${c.mock ? `模考「${c.name}」` : '學測'}：${SCORE_KEYS.map(k => `${subj(k)}${L.val(s, k) ?? '沒考'}${c.eq[k] ? `（學測約 ${c.eq[k].g}）` : ''}`).join(' ')} 英聽${s.聽 || '沒考'}（檢定用${c.stdName}）`, ''];
     const row = (d, i) => {
       const e = EV.get(d.c);
-      return `${i != null ? i + 1 + '. ' : '- '}${sch(d)} ${d.n}（${d.c}）【${e ? e.tier : '—'}】${e ? e.reasons.join('；') : ''}${e && e.warnings.length ? '；' + e.warnings.join('；') : ''}\n   ${requirementLine(d)}\n   二階：${partsLine(d, true)}；甄試 ${d.idays.length ? rocText(d.idate) : '不用到校'}；資料截止 ${rocDate(d.dd)}${d.rv ? `\n   審查資料：${d.rv}` : ''}`;
+      return `${i != null ? i + 1 + '. ' : '- '}${sch(d)} ${d.n}（${d.c}）【${e ? TL[e.tier] : '—'}】${e ? tw(e.reasons.join('；')) : ''}${e && e.warnings.length ? '；' + tw(e.warnings.join('；')) : ''}\n   ${requirementLine(d)}\n   二階：${partsLine(d, true)}；甄試 ${d.idays.length ? rocText(d.idate) : '不用到校'}；資料截止 ${rocDate(d.dd)}${d.rv ? `\n   審查資料：${d.rv}` : ''}`;
     };
     lines.push('【六個志願】');
     P.forEach((d, i) => lines.push(row(d, i)));
     const others = st.fav.filter(c => !st.plan.includes(c)).map(c => BY_CODE[c]).filter(Boolean);
     if (others.length) { lines.push('', '【其他收藏】'); others.forEach(d => lines.push(row(d))); }
-    lines.push('', '說明：一階照 116 的篩選規則一關一關看，每一關只拿 115 同樣科目的最低級分推估（不是保證）；116 改用 115 沒篩過的科目時判「無資料」。116 五標 2027/2/25 公布。');
+    lines.push('', '說明：一階照 116 的篩選規則一關一關看，每一關只拿 115 同樣科目的最低級分推估（不是保證）；116 改用 115 沒篩過的科目時判「看不出」。116 五標 2027/2/25 公布。');
     return lines.join('\n');
   }
   function download(name, text, type) {
@@ -1417,7 +1445,7 @@
       if (!d) return;
       const e = EV.get(c), i = st.plan.indexOf(c);
       const req = requirementParts(d);
-      rows.push([i >= 0 ? i + 1 : '收藏', d.c, sch(d), d.n, e ? e.tier : '', e ? e.reasons.join('；') : '', req.th, req.one, partsLine(d, true), d.rv || '', rocDate(d.dd), d.idays.length ? rocText(d.idate) : '不用到校甄試', rocDate(d.rd), d.fee || '', d.url]);
+      rows.push([i >= 0 ? i + 1 : '收藏', d.c, sch(d), d.n, e ? TL[e.tier] : '', e ? tw(e.reasons.join('；')) : '', req.th, req.one, partsLine(d, true), d.rv || '', rocDate(d.dd), d.idays.length ? rocText(d.idate) : '不用到校甄試', rocDate(d.rd), d.fee || '', d.url]);
     });
     return '﻿' + rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   }
@@ -1564,7 +1592,7 @@
     const latest = `<div class="latest"><h3 class="sec-h3">最近一次：${esc(mName(lm))}<small>${mdText(lm.d)}</small></h3>
       ${anyEq ? '<p class="sub">學測約＝照模考排名換算的學測級分（估計）</p>' : ''}
       <div class="lt-grid">${cells}</div>
-      <p class="sub">穩＋適中 <b>${lt.good}</b> 個${lb ? ` · 最強組合 <b>${esc(comboName(lb.k))}</b>（${fmtTop(lb.top)}）` : ''}</p>
+      <p class="sub">${GOOD} <b>${lt.good}</b> 個${lb ? ` · 最強組合 <b>${esc(comboName(lb.k))}</b>（${fmtTop(lb.top)}）` : ''}</p>
       ${st.src === lm.id ? '' : `<div class="lt-act"><button class="btn sm" type="button" data-src="${lm.id}">用這次看落點</button></div>`}</div>`;
 
     // ---- what changed
@@ -1585,7 +1613,7 @@
         if ((better && dv < 0) || (!better && dv > 0)) notes.push(`${subj(k)}：${mName(a)} ${va} 級分（${la}）→ ${mName(b)} ${vb} 級分（${lb2}），${better ? '級分少了但排名更前面：這次比較難' : '級分多了但排名往後：這次比較簡單，別被分數騙了'}`);
       }
       const a = tierRows[tierRows.length - 2], b = tierRows[tierRows.length - 1];
-      notes.push(`穩＋適中 ${a.good} → ${b.good}（${b.good - a.good >= 0 ? '+' : ''}${b.good - a.good}）`);
+      notes.push(`${GOOD} ${a.good} → ${b.good}（${b.good - a.good >= 0 ? '+' : ''}${b.good - a.good}）`);
     }
 
     // ---- one chart per subject, on the 學測 scale when possible
@@ -1613,7 +1641,7 @@
     const allTest = subs.every(onTest);
 
     // ---- 落點 per 模考 and the table
-    const bars = tierRows.map(x => `<div class="mt-row"><span class="mt-l"><b>${esc(mName(x.m))}</b><small>${mdText(x.m.d)}</small></span>${tierBarHTML(x.c, scope.length, { small: true, label: mName(x.m) })}<span class="mt-n num">穩＋適中 <b>${x.good}</b></span></div>`).join('');
+    const bars = tierRows.map(x => `<div class="mt-row"><span class="mt-l"><b>${esc(mName(x.m))}</b><small>${mdText(x.m.d)}</small></span>${tierBarHTML(x.c, scope.length, { small: true, label: mName(x.m) })}<span class="mt-n num">${GOOD} <b>${x.good}</b></span></div>`).join('');
     const table = `<div class="tablewrap"><table class="reftable"><thead><tr><th>模考</th>${subs.map(k => `<th>${ABBR[k]}</th>`).join('')}<th>英聽</th><th>最強組合</th></tr></thead><tbody>
       ${ms.map(m => { const c = conv.get(m.id), b = bestCombo(c.S); return `<tr><th>${esc(mName(m))}<small>${mdText(m.d)}</small></th>${subs.map(k => { const v = L.val(m.s, k), lv = lvOf(m, k, v), e = c.eq[k]; return `<td class="num">${v ?? '—'}${lv ? `<small class="lv">${lv}</small>` : ''}${e ? `<small class="lv eq">學測≈${e.g}</small>` : ''}</td>`; }).join('')}<td>${m.s.聽 || '—'}</td><td>${b ? `${esc(comboName(b.k))} ${fmtTop(b.top)}` : '—'}</td></tr>`; }).join('')}
       </tbody></table></div>`;
@@ -1677,7 +1705,7 @@
         const lv = levelOf(r.k, b.to);
         const tw = trendWord(series.out[r.k]);
         hero = `<section class="hero"><span class="eyebrow">${icon('target', 'sm')}最值得補強</span><h2>${subj(r.k)} 從 ${r.cur || '沒考'} 考到 ${b.to} 級分</h2>
-          <p>${scale ? `${scale.replace(/[（）]/g, '')}。` : ''}<b>${b.up}</b> 個校系落點變好${b.unlock ? `（${b.unlock} 個從不符變成可以報）` : ''}。${lv && lv !== '未達底標' ? `${b.to} 級分達學測${lv}。` : ''}${tw ? `${esc(tw)}。` : ''}</p>
+          <p>${scale ? `${scale.replace(/[（）]/g, '')}。` : ''}<b>${b.up}</b> 個校系落點變好${b.unlock ? `（${b.unlock} 個從過不了變成可以報）` : ''}。${lv && lv !== '未達底標' ? `${b.to} 級分達學測${lv}。` : ''}${tw ? `${esc(tw)}。` : ''}</p>
           ${ranked.length > 1 ? `<div class="alts">${ranked.slice(1, 4).map(x => `<span>${subj(x.r.k)} ${x.r.cur || '沒考'} → ${x.b.to}：${x.b.up} 個</span>`).join('')}</div>` : ''}</section>`;
       } else hero = `<section class="hero"><span class="eyebrow">${icon('target', 'sm')}最值得補強</span><h2>這些校系裡，每科多考 1–5 級分都不會改變落點</h2><p>換一個範圍看看（上面的「算哪些校系」）。</p></section>`;
       // one table: each subject now (with its 模考 trend), then what 1–5 more 級分 would do
@@ -1687,8 +1715,8 @@
         return `<span class="hs" role="rowheader">${subj(r.k)}<small>${r.cur ? `${r.cur}${lv && lv !== '未達底標' ? ` ${LV_SHORT[lv]}` : ''}` : '沒考'}</small>${spark ? `<span class="hs-m" title="${esc(trendWord(x) || '')}">${spark}</span>` : ''}</span>`;
       };
       const grid = `<div class="heat" role="table" aria-label="每科多考幾級分，落點變好的校系數"><div role="row" style="display:contents"><span class="hh" role="columnheader">現在</span>${[1, 2, 3, 4, 5].map(i => `<span class="hh" role="columnheader">+${i}</span>`).join('')}</div>
-        ${rows.map(r => `<div role="row" style="display:contents">${subjCell(r)}${r.cells.map(x => x ? `<span class="hc" role="cell" style="--h:${(x.up / maxUp).toFixed(3)}" title="${subj(r.k)} 考到 ${x.to} 級分：${x.up} 個校系落點變好${x.unlock ? `，${x.unlock} 個從不符變成可以報` : ''}"><span class="to">→ ${x.to}</span><span class="n">${x.up}</span>${x.unlock ? `<span class="u">解鎖 ${x.unlock}</span>` : ''}</span>` : '<span class="hc na" role="cell">—</span>').join('')}</div>`).join('')}</div>
-        <p class="hint" style="margin-top:10px">格子裡是落點變好的校系數；解鎖＝從「不符」變成可以報。${Object.keys(series.out).length ? '科目下的小線是模考趨勢。' : ''}</p>`;
+        ${rows.map(r => `<div role="row" style="display:contents">${subjCell(r)}${r.cells.map(x => x ? `<span class="hc" role="cell" style="--h:${(x.up / maxUp).toFixed(3)}" title="${subj(r.k)} 考到 ${x.to} 級分：${x.up} 個校系落點變好${x.unlock ? `，${x.unlock} 個從過不了變成可以報` : ''}"><span class="to">→ ${x.to}</span><span class="n">${x.up}</span>${x.unlock ? `<span class="u">解鎖 ${x.unlock}</span>` : ''}</span>` : '<span class="hc na" role="cell">—</span>').join('')}</div>`).join('')}</div>
+        <p class="hint" style="margin-top:10px">格子裡是落點變好的校系數；解鎖＝從「過不了」變成可以報。${Object.keys(series.out).length ? '科目下的小線是模考趨勢。' : ''}</p>`;
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
       const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${esc(c.stdName)}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
       if (!ui.tryS || ui.trySig !== c.sig) { ui.tryS = { ...c.S }; ui.trySig = c.sig; }
@@ -1717,8 +1745,8 @@
     const W = out.clientWidth || 600;
     const same = JSON.stringify(SCORE_KEYS.map(k => L.val(S2, k))) === JSON.stringify(SCORE_KEYS.map(k => L.val(c.S, k)));
     out.innerHTML = `<div class="cmpbars"><span>現在</span>${tierBarHTML(c0, scope.length, { small: true, width: W, label: '現在' })}<span>試算</span>${has2 ? tierBarHTML(c1, scope.length, { small: true, width: W, label: '試算' }) : '<span class="hint">試算成績都是沒考</span>'}</div>
-      <div style="overflow-x:auto"><table class="cmptable"><thead><tr><th scope="col"><span class="sr">成績</span></th>${TIERS.map(t => `<th>${t}</th>`).join('')}</tr></thead><tbody><tr><td>現在</td>${TIERS.map(t => `<td>${c0[t] || 0}</td>`).join('')}</tr><tr><td>試算</td>${TIERS.map(t => { const a = c0[t] || 0, b = c1[t] || 0; const good = t === '穩' || t === '適中'; return `<td class="${b !== a ? ((b > a) === good ? 'up' : 'dn') : ''}">${has2 ? b : '—'}</td>`; }).join('')}</tr></tbody></table></div>
-      ${same ? '<p class="hint" style="margin-top:12px">拖曳上面的格子改級分，這裡會比較落點變化。</p>' : better.length ? `<h3 style="font-size:14.5px;margin-top:18px">落點變好的校系（${better.length}）</h3><ul class="better">${better.slice(0, 40).map(([d, a, b]) => `<li>${pillHTML(a)}<span class="arr">→</span>${pillHTML(b)}<a href="#d=${d.c}" data-open="${d.c}">${esc(sch(d))} ${nameHTML(d.n)}</a></li>`).join('')}</ul>${better.length > 40 ? '<p class="hint">只列前 40 個（依 115 門檻高到低）。</p>' : ''}` : `<p class="hint" style="margin-top:12px">沒有校系的落點變好${worse.length ? `，有 ${worse.length} 個變差` : ''}。</p>`}`;
+      <div style="overflow-x:auto"><table class="cmptable"><thead><tr><th scope="col"><span class="sr">成績</span></th>${TIERS.map(t => `<th>${TL[t]}</th>`).join('')}</tr></thead><tbody><tr><td>現在</td>${TIERS.map(t => `<td>${c0[t] || 0}</td>`).join('')}</tr><tr><td>試算</td>${TIERS.map(t => { const a = c0[t] || 0, b = c1[t] || 0; const good = t === '穩' || t === '適中'; return `<td class="${b !== a ? ((b > a) === good ? 'up' : 'dn') : ''}">${has2 ? b : '—'}</td>`; }).join('')}</tr></tbody></table></div>
+      ${same ? '<p class="hint" style="margin-top:12px">拖曳上面的格子改級分，這裡會比較落點變化。</p>' : better.length ? `<h3 style="font-size:14.5px;margin-top:18px">變好的校系（${better.length}）</h3><ul class="better">${better.slice(0, 40).map(([d, a, b]) => `<li>${pillHTML(a)}<span class="arr">→</span>${pillHTML(b)}<a href="#d=${d.c}" data-open="${d.c}">${esc(sch(d))} ${nameHTML(d.n)}</a></li>`).join('')}</ul>${better.length > 40 ? '<p class="hint">只列前 40 個（依 115 門檻高到低）。</p>' : ''}` : `<p class="hint" style="margin-top:12px">沒有校系的落點變好${worse.length ? `，有 ${worse.length} 個變差` : ''}。</p>`}`;
   }
 
   // ------------------------------------------------------------------ guide
@@ -1789,7 +1817,7 @@
         <li><div><b>想改考分科，6/13 前聲明放棄。</b></div></li>
         <li><div><b>沒考的科目以 0 級分計。</b>用到的科目全沒考就不能篩選。</div></li>
       </ol></section>
-      <section class="sec">${hIcon('target', '這個工具怎麼判斷落點')}<ul class="tdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul>
+      <section class="sec">${hIcon('target', '一階過得了嗎？標籤的意思')}<ul class="tdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul>
         <div class="prose" style="margin-top:16px"><p>照 116 的科目、倍率和順序一關一關看，每關只跟 <b>115 同樣科目</b>的最低級分比。收的人數差超過 10% 就用 115 級分人數表換算。</p>
         <p>用模考看落點時：<b>檢定</b>拿你的模考級分比<b>那次模考的五標</b>；<b>倍率篩選</b>先把模考級分照排名換算成學測級分，再比 115 門檻。</p>
         <p class="hint">只是一階的估計，不是錄取機率。</p></div></section>
