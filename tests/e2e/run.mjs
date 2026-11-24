@@ -207,6 +207,12 @@ try {
     ok(btxt.includes('擋住') && btxt.includes('數學B'), 'boost tab names the 數B blocker');
     const nAll = Number((/共 ([\d,]+) 個/.exec(await page.locator('#boost .scopebar').innerText()) || [])[1].replace(/,/g, ''));
     ok(nAll > 1000, `怎麼進步 counts all 校系, not 找校系's 法政 filter (${nAll})`);
+    // each bar is a button: picking one shows what reaching that 級分 does
+    const card = page.locator('#boost .gi').first();
+    const bar = card.locator('button.gb').first();
+    const to = (await bar.getAttribute('data-gsel')).split(':')[1];
+    await bar.click();
+    ok((await bar.getAttribute('aria-pressed')) === 'true' && (await card.locator('.gi-at').innerText()).includes(`考到 ${to} 級分`), `tapping a bar shows that 級分 (${to})`);
     await page.click('#boost [data-bscope="plan"]');
     await page.waitForSelector('#boost .gains');
     ok(/共 6 個/.test(await page.locator('#boost .scopebar').innerText()), '怎麼進步 can be scoped to the 6 志願');

@@ -1144,6 +1144,15 @@ details.fold.chg .long{color:var(--text-2);margin-top:6px}
 .gi-stats>span.wide{grid-column:1 / -1;flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
 .gi-stats>span.wide small{font-size:12.5px;color:var(--text-2)}
 .gi-stats em{font-style:normal;font-size:12.5px;font-weight:750;color:var(--ok);background:var(--ok-bg);border-radius:6px;padding:1px 7px}
+/* bars are buttons: the picked one is bright, the others muted */
+button.gb{border:0;background:none;padding:4px 0 2px;margin:0;font:inherit;color:inherit;cursor:pointer;border-radius:8px;-webkit-tap-highlight-color:transparent}
+button.gb:hover{background:var(--surface-2)}
+.gb.sel i{background:var(--heat)}
+.gb.sel em{color:var(--text)}
+.gb.sel small{color:var(--text);font-weight:750}
+.gb.best i{background:color-mix(in srgb,var(--heat) 45%,var(--surface-3))}
+.gi-at{grid-column:1 / -1;font-size:13px;color:var(--text-2)}
+.gi-at b{color:var(--text);font-size:14.5px}
 </style>
 </head>
 <body>
@@ -2439,7 +2448,7 @@ details.fold.chg .long{color:var(--text-2);margin-top:6px}
   const noteHTML = (kind, html) => `<div class="note ${kind}">${icon(kind === 'warn' ? 'alert' : 'info')}<div>${html}</div></div>`;
   function focusKey(el) {
     if (!el || !el.dataset) return null;
-    for (const a of ['slider', 'try', 'focus', 'src', 'bscope', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
+    for (const a of ['slider', 'try', 'focus', 'src', 'bscope', 'gsel', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
       if (el.dataset[a] != null) return `[data-${a}="${CSS.escape(el.dataset[a])}"]`;
     }
     return el.id ? '#' + CSS.escape(el.id) : null;
@@ -3598,6 +3607,10 @@ details.fold.chg .long{color:var(--text-2);margin-top:6px}
   }
   const trendWord = x => (!x || x.n < 2 ? '' : x.last > x.first ? `模考 ${x.first} → ${x.last}，在進步` : x.last < x.first ? `模考 ${x.first} → ${x.last}，要注意` : `模考持平在 ${x.last}`);
   /** 各科一覽: what you entered, how the 模考 went (on the 學測 scale), and what 1–2 more 級分 would do. */
+  /** What reaching one 級分 does: labelled, so each number says what it counts. */
+  function gStatsHTML(cur, cl, good0) {
+    return `<p class="gi-at">考到 <b>${cl.to}</b> 級分${cur ? `（多 ${cl.to - cur}）` : ''}的話</p><span><b>${cl.up}</b><small>個系變好</small></span><span><b>${cl.unlock}</b><small>個從過不了變可報</small></span><span class="wide"><small>${GOOD}</small><b>${good0} → ${cl.good}</b>${cl.good > good0 ? `<em>+${cl.good - good0}</em>` : ''}</span>`;
+  }
   function renderBoost() {
     const el = $('#boost'), c = cur();
     const head = `<header class="page-h"><div><h1 class="hi">${icon('boost')}<span>怎麼進步</span></h1><p>哪一科多考幾級分，能讓最多校系的落點變好。</p></div></header>`;
@@ -3645,34 +3658,42 @@ details.fold.chg .long{color:var(--text-2);margin-top:6px}
         return { r, valid, max, best: max ? valid.find(x => x.up === max) : null };
       }).sort((a, b) => b.max - a.max || (a.best && b.best ? (a.best.to - a.r.cur) - (b.best.to - b.r.cur) : 0));
       const top = Math.max(1, ...cards.map(x => x.max));
+      ui.gcards = {};
       const good0 = scope.filter(d => { const t = tierOf(d); return t === '穩' || t === '適中'; }).length;
       const trendTag = x => (!x || x.n < 2 ? '' : x.last > x.first ? '<span class="gi-tr up">模考進步中</span>' : x.last < x.first ? '<span class="gi-tr down">模考退步</span>' : '<span class="gi-tr">模考持平</span>');
+      // Each kind of gain is named with the LEAST 級分 that reaches it: the 34 系 that stop being 過不了 at 12
+      // stay unlocked at 13–15, so the sentence says 「考到 12 就有 34 個」, not the bar with the most 系變好.
       const say = ({ r, valid, max, best }) => {
         if (!valid.length) return '已經 15 級分（滿級分）。';
         if (!best) return '多考 1–5 級分，這些校系的落點都不會變。';
-        const more = best.to - r.cur, plateau = valid.some(x => x.to > best.to);
-        return `考到 <b>${best.to}</b> 級分（多 ${more}）最划算${plateau ? '，再多也不會更多' : ''}。`;
+        const ul = Math.max(0, ...valid.map(x => x.unlock)), atUl = ul ? valid.find(x => x.unlock === ul) : null;
+        const plateau = valid.some(x => x.to > best.to);
+        const parts = [];
+        if (atUl && atUl.to < best.to) parts.push(`考到 <b>${atUl.to}</b> 就有 <b>${ul}</b> 個原本過不了的變可報`);
+        parts.push(`考到 <b>${best.to}</b> 變好的系最多（${max} 個）${atUl && atUl.to === best.to ? `，其中 ${ul} 個原本過不了` : ''}${plateau ? '，再多也不會更多' : ''}`);
+        return parts.join('；') + '。';
       };
       const grid = `<ol class="gains">${cards.map(x => {
         const lv = x.r.cur ? levelOf(x.r.k, x.r.cur) : '';
+        // the bar you picked (default: the one with the most 系變好); every bar is a button
+        const picked = x.valid.find(cl => cl.to === (ui.gsel || {})[x.r.k]) || x.best;
         const bars = [0, 1, 2, 3, 4].map(i => {
           const cl = x.r.cells[i];
           if (!cl) return '<span class="gb na"><i></i><small>—</small></span>';
-          return `<span class="gb${x.best === cl ? ' best' : ''}${cl.up ? '' : ' zero'}"><em>${cl.up}</em><i style="height:${Math.max(cl.up ? 5 : 3, (cl.up / top) * 64).toFixed(1)}px"></i><small>${cl.to}</small></span>`;
+          return `<button type="button" class="gb${picked === cl ? ' sel' : ''}${cl.up ? '' : ' zero'}" data-gsel="${x.r.k}:${cl.to}" aria-pressed="${picked === cl}" aria-label="${subj(x.r.k)}考到 ${cl.to} 級分：${cl.up} 個系變好${cl.unlock ? `，${cl.unlock} 個原本過不了` : ''}"><em>${cl.up}</em><i style="height:${Math.max(cl.up ? 5 : 3, (cl.up / top) * 64).toFixed(1)}px"></i><small>${cl.to}</small></button>`;
         }).join('');
-        const label = `${subj(x.r.k)}：` + x.valid.map(cl => `考到 ${cl.to}，${cl.up} 個系變好${cl.unlock ? `，${cl.unlock} 個變成可以報` : ''}`).join('；');
-        const b = x.best;
-        const stats = b ? `<div class="gi-stats"><span><b>${b.up}</b><small>個系變好</small></span><span><b>${b.unlock}</b><small>個原本過不了</small></span><span class="wide"><small>${GOOD}</small><b>${good0} → ${b.good}</b>${b.good > good0 ? `<em>+${b.good - good0}</em>` : ''}</span></div>` : '';
-        return `<li class="gi${x.max ? '' : ' none'}"><div class="gi-h"><b>${subj(x.r.k)}</b><span class="gi-now">${x.r.cur ? `現在 ${x.r.cur}${lv && lv !== '未達底標' ? `・${lv}` : ''}` : '沒考'}</span>${trendTag(series.out[x.r.k])}</div>
-          <div class="gi-bars" role="img" aria-label="${esc(label)}">${bars}</div>
-          ${stats}<p class="gi-say">${say(x)}</p></li>`;
+        ui.gcards = ui.gcards || {};
+        ui.gcards[x.r.k] = { cur: x.r.cur, cells: x.valid, good0 };
+        return `<li class="gi${x.max ? '' : ' none'}" data-gcard="${x.r.k}"><div class="gi-h"><b>${subj(x.r.k)}</b><span class="gi-now">${x.r.cur ? `現在 ${x.r.cur}${lv && lv !== '未達底標' ? `・${lv}` : ''}` : '沒考'}</span>${trendTag(series.out[x.r.k])}</div>
+          ${x.valid.length ? `<div class="gi-bars" role="group" aria-label="${subj(x.r.k)}：按柱子看考到幾級分的變化">${bars}</div>` : ''}
+          ${picked && x.max ? `<div class="gi-stats">${gStatsHTML(x.r.cur, picked, good0)}</div>` : ''}<p class="gi-say">${say(x)}</p></li>`;
       }).join('')}</ol>`;
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
       const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${esc(c.stdName)}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
       if (!ui.tryS || ui.trySig !== c.sig) { ui.tryS = { ...c.S }; ui.trySig = c.sig; }
       const tryGrid = SCORE_KEYS.filter(k => ui.boostAll || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
       el.innerHTML = head + ctxBarHTML() + scopeBarHTML(scope.length) + allToggle + hero +
-        `<section class="sec">${hIcon('boost', '每一科多考幾級分，有幾個系變好？')}<p class="sub">柱子上的數字是落點變好的系數，下面是考到幾級分${c.mock ? '（從這次模考換算的學測級分往上加）' : ''}。</p><p class="gains-base">現在${esc(GOOD)} <b>${fmtN(good0)}</b> 個・過不了 <b>${fmtN(scope.filter(d => tierOf(d) === '不符').length)}</b> 個・共 ${fmtN(scope.length)} 個系</p>${grid}</section>
+        `<section class="sec">${hIcon('boost', '每一科多考幾級分，有幾個系變好？')}<p class="sub">柱子上是落點變好的系數，下面是考到幾級分${c.mock ? '（從這次模考換算的學測級分往上加）' : ''}。按一根柱子看那個分數的變化。</p><p class="gains-base">現在${esc(GOOD)} <b>${fmtN(good0)}</b> 個・過不了 <b>${fmtN(scope.filter(d => tierOf(d) === '不符').length)}</b> 個・共 ${fmtN(scope.length)} 個系</p>${grid}</section>
         <section class="sec">${hIcon('alert', '擋住你的檢定')}<p class="sub">因此進不了一階的校系數</p>${blockHTML}</section>
         <section class="sec" id="trySec">${hIcon('sliders', '試算')}<p class="sub">暫時改級分看落點怎麼變，不會改掉你存的成績。${c.mock ? '這裡是換算的學測級分，檢定照這次模考的五標同步加減。' : ''}</p><div class="try-act"><button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回「${esc(c.name)}」</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();
@@ -3971,6 +3992,16 @@ details.fold.chg .long{color:var(--text-2);margin-top:6px}
       if (ds.skip) { toggle(f.skip, ds.skip); ui.shown = PAGE; render(); return; }
       if (ds.src) { if (ds.src === st.src && !ui.mf) return; useSource(ds.src); return; }
       if (ds.bscope) { st.bx.scope = ds.bscope; render(); return; }
+      if (ds.gsel) {
+        const [k, to] = ds.gsel.split(':'), card = ui.gcards && ui.gcards[k], li = b.closest('[data-gcard]');
+        const cl = card && card.cells.find(x => x.to === +to);
+        if (!cl || !li) return;
+        ui.gsel = { ...(ui.gsel || {}), [k]: cl.to };
+        $$('.gb[data-gsel]', li).forEach(x => { const on = x === b; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', on); });
+        const box = $('.gi-stats', li);
+        if (box) box.innerHTML = gStatsHTML(card.cur, cl, card.good0);
+        return;
+      }
       if (ds.mockdel) {
         const m = st.mocks.find(x => x.id === ds.mockdel);
         if (m && confirm(`刪除「${mName(m)}」（${mdText(m.d)}）？`)) { st.mocks = st.mocks.filter(x => x !== m); if (st.src === m.id) st.src = 'test'; if (ui.mf && ui.mf.id === m.id) ui.mf = null; render(); toast('已刪除'); }
