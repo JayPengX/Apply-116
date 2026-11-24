@@ -915,3 +915,117 @@ details.fold>summary:hover{color:var(--text)}
   .mvt th,.mvt td{padding:7px 5px}
 }
 @media print{#view-scores{display:none!important}.ctxbar{display:none!important}}
+
+/* ================================================================ readability pass
+   Rules: short UI text never wraps; sentences never leave a 1–2 character last line; a 校系 name breaks only
+   between its parts (系｜組｜校區). Each section heading carries an icon; each school a soft monogram. */
+p,li,dd,td,.hint,.sub,.step-d,.rv-h,.rv-v,.rv-note,.ctx-note,.sc-sub,.long,.s2lead{text-wrap:pretty}
+.nm{word-break:keep-all;overflow-wrap:anywhere}
+.chip,.lg,.afchip,.tag,.pill,.delta,.mchip,.tagc,.code,.facts li,.countdown,.segctl button,.sc-on,.sc-use,.ctx-lab,.rv-k,.srow-l,.hc .to,.pt,.rm-facts>span,.s-d>span,.cal .d,.cal .d small,.lt .k,.mvt td small,.cb-cap>span,.ev .tag,.hb .n,.mt-n,.lab{white-space:nowrap}
+.i.xs{width:13px;height:13px;vertical-align:-2px;stroke-width:2.2}
+
+/* icon headings */
+.hi{display:flex;align-items:center;gap:10px}
+.hi>.i{width:30px;height:30px;padding:6px;border-radius:9px;background:var(--surface-3);color:var(--text);flex:none;vertical-align:0}
+.hi>span{min-width:0}
+.sec>.hi+.sub{margin-top:6px}
+.sec>h2.hi+.sub,.sec-hh+.sub{padding-left:40px}
+.sec-hh .hi{font-size:17px}
+.page-h h1.hi{gap:12px}
+.page-h h1.hi>.i{width:40px;height:40px;padding:9px;border-radius:12px;background:var(--ink);color:var(--on-ink)}
+.d-sec>h3.hi{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:10px;row-gap:1px;align-items:center}
+.d-sec>h3.hi>.i{width:28px;height:28px;padding:6px;border-radius:8px}
+.d-sec>h3.hi small{grid-column:2}
+.sec-hh.wrap-hh{flex-wrap:wrap;align-items:center;row-gap:6px}
+.sec-hh .hi span{white-space:nowrap}
+.hero .eyebrow{display:inline-flex;align-items:center;gap:6px}
+
+/* school monograms */
+.sbadge{--sb-bg:oklch(.945 .035 var(--sh));--sb-fg:oklch(.42 .1 var(--sh));display:inline-grid;place-items:center;width:40px;height:40px;border-radius:11px;background:var(--sb-bg);color:var(--sb-fg);font-size:14px;font-weight:800;letter-spacing:.02em;line-height:1;flex:none;white-space:nowrap;user-select:none}
+.sbadge.s3{font-size:11.5px;letter-spacing:0}
+.sbadge.lg{width:48px;height:48px;font-size:16.5px;border-radius:13px}
+.sbadge.lg.s3{font-size:13.5px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sbadge{--sb-bg:oklch(.32 .05 var(--sh));--sb-fg:oklch(.88 .08 var(--sh))}}
+:root[data-theme="dark"] .sbadge{--sb-bg:oklch(.32 .05 var(--sh));--sb-fg:oklch(.88 .08 var(--sh))}
+.d-badge{margin-top:3px}
+.d-badge:empty{display:none}
+
+/* result rows: monogram | title | star, details under the title */
+.row{grid-template-columns:40px minmax(0,1fr) auto;column-gap:14px;row-gap:10px}
+.row>.sbadge{grid-column:1;grid-row:1;margin-top:1px}
+.r-title{grid-column:2}
+.r-act{grid-column:3}
+.row>.r-cmp,.row>.r-warn,.row>.r-meta{grid-column:2 / -1}
+.rm-facts{gap:2px 16px}
+.rm-facts>span+span::before{content:none}
+.rm-facts .i,.s-d .i{color:var(--text-3);margin-right:4px}
+.rm-parts{display:flex;align-items:baseline}
+.rm-parts .lab{flex:none}
+.pts{display:inline-flex;flex-wrap:wrap;min-width:0}
+.pt:not(:last-child)::after{content:"·";margin:0 7px;color:var(--text-3);opacity:.6}
+.pt.nosat{color:var(--text-2);font-weight:650}
+
+/* 落點依據 */
+.ctx-top{flex-wrap:nowrap}
+.ctx-lab{display:inline-flex;align-items:center;gap:5px}
+.ctx-lab .i{color:var(--text-2)}
+.ctx-sel{flex:0 1 auto;min-width:0}
+.ctx-sel select{width:100%}
+
+/* level badges: one blue ramp, 頂 strongest (the 落點 colours stay reserved for 落點) */
+.mchip small.lvb{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 4px;border-radius:5px;font-size:11.5px;font-weight:800;align-self:center;line-height:1}
+.lvb.l0{background:var(--series-1);color:var(--on-ink)}
+.lvb.l1{background:color-mix(in srgb,var(--series-1) 55%,var(--surface));color:var(--text)}
+.lvb.l2{background:color-mix(in srgb,var(--series-1) 28%,var(--surface));color:var(--text)}
+.lvb.l3{background:color-mix(in srgb,var(--series-1) 13%,var(--surface));color:var(--text-2)}
+.lvb.l4,.lvb.l5{background:var(--surface-3);color:var(--text-3)}
+.mchip{align-items:center}
+
+/* 我的成績 */
+.srccards{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.sc-h b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result-card .tierbar{margin-top:16px}
+.lt small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 我的志願 */
+.s-d{gap:2px 16px;margin-top:4px}
+.s-d .pts{color:var(--text-3)}
+.cb-name{line-height:32px}
+.cal .d small.clash-t{display:inline-block;margin-top:4px;padding:1px 7px;border-radius:5px;background:var(--bad-bg);color:var(--bad);font-size:11.5px;font-weight:750}
+
+/* sizes */
+.reftable small{font-size:12px}
+.bnav .count{font-size:11px}
+
+@media (max-width:719px){
+  .row{grid-template-columns:34px minmax(0,1fr) auto;column-gap:10px}
+  .row>.sbadge{width:34px;height:34px;font-size:12.5px;border-radius:9px}
+  .row>.sbadge.s3{font-size:11px;letter-spacing:-.02em}
+  .row>.r-cmp,.row>.r-warn,.row>.r-meta{grid-column:1 / -1}
+  .sbadge.lg{width:42px;height:42px;font-size:15px;border-radius:12px}
+  .page-h h1.hi>.i{width:34px;height:34px;padding:7px;border-radius:10px}
+  .hi>.i{width:28px;height:28px;padding:5.5px}
+  .sec>h2.hi+.sub,.sec-hh+.sub{padding-left:38px}
+  .ctx-top{flex-wrap:wrap}
+  .ctx-lab{flex-basis:100%}
+  .ctx-sel{flex:1 1 0}
+  .ctx-edit{margin-left:0;width:40px;min-height:40px;padding:0}
+  .ctx-edit .lbl{display:none}
+  .ctx-sel select{min-height:40px}
+  .lb-sort{display:none}
+  .slot{grid-template-columns:22px 50px minmax(0,1fr);grid-template-areas:"no pill ctrl" "main main main";row-gap:8px}
+  .slot .no{grid-area:no}
+  .slot>.pill{grid-area:pill}
+  .slot .s-main{grid-area:main}
+  .slot .ctrl{grid-area:ctrl;grid-column:auto;justify-content:flex-end}
+  .fav{grid-template-columns:50px minmax(0,1fr);grid-template-areas:"pill act" "main main";row-gap:8px}
+  .fav>.pill{grid-area:pill}
+  .fav .s-main{grid-area:main}
+  .fav-act{grid-area:act;grid-column:auto;justify-content:flex-end}
+  .heat{grid-template-columns:4.4em repeat(5,minmax(0,1fr))}
+  .hc .to{font-size:11px}
+}
+.mt-l small{font-size:12px}
+.rmx tr.gh small{text-wrap:pretty}
+.reftable th{white-space:nowrap}
+.d-meta{display:flex;flex-wrap:wrap}

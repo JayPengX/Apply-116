@@ -43,6 +43,27 @@ async function setScores(page, s, touch) {
 }
 const scores = page => page.evaluate(() => window.__app.st().scores);
 
+// Text that should never break: short labels (buttons, chips, pills, headings…) running onto a second line, and
+// sentences whose last line is only 1–3 characters. Runs in the page.
+function layoutIssues() {
+  const out = [];
+  const vis = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !el.closest('[hidden], dialog:not([open]), details:not([open]) > :not(summary)'); };
+  const tops = node => { const rg = document.createRange(); rg.selectNodeContents(node); const t = []; for (const r of rg.getClientRects()) { if (r.width < 0.5) continue; const m = Math.round(r.top + r.height / 2); if (!t.some(x => Math.abs(x - m) < 6)) t.push(m); } return t; };
+  for (const el of document.querySelectorAll('button, .chip, .pill, .tab, .lg, .afchip, .mchip, .tag, .delta, th, h1, h2, h3, summary, .sc-h b, .ctx-lab, .rv-k, .srow-l, .hc .to, .pt, .rm-facts span, .s-d span, .dn .nm')) {
+    if (!vis(el)) continue;
+    for (const t of el.childNodes) if (t.nodeType === 3 && t.textContent.trim().length > 1 && tops(t).length > 1) out.push('wrap "' + t.textContent.trim().slice(0, 20) + '"');
+  }
+  for (const el of document.querySelectorAll('p, li, dd, .hint, .sub, .step-d, .ctx-note')) {
+    if (!vis(el) || /flex|grid/.test(getComputedStyle(el).display) || [...el.children].some(c => /block|flex|grid|table/.test(getComputedStyle(c).display))) continue;
+    const rg = document.createRange(); rg.selectNodeContents(el);
+    const rects = [...rg.getClientRects()].filter(r => r.width > 0.5);
+    const t = tops(el); if (t.length < 2) continue;
+    const last = Math.max(...t), w = rects.filter(r => Math.abs(r.top + r.height / 2 - last) < 6).reduce((a, r) => a + r.width, 0);
+    if (w < parseFloat(getComputedStyle(el).fontSize) * 3.6) out.push('orphan "…' + el.innerText.trim().slice(-12) + '"');
+  }
+  return [...new Set(out)];
+}
+
 const browser = await chromium.launch();
 try {
   console.log('desktop flow');
@@ -226,7 +247,7 @@ try {
     const saved = await page.evaluate(() => window.__app.st().mocks);
     ok(saved.length === 1 && saved[0].std && saved[0].std.國.均標 === 12 && saved[0].s.國 === '13', '模考 saved with its own 五標');
     ok((await page.evaluate(() => window.__app.st().src)) === saved[0].id, 'a saved 模考 becomes the scores in use');
-    ok((await page.locator('#trendSec').innerText()).includes('再 1 級分到這次的頂標'), 'analysis says how far the next 標 is');
+    ok((await page.locator('#trendSec').innerText()).includes('差 1 級分到頂標'), 'analysis says how far the next 標 is');
     ok(/學測約\s*12/.test(await page.locator('.lt .eqv').first().innerText()), '模考 analysis reads 國 13 (前標) as 學測約 12');
     ok((await scores(page)).國 === '12', 'using a 模考 does not overwrite the typed 學測 級分');
 
@@ -317,8 +338,11 @@ try {
       await page.click(`#bottomnav [data-tab="${tab}"]`);
       if (tab === 'plan') ok((await page.locator('#prep .rmx').count()) === 1, '二階準備 matrix on phone');
       if (tab === 'boost') await page.waitForSelector('#boost .heat');
+      await page.waitForTimeout(100);
       const sw = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok(sw <= 0, `no horizontal scroll on phone: ${tab} (overflow ${sw})`);
+      const bad = await page.evaluate(layoutIssues);
+      ok(!bad.length, `no wrapped labels or orphaned characters on phone: ${tab}` + (bad.length ? ' — ' + bad.slice(0, 4).join(' | ') : ''));
     }
     ok(errors.length === 0, 'no console errors on phone' + (errors.length ? ': ' + errors.join(' | ') : ''));
     await ctx.close();
