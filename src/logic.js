@@ -453,13 +453,16 @@
   }
 
   /**
-   * Main evaluation. opts: {std, stdByYear, stdYear, pct}
+   * Main evaluation. opts: {std, stdByYear, stdYear, pct, thS}
+   * S are 學測 級分 (used for 倍率篩選 against the 115 cuts and for 採計). thS, when given, are the scores
+   * 檢定 is judged on with opts.std: a 模考's own 級分 against that 模考's own 五標 (S is then the 模考
+   * read as 學測 級分 by rank). The 檢定-edge check (other years' 學測 五標) always uses S.
    * Returns {tier, reasons[], warnings[], th, cmp, plan, ...}
    */
   function evaluate(d, S, opts) {
     const o = opts || {};
     const reasons = [], warnings = [];
-    const th = checkThreshold(d, S, o.std);
+    const th = checkThreshold(d, o.thS || S, o.std);
     const miss = missingUse(d, S);
     const mathEither = d.sub.some(s => s.k === '數A' && s.m != null) && d.sub.some(s => s.k === '數B' && s.m != null);
     const screenMissing = miss.screen.filter(k => !(mathEither && (k === '數A' || k === '數B') && (val(S, '數A') != null || val(S, '數B') != null)));

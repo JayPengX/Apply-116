@@ -1,6 +1,7 @@
 /* 116 申請入學選系
-   Layout: slim app bar; on wide screens a sticky left rail holds the score sheet (成績單) and filters beside one
-   result column, and a department opens as a right-hand drawer. Phones get a single column, a bottom tab bar,
+   Layout: slim app bar; 我的成績 is its own page (pick 學測級分 or a 模考, edit it, see the result). On wide screens
+   找校系 has a sticky left rail of filters beside one result column, every page that shows 落點 starts with the
+   same 落點依據 bar, and a department opens as a right-hand drawer. Phones get a single column, a bottom tab bar,
    filters in a bottom sheet and the department as a full-screen sheet.
    Color: cool ink neutrals carry the interface; the six 落點 colors are the only loud color on the page. */
 :root{
@@ -147,19 +148,6 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 
 /* ---------- score sheet */
 .score-panel{padding:16px}
-.panel-h{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.panel-h h2{font-size:15px;margin-right:auto}
-.panel-note{font-size:12.5px;color:var(--text-3);margin:-4px 0 14px;line-height:1.55}
-.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.tile{display:flex;flex-direction:column;gap:0;padding:8px 10px;border-radius:10px;background:var(--surface-2);min-width:0;border:0;text-align:left;color:inherit;font:inherit}
-.tile .k{font-size:12px;color:var(--text-3);white-space:nowrap}
-.tile .v{font-size:20px;font-weight:750;line-height:1.2;font-variant-numeric:tabular-nums}
-.tile .p{font-size:11px;color:var(--text-3);white-space:nowrap}
-.tile.none .v{color:var(--text-3);font-weight:500}
-button.tile{cursor:pointer}
-button.tile:hover{background:var(--surface-3)}
-.tile.edit{align-items:center;justify-content:center;gap:2px;border:1px dashed var(--line-2);background:none;color:var(--text-2);font-weight:600;font-size:12.5px}
-.tile.edit:hover{color:var(--text);border-color:var(--text-3)}
 .sliders{display:flex;flex-direction:column;gap:12px}
 .srow-h{display:flex;align-items:baseline;gap:8px;margin-bottom:5px;min-height:24px}
 .srow-l{font-weight:700;font-size:14px;white-space:nowrap}
@@ -191,9 +179,6 @@ details.more>summary:hover{color:var(--text)}
 .selectbox select{appearance:none;-webkit-appearance:none;min-height:40px;border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:0 34px 0 12px;font-size:14px;color:var(--text);cursor:pointer}
 .selectbox select:hover{border-color:var(--line-2)}
 .selectbox .i{position:absolute;right:10px;pointer-events:none;color:var(--text-3)}
-.panel-f{display:flex;gap:8px;margin-top:16px}
-.panel-f .btn{flex:1}
-.score-panel.editing .panel-f{position:sticky;bottom:0;z-index:2;margin:12px -16px -16px;padding:12px 16px 16px;background:var(--surface);border-top:1px solid var(--line);border-radius:0 0 var(--r-lg) var(--r-lg)}
 
 /* ---------- filters */
 .filter-panel{display:flex;flex-direction:column;gap:20px;padding:0 2px}
@@ -615,8 +600,6 @@ details.fold>summary:hover{color:var(--text)}
   .rail{position:static;max-height:none;overflow:visible;padding:0;margin:0}
   .rail>.filter-panel{display:none}
   .fbtn{display:inline-flex}
-  .tiles{grid-template-columns:repeat(8,minmax(0,1fr))}
-  .tile{padding:7px 8px}
   .plan-grid{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width:719px){
@@ -632,7 +615,6 @@ details.fold>summary:hover{color:var(--text)}
   .bnav[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:32%;right:32%;height:2px;border-radius:0 0 2px 2px;background:var(--ink)}
   .bnav .count{position:absolute;top:4px;left:calc(50% + 7px);height:16px;min-width:16px;font-size:10px;padding:0 4px;background:var(--ink);color:var(--on-ink)}
   .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px calc(90px + env(safe-area-inset-bottom,0px))}
-  .tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
   .score-panel{padding:14px}
   .toolbar{flex-wrap:wrap}
   .search{flex:1 1 100%;order:-1}
@@ -678,9 +660,7 @@ details.fold>summary:hover{color:var(--text)}
   .tl .d{font-weight:650;line-height:1.3}
   .tl .d small{display:block;font-size:11px;font-weight:500;color:var(--text-3)}
   .tl .d small i{display:none}
-  .score-panel.editing .panel-f{bottom:calc(57px + env(safe-area-inset-bottom,0px));margin:12px -14px -14px;padding:12px 14px 14px}
   html{scroll-padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
-  html:has(.score-panel.editing .panel-f){scroll-padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}
   .d-foot [data-fav] .lbl{display:none}
   .d-foot [data-fav]{width:44px;padding:0}
   .rules{grid-template-columns:minmax(0,1fr)}
@@ -743,18 +723,6 @@ details.fold>summary:hover{color:var(--text)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--series-1:#3987e5}}
 :root[data-theme="dark"]{--series-1:#3987e5}
 .delta.flat{background:var(--surface-3);color:var(--text-2)}
-.mockform{display:grid;gap:8px;margin-top:10px}
-.mockform .mf{display:grid;grid-template-columns:3.6em minmax(0,1fr);align-items:center;gap:8px;font-size:13.5px;color:var(--text-2)}
-.mockform .mf .selectbox{min-width:0}
-.mockform .mf select{width:100%;min-width:0}
-.mockform input[type=text],.mockform input[type=date]{width:100%;min-width:0;height:36px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;padding:0 10px}
-.mockform .btn{justify-self:start}
-.mocklist{list-style:none;padding:0;margin:12px 0 8px;display:grid;gap:2px}
-.mocklist li{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
-.mocklist .md{color:var(--text-3);font-variant-numeric:tabular-nums}
-.mocklist .mn{min-width:0}
-.mocklist .mn b{display:block;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mocklist .mn small{color:var(--text-3);font-size:12px}
 .textbtn.danger{color:var(--bad)}
 .trendnotes{margin:12px 0 0;padding-left:1.2em;font-size:14px;line-height:1.7}
 .sparks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:14px}
@@ -794,8 +762,6 @@ details.fold>summary:hover{color:var(--text)}
   .mt-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
   .mt-row .tierbar{grid-column:1/-1;grid-row:2}
 }
-.mockstd{grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;padding:10px 0 4px}
-.mocklist li .textbtn.has{color:var(--ok)}
 .reftable td small.lv{display:block;font-size:11px;color:var(--text-3);font-weight:500;line-height:1.2}
 /* 模考 page */
 .sec-hh{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
@@ -818,17 +784,11 @@ details.fold>summary:hover{color:var(--text)}
 .mf-std-h span{color:var(--text-2);flex:1 1 200px}
 .mf-actions{display:flex;gap:10px;margin-top:18px}
 .mf-actions .btn.primary{flex:1;max-width:360px;justify-content:center;height:46px;font-size:15.5px}
-.mcards{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:10px}
-.mcard{border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
-.mc-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
-.mc-h b{font-size:15.5px}
-.mc-h span{font-size:12.5px;color:var(--text-3)}
 .mc-s{display:flex;flex-wrap:wrap;gap:6px}
 .mchip{display:inline-flex;align-items:baseline;gap:4px;padding:4px 9px;border-radius:8px;background:var(--surface-2);font-size:13px}
 .mchip .k{color:var(--text-3);font-size:12px}
 .mchip b{font-variant-numeric:tabular-nums;font-size:15px}
 .mchip small{color:var(--ok);font-weight:700;font-size:11.5px}
-.mc-a{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
 .latest{margin-top:10px}
 .latest .sec-h3 small{margin-left:8px;color:var(--text-3);font-weight:500;font-size:12.5px}
 .lt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:10px 0}
@@ -852,26 +812,8 @@ details.fold>summary:hover{color:var(--text)}
 .lt .gain{color:var(--ok);font-weight:600}
 .lt-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .reftable small.lv.eq{color:var(--text-2)}
-.note-inline{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--info);background:var(--info-bg);padding:8px 10px;border-radius:9px;margin:6px 0}
-.board{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;margin-top:10px;border-top:1px solid var(--line)}
-.bd-row{display:contents}
-.bd-row>span{padding:9px 8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;min-width:0}
-.bd-h>span{font-size:12px;color:var(--text-3);font-weight:600;padding-top:7px;padding-bottom:7px}
-.bd-row.top>span{background:color-mix(in srgb,var(--ok-bg) 70%,transparent)}
-.bd-k{font-weight:700;font-size:14px;white-space:nowrap}
-.bd-c b{font-size:16px}
-.bd-c small{font-size:11.5px;color:var(--text-3)}
-.bd-mock{gap:8px}
-.bd-m{display:flex;flex-direction:column;line-height:1.2}
-.bd-m small{font-size:11px;font-weight:600}
-.bd-m small.up{color:var(--ok)}.bd-m small.down{color:var(--bad)}
-.bd-n{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;padding:4px 6px;border-radius:8px;background:color-mix(in srgb,var(--series-1) calc(var(--h) * 55%),transparent);line-height:1.15}
-.bd-n b{font-size:15px;font-variant-numeric:tabular-nums}
-.bd-n small{font-size:10.5px;color:var(--text-2)}
-.bd-n.none{background:none;color:var(--text-3)}
-@media (max-width:600px){.board .msp{width:48px}.bd-row>span{padding:8px 5px}.bd-n{min-width:38px}}
 /* polish */
-.srow-h .textbtn,.ov-t .textbtn,.fsec h3 .textbtn,.panel-h .textbtn,.sec-hh .textbtn{margin-right:0}
+.srow-h .textbtn,.ov-t .textbtn,.fsec h3 .textbtn,.sec-hh .textbtn{margin-right:0}
 .olist{display:flex;flex-direction:column;gap:3px}
 .olist span{display:flex;gap:6px;align-items:baseline}
 .olist i{font-style:normal;font-size:11px;font-weight:700;color:var(--text-3);min-width:12px}
@@ -890,5 +832,86 @@ details.fold>summary:hover{color:var(--text)}
 .clash li>span{display:flex;gap:5px;flex-wrap:wrap}
 .clash-n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--surface-3);font-weight:750;font-size:13px;font-variant-numeric:tabular-nums}
 .boost-all{margin:0 0 14px;font-size:13px;color:var(--text-2)}
-.try-from{flex-wrap:wrap;justify-content:space-between}
-.try-from>span{flex:1 1 200px}
+
+/* ---------- 落點依據: which scores every 落點 on the page is judged on (找校系, 我的志願, 怎麼進步) */
+.ctxbar{display:flex;flex-direction:column;gap:8px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-1)}
+.page>.ctxbar{margin-bottom:0}
+.ctx-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.ctx-lab{font-size:12.5px;font-weight:700;color:var(--text-3);letter-spacing:.04em;white-space:nowrap}
+.ctx-name{font-size:15px}
+.ctx-sel{min-width:0;max-width:100%}
+.ctx-sel select{min-height:36px;font-weight:650;max-width:100%;text-overflow:ellipsis}
+.ctx-edit{margin-left:auto}
+.ctx-note{font-size:12.5px;color:var(--text-3);line-height:1.55}
+.ctx-none{font-size:13.5px;color:var(--text-2)}
+.mchip small.eq{color:var(--text-2);font-weight:600}
+
+/* ---------- 我的成績: pick a source, edit it, see the result */
+.srccards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:14px}
+.srccard{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:inherit;min-width:0}
+.srccard:hover{border-color:var(--line-2);background:var(--surface-2)}
+.srccard[aria-pressed="true"]{border:2px solid var(--ink);padding:11px 13px;background:var(--surface)}
+.sc-h{display:flex;align-items:center;gap:8px;min-width:0}
+.sc-h b{font-size:15px;min-width:0;overflow-wrap:anywhere}
+.sc-on{margin-left:auto;display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--on-ink);background:var(--ink);border-radius:999px;padding:2px 9px 2px 6px;white-space:nowrap}
+.sc-use{margin-left:auto;font-size:12px;font-weight:650;color:var(--text-3);white-space:nowrap}
+.srccard:hover .sc-use{color:var(--text)}
+.sc-sub{font-size:12.5px;color:var(--text-3);line-height:1.45}
+.srccard .mc-s{gap:4px}
+.srccard .mchip{padding:2px 7px;font-size:12px}
+.srccard .mchip b{font-size:14px}
+.srccard.add{align-items:center;justify-content:center;text-align:center;border-style:dashed;border-color:var(--line-2);color:var(--text-2);min-height:96px}
+.srccard.add b{font-size:14.5px;color:var(--text)}
+.sec-hh h2{font-size:17px}
+.h-sub{font-size:13px;font-weight:500;color:var(--text-3);margin-left:8px}
+.sec-act{display:flex;gap:14px}
+.score-panel .sliders{margin-top:16px}
+.mvt{border-collapse:collapse;width:100%;max-width:640px;font-size:14px;margin-top:4px}
+.mvt th,.mvt td{text-align:left;padding:8px 8px;border-top:1px solid var(--line);vertical-align:baseline}
+.mvt thead th{border-top:0;color:var(--text-3);font-size:12px;font-weight:650}
+.mvt tbody th{font-weight:650;white-space:nowrap}
+.mvt td b{font-size:16px;font-variant-numeric:tabular-nums}
+.mvt td small{display:block;font-size:11.5px;color:var(--text-3)}
+.howto{margin:14px 0 0;padding:12px 14px 12px 32px;border-radius:12px;background:var(--surface-2);font-size:13.5px;color:var(--text-2);line-height:1.65}
+.howto li+li{margin-top:4px}
+.howto b{color:var(--text)}
+.result-card .tierbar{margin-top:14px}
+.rc-n{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:10px;font-size:13.5px;color:var(--text-2)}
+.rc-n .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:0}
+.rc-n b{color:var(--text);font-variant-numeric:tabular-nums}
+.rc-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.sw.t1{background:var(--t1)}.sw.t2{background:var(--t2)}.sw.t3{background:var(--t3)}.sw.t4{background:var(--t4)}.sw.t5{background:var(--t5)}.sw.t6{background:var(--t6)}
+
+/* ---------- first visit */
+.start{margin-bottom:16px;padding:20px;border-radius:var(--r-lg);border:1px solid var(--line);background:var(--surface);display:flex;flex-wrap:wrap;align-items:center;gap:12px 14px}
+.start h2{font-size:17px;flex:1 1 100%}
+.steps3{list-style:none;counter-reset:s;margin:0 0 4px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:1 1 100%}
+.steps3 li{counter-increment:s;display:flex;flex-direction:column;gap:2px;padding:12px 14px 12px 46px;position:relative;border-radius:12px;background:var(--surface-2);font-size:13px;color:var(--text-2);line-height:1.5}
+.steps3 li::before{content:counter(s);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:grid;place-items:center;font-weight:800;font-size:12.5px}
+.steps3 b{font-size:14.5px;color:var(--text)}
+
+/* ---------- 怎麼進步 scope */
+.scopebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.scopebar .selectbox select{min-height:38px}
+.heat .hs-m{display:block;margin-top:2px}
+.heat .hs-m .msp{width:56px;height:18px}
+
+/* ---------- filters: grouping */
+.fseg{margin-top:10px;display:flex;width:100%}
+.fseg button{flex:1;padding-inline:6px}
+.fnote{margin-top:-6px}
+.verdict .v-src{font-size:12.5px;color:var(--text-2);font-weight:650;margin-bottom:2px}
+
+@media (max-width:719px){
+  .steps3{grid-template-columns:minmax(0,1fr)}
+  .srccards{grid-template-columns:minmax(0,1fr)}
+  .srccard.add{min-height:0;flex-direction:row;gap:8px}
+  .srccard.add .sc-sub{display:none}
+  .ctxbar{padding:10px 12px}
+  .ctx-top{gap:6px 8px}
+  .ctx-sel{flex:1 1 auto}
+  .ctx-sel select{width:100%}
+  .mvt{font-size:13.5px}
+  .mvt th,.mvt td{padding:7px 5px}
+}
+@media print{#view-scores{display:none!important}.ctxbar{display:none!important}}

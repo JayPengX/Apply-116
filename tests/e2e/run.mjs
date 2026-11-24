@@ -25,7 +25,7 @@ async function newPage(browser, ctxOpts = {}) {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   return { ctx, page, errors, external };
 }
-// Scores are entered on 15-cell sliders: click (or tap) the cell for the wanted 級分.
+// Scores are entered on 15-cell sliders on the 我的成績 page: click (or tap) the cell for the wanted 級分.
 async function setSlider(page, sel, v, touch) {
   const t = page.locator(sel);
   await t.evaluate(e => e.scrollIntoView({ block: 'center' }));
@@ -53,12 +53,16 @@ try {
     await page.waitForSelector('.row');
     ok(Date.now() - t0 < 5000, `loads in ${Date.now() - t0} ms`);
     ok((await page.locator('#list .row[data-code]').count()) === 50, 'first page shows 50 departments before scores');
-    ok(await page.locator('#overview .cta').isVisible(), 'asks for scores first');
+    ok(await page.locator('#overview .start').isVisible(), 'first visit shows the three steps');
+    ok((await page.locator('#rail #scorePanel').count()) === 0 && (await page.locator('#rail #filterPanel').count()) === 1, '找校系 sidebar holds only the filters');
     ok(/另有 \d+ 個特殊組別/.test(await page.locator('#overview').innerText()), 'says how many special groups are left out');
 
-    // the editor must stay open while the first scores go in (regression: it collapsed after the first click)
+    // scores live on their own page
+    await page.click('#overview .start [data-tab="scores"]');
+    await page.waitForSelector('#scorePanel [data-slider]');
+    ok((await page.locator('.srccard[data-src="test"]').getAttribute('aria-pressed')) === 'true', '學測級分 is the source in use');
     await setScores(page, { 國: 12 });
-    ok(await page.locator('#scorePanel.editing [data-listen]').count() > 0, 'score editor stays open after the first score');
+    ok(await page.locator('#scores .result-card').isVisible(), 'the result shows on the scores page as soon as there is a score');
     await setScores(page, { 英: 15, 數B: 1, 社: 13, 聽: 'A' });
     const s = await scores(page);
     ok(s.國 === '12' && s.英 === '15' && s.數B === '1' && s.社 === '13' && s.聽 === 'A', 'sliders set the scores: ' + JSON.stringify(s));
@@ -70,8 +74,9 @@ try {
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(450);
     ok((await scores(page)).社 === '13', 'arrow key raises a score');
-    await page.click('[data-act="doneScores"]');
-    ok((await page.locator('#scorePanel .tile').count()) === 8, 'done collapses the editor to score tiles');
+    await page.click('#scores .result-card [data-tab="explore"]');
+    await page.waitForSelector('#ctxExplore .ctxbar');
+    ok((await page.locator('#ctxExplore .mchip').count()) === 5, '找校系 shows which scores the 落點 use');
 
     await page.click('#filterPanel [data-group="法政"]');
     const ov = await page.locator('#overview').innerText();
@@ -168,13 +173,28 @@ try {
     ok((await page.locator('#tabs [data-plancount]').innerText()) === '6/6', 'plan survives reload (and the page reopens on the plan tab)');
     await page.click('#tabs [data-tab="explore"]');
     await page.waitForSelector('.row');
-    ok((await page.locator('#scorePanel [data-focus="英"] .v').innerText()) === '15', 'scores survive reload');
+    ok((await scores(page)).英 === '15' && /英\s*15/.test(await page.locator('#ctxExplore').innerText()), 'scores survive reload');
 
-    // boost tab
+    // boost tab: its own scope, not 找校系's filters (法政 is still on there)
+    ok((await page.evaluate(() => window.__app.st().f.groups)).includes('法政'), '找校系 still filtered to 法政');
     await page.click('#tabs [data-tab="boost"]');
     await page.waitForSelector('#boost .heat');
     const btxt = await page.locator('#boost').innerText();
     ok(btxt.includes('擋住') && btxt.includes('數學B'), 'boost tab names the 數B blocker');
+    const nAll = Number((/共 ([\d,]+) 個/.exec(await page.locator('#boost .scopebar').innerText()) || [])[1].replace(/,/g, ''));
+    ok(nAll > 1000, `怎麼進步 counts all 校系, not 找校系's 法政 filter (${nAll})`);
+    await page.click('#boost [data-bscope="plan"]');
+    await page.waitForSelector('#boost .heat');
+    ok(/共 6 個/.test(await page.locator('#boost .scopebar').innerText()), '怎麼進步 can be scoped to the 6 志願');
+    await page.selectOption('#bGroup', '資訊').catch(() => {});
+    await page.click('#boost [data-bscope="all"]');
+    await page.waitForSelector('#boost #bGroup');
+    await page.selectOption('#bGroup', '資訊');
+    await page.waitForSelector('#boost .heat');
+    const nInfo = Number((/共 ([\d,]+) 個/.exec(await page.locator('#boost .scopebar').innerText()) || [])[1].replace(/,/g, ''));
+    ok(nInfo > 0 && nInfo < nAll, `and to one 學群 (資訊 ${nInfo})`);
+    await page.selectOption('#bGroup', '');
+    await page.waitForSelector('#boost .heat');
     await setSlider(page, '#boost [data-try="數B"]', 6);
     await page.waitForTimeout(300);
     ok((await page.locator('#tryOut').innerText()).includes('→'), 'what-if lists improved departments');
@@ -189,7 +209,8 @@ try {
     await page.screenshot({ path: join(SHOTS, 'desktop-boost.png'), fullPage: true });
 
     // 模考: pick 翰林第二次 (its 五標 come built in), type scores, see the 標, save, analysis appears
-    await page.click('#tabs [data-tab="mock"]');
+    await page.click('#tabs [data-tab="scores"]');
+    await page.click('#scores [data-act="mfNew"]');
     await page.waitForSelector('#mockForm');
     await page.selectOption('#mfPreset', '第三次學測模擬考');
     await page.fill('[data-mf="社"]', '12');
@@ -201,14 +222,41 @@ try {
     ok((await page.textContent('[data-mflv="國"]')).startsWith('前標') && (await page.textContent('[data-mflv="英"]')).startsWith('均標'), 'typed 模考 scores show 翰林第二次 標 (國 13 前標, 英 9 均標)');
     ok((await page.textContent('[data-mflv="國"]')).includes('學測約 12'), 'the form shows the 學測 級分 at the same rank (國 13 = 前標 → 115 前標 12)');
     await page.click('[data-act="mfSave"]');
-    await page.waitForSelector('.mcard');
+    await page.waitForSelector('#srcSec');
     const saved = await page.evaluate(() => window.__app.st().mocks);
     ok(saved.length === 1 && saved[0].std && saved[0].std.國.均標 === 12 && saved[0].s.國 === '13', '模考 saved with its own 五標');
+    ok((await page.evaluate(() => window.__app.st().src)) === saved[0].id, 'a saved 模考 becomes the scores in use');
     ok((await page.locator('#trendSec').innerText()).includes('再 1 級分到這次的頂標'), 'analysis says how far the next 標 is');
     ok(/學測約\s*12/.test(await page.locator('.lt .eqv').first().innerText()), '模考 analysis reads 國 13 (前標) as 學測約 12');
-    page.once("dialog", d => d.accept());
-    await page.click(`[data-mockdel="${saved[0].id}"]`);
-    ok((await page.evaluate(() => window.__app.st().mocks.length)) === 0, '模考 can be deleted');
+    ok((await scores(page)).國 === '12', 'using a 模考 does not overwrite the typed 學測 級分');
+
+    // 看落點 with a 模考 judges 檢定 on that 模考's own 五標: 翰林第三次 英文均標 is 6 (115 學測 均標 is 8)
+    await page.click('#scores [data-act="mfNew"]');
+    await page.selectOption('#mfPreset', '第三次學測模擬考');
+    for (const [k, v] of [['國', '12'], ['英', '6'], ['數B', '6'], ['社', '11'], ['自', '9']]) await page.fill(`[data-mf="${k}"]`, v);
+    await page.click('[data-act="mfSave"]');
+    await page.waitForSelector('#srcSec');
+    const e3 = await page.evaluate(() => window.__app.evaluate('007022'));
+    const it = e3.th.items.find(i => i.k === '英');
+    ok(it && it.need === 6 && it.mine === 6 && it.ok, `檢定 uses the 模考's 五標 (英文均標 ${it && it.need}, 模考 ${it && it.mine})`);
+    await page.goto(URL_ + '#d=007022');
+    await page.waitForSelector('#detail[open]');
+    const dd = await page.locator('#dBody').innerText();
+    ok(dd.includes('翰林第三次') && /英文 均標\s*6 級分以上/.test(dd), 'the detail shows the 模考 and its 五標 in 檢定');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#detail').open);
+    // switch back from the bar on 找校系
+    await page.click('#tabs [data-tab="explore"]');
+    await page.selectOption('#ctxExplore [data-srcsel]', 'test');
+    ok((await page.evaluate(() => window.__app.st().src)) === 'test' && (await page.evaluate(() => window.__app.evaluate('007022').th.items.find(i => i.k === '英').need)) === 8, 'the 落點依據 switch goes back to 學測級分 and 115 五標');
+    await page.click('#tabs [data-tab="scores"]');
+    const ids = (await page.evaluate(() => window.__app.st().mocks)).map(m => m.id);
+    for (const id of ids) {
+      await page.click(`.srccard[data-src="${id}"]`);
+      page.once('dialog', d => d.accept());
+      await page.click(`[data-mockdel="${id}"]`);
+    }
+    ok((await page.evaluate(() => window.__app.st().mocks.length)) === 0 && (await page.evaluate(() => window.__app.st().src)) === 'test', '模考 can be deleted (the source falls back to 學測級分)');
 
     // guide
     await page.click('#tabs [data-tab="guide"]');
@@ -235,10 +283,12 @@ try {
     await page.goto(URL_);
     await page.waitForSelector('.row');
     ok(await page.locator('#bottomnav').isVisible(), 'bottom tab bar on phone');
+    await page.click('#bottomnav [data-tab="scores"]');
     await setScores(page, { 國: 12, 英: 15, 社: 13 }, true);
     const s = await scores(page);
     ok(s.國 === '12' && s.英 === '15' && s.社 === '13', 'taps set the scores: ' + JSON.stringify(s));
-    await page.click('[data-act="doneScores"]');
+    await page.click('#bottomnav [data-tab="explore"]');
+    await page.waitForSelector('#ctxExplore .ctxbar');
     await page.screenshot({ path: join(SHOTS, 'phone-list.png') });
 
     // filters live in a bottom sheet
@@ -263,7 +313,7 @@ try {
 
     // a full plan, so the 二階準備 matrix is on the page for the overflow check
     await page.evaluate(() => { const D = JSON.parse(document.getElementById('app-data').textContent); window.__app.st().plan = D.depts.filter(d => d.g.includes('法政')).slice(0, 6).map(d => d.c); window.__app.render(); });
-    for (const tab of ['explore', 'plan', 'boost', 'guide']) {
+    for (const tab of ['scores', 'explore', 'plan', 'boost', 'guide']) {
       await page.click(`#bottomnav [data-tab="${tab}"]`);
       if (tab === 'plan') ok((await page.locator('#prep .rmx').count()) === 1, '二階準備 matrix on phone');
       if (tab === 'boost') await page.waitForSelector('#boost .heat');
@@ -307,6 +357,7 @@ try {
     await page.addInitScript(() => { Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } }); });
     await page.goto(URL_);
     await page.waitForSelector('.row');
+    await page.click('#tabs [data-tab="scores"]');
     await setScores(page, { 國: 10 });
     ok((await scores(page)).國 === '10' && errors.length === 0, 'works when localStorage throws');
     await ctx.close();
@@ -341,9 +392,9 @@ try {
     ok(ms.b.國.頂標 === 14 && ms.b.英.前標 === 9, 'a typed 五標 row is kept; copied 學測 rows become 翰林 10月北北基');
     ok(ms.c && ms.c.國.均標 === 11, '「三模」 is matched to 翰林 10月北北基');
     ok(ms.d === null, 'another exam (中區) never gets 翰林 五標');
-    await page.click('#tabs [data-tab="mock"]');
+    await page.goto(URL_ + '#mock');
     await page.waitForSelector('#trendSec');
-    ok((await page.locator('.mcard').count()) === 4 && (await page.locator('#trendSec').innerText()).includes('最近一次'), 'upgraded 模考 render with analysis');
+    ok((await page.locator('.srccard[data-src]').count()) === 5 && (await page.locator('#trendSec').innerText()).includes('最近一次'), 'upgraded 模考 render with analysis (old #mock link opens 我的成績)');
     // saved after the 9月/10月 upgrade but before 7月全國 had every subject: only 數學 there, plus one typed row
     await page.waitForTimeout(400);
     await page.evaluate(() => {
@@ -357,7 +408,7 @@ try {
       localStorage.setItem('apply116-v1', JSON.stringify(st));
     });
     await page.reload();
-    await page.waitForSelector('.mcard');
+    await page.waitForSelector('.srccard[data-src="e"]');
     const m3 = await page.evaluate(() => Object.fromEntries(window.__app.st().mocks.map(m => [m.id, m.std])));
     ok(m3.e.國.均標 === 11 && m3.e.英.均標 === 7 && m3.e.社.均標 === 10 && m3.e.自.頂標 === 15, 'saved 第一次 gets 翰林 7月全國 國英社, keeps a typed 自然 row');
     ok(JSON.stringify(Object.keys(m3.f)) === '["社"]', 'another exam is not filled from 翰林');

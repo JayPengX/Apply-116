@@ -340,3 +340,19 @@ test('mockToTest: a 模考 標 maps to the 學測 級分 at the same rank', () =
   assert.equal(L.mockToTest(std, '英', 10, D.pct), null);
   assert.equal(L.mockToTest(std, '國', 0, D.pct), null);
 });
+
+test('檢定 can be judged on a 模考 and its own 五標 (thS), while 篩選 uses the 學測-scale scores', () => {
+  // 英文 均標 檢定, 英文 ×3 with a 115 cut of 10
+  const d = dept({ sub: [{ k: '英', p: ['英'], t: '均標', m: 3, w: null }], cut: [{ raw: '英文10', s: ['英'], v: 10 }], mult: { 英: 3 } });
+  const lv = a => ({ 頂標: a[0], 前標: a[1], 均標: a[2], 後標: a[3], 底標: a[4] });
+  const mockStd = { ...STD, 英: lv([12, 10, 7, 5, 4]) };
+  // 模考 英 7 = that 模考's 均標: passes 檢定 on the 模考's 五標, though 7 is below the 115 學測 均標
+  assert.ok(Number(STD.英.均標) > 7);
+  const raw = S({ 英: 7 }), asTest = S({ 英: String(STD.英.均標) });
+  const e = L.evaluate(d, asTest, { ...O, std: mockStd, thS: raw, stdYear: null });
+  assert.equal(e.th.ok, true);
+  assert.equal(e.th.items[0].mine, 7);
+  assert.equal(e.th.items[0].need, 7);
+  // the same raw score judged on the 學測 五標 fails
+  assert.equal(L.evaluate(d, raw, O).tier, '不符');
+});

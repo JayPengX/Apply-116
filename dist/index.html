@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>116 申請入學選系</title>
-<meta name="description" content="116 學年度大學個人申請：輸入學測級分，逐關對照 115 一階篩選結果、查檢定、排六個志願、檢查甄試撞期。離線可用。">
+<meta name="description" content="116 學年度大學個人申請：用學測級分、模考或目標分數，逐關對照 115 一階篩選結果、查檢定、排六個志願、檢查甄試撞期。離線可用。">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#161a21" media="(prefers-color-scheme: dark)">
 <script>try{var t=(JSON.parse(localStorage.getItem('apply116-v1'))||{}).theme;if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <style>/* 116 申請入學選系
-   Layout: slim app bar; on wide screens a sticky left rail holds the score sheet (成績單) and filters beside one
-   result column, and a department opens as a right-hand drawer. Phones get a single column, a bottom tab bar,
+   Layout: slim app bar; 我的成績 is its own page (pick 學測級分 or a 模考, edit it, see the result). On wide screens
+   找校系 has a sticky left rail of filters beside one result column, every page that shows 落點 starts with the
+   same 落點依據 bar, and a department opens as a right-hand drawer. Phones get a single column, a bottom tab bar,
    filters in a bottom sheet and the department as a full-screen sheet.
    Color: cool ink neutrals carry the interface; the six 落點 colors are the only loud color on the page. */
 :root{
@@ -157,19 +158,6 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 
 /* ---------- score sheet */
 .score-panel{padding:16px}
-.panel-h{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.panel-h h2{font-size:15px;margin-right:auto}
-.panel-note{font-size:12.5px;color:var(--text-3);margin:-4px 0 14px;line-height:1.55}
-.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.tile{display:flex;flex-direction:column;gap:0;padding:8px 10px;border-radius:10px;background:var(--surface-2);min-width:0;border:0;text-align:left;color:inherit;font:inherit}
-.tile .k{font-size:12px;color:var(--text-3);white-space:nowrap}
-.tile .v{font-size:20px;font-weight:750;line-height:1.2;font-variant-numeric:tabular-nums}
-.tile .p{font-size:11px;color:var(--text-3);white-space:nowrap}
-.tile.none .v{color:var(--text-3);font-weight:500}
-button.tile{cursor:pointer}
-button.tile:hover{background:var(--surface-3)}
-.tile.edit{align-items:center;justify-content:center;gap:2px;border:1px dashed var(--line-2);background:none;color:var(--text-2);font-weight:600;font-size:12.5px}
-.tile.edit:hover{color:var(--text);border-color:var(--text-3)}
 .sliders{display:flex;flex-direction:column;gap:12px}
 .srow-h{display:flex;align-items:baseline;gap:8px;margin-bottom:5px;min-height:24px}
 .srow-l{font-weight:700;font-size:14px;white-space:nowrap}
@@ -201,9 +189,6 @@ details.more>summary:hover{color:var(--text)}
 .selectbox select{appearance:none;-webkit-appearance:none;min-height:40px;border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:0 34px 0 12px;font-size:14px;color:var(--text);cursor:pointer}
 .selectbox select:hover{border-color:var(--line-2)}
 .selectbox .i{position:absolute;right:10px;pointer-events:none;color:var(--text-3)}
-.panel-f{display:flex;gap:8px;margin-top:16px}
-.panel-f .btn{flex:1}
-.score-panel.editing .panel-f{position:sticky;bottom:0;z-index:2;margin:12px -16px -16px;padding:12px 16px 16px;background:var(--surface);border-top:1px solid var(--line);border-radius:0 0 var(--r-lg) var(--r-lg)}
 
 /* ---------- filters */
 .filter-panel{display:flex;flex-direction:column;gap:20px;padding:0 2px}
@@ -625,8 +610,6 @@ details.fold>summary:hover{color:var(--text)}
   .rail{position:static;max-height:none;overflow:visible;padding:0;margin:0}
   .rail>.filter-panel{display:none}
   .fbtn{display:inline-flex}
-  .tiles{grid-template-columns:repeat(8,minmax(0,1fr))}
-  .tile{padding:7px 8px}
   .plan-grid{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width:719px){
@@ -642,7 +625,6 @@ details.fold>summary:hover{color:var(--text)}
   .bnav[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:32%;right:32%;height:2px;border-radius:0 0 2px 2px;background:var(--ink)}
   .bnav .count{position:absolute;top:4px;left:calc(50% + 7px);height:16px;min-width:16px;font-size:10px;padding:0 4px;background:var(--ink);color:var(--on-ink)}
   .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px calc(90px + env(safe-area-inset-bottom,0px))}
-  .tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
   .score-panel{padding:14px}
   .toolbar{flex-wrap:wrap}
   .search{flex:1 1 100%;order:-1}
@@ -688,9 +670,7 @@ details.fold>summary:hover{color:var(--text)}
   .tl .d{font-weight:650;line-height:1.3}
   .tl .d small{display:block;font-size:11px;font-weight:500;color:var(--text-3)}
   .tl .d small i{display:none}
-  .score-panel.editing .panel-f{bottom:calc(57px + env(safe-area-inset-bottom,0px));margin:12px -14px -14px;padding:12px 14px 14px}
   html{scroll-padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
-  html:has(.score-panel.editing .panel-f){scroll-padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}
   .d-foot [data-fav] .lbl{display:none}
   .d-foot [data-fav]{width:44px;padding:0}
   .rules{grid-template-columns:minmax(0,1fr)}
@@ -753,18 +733,6 @@ details.fold>summary:hover{color:var(--text)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--series-1:#3987e5}}
 :root[data-theme="dark"]{--series-1:#3987e5}
 .delta.flat{background:var(--surface-3);color:var(--text-2)}
-.mockform{display:grid;gap:8px;margin-top:10px}
-.mockform .mf{display:grid;grid-template-columns:3.6em minmax(0,1fr);align-items:center;gap:8px;font-size:13.5px;color:var(--text-2)}
-.mockform .mf .selectbox{min-width:0}
-.mockform .mf select{width:100%;min-width:0}
-.mockform input[type=text],.mockform input[type=date]{width:100%;min-width:0;height:36px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;padding:0 10px}
-.mockform .btn{justify-self:start}
-.mocklist{list-style:none;padding:0;margin:12px 0 8px;display:grid;gap:2px}
-.mocklist li{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
-.mocklist .md{color:var(--text-3);font-variant-numeric:tabular-nums}
-.mocklist .mn{min-width:0}
-.mocklist .mn b{display:block;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mocklist .mn small{color:var(--text-3);font-size:12px}
 .textbtn.danger{color:var(--bad)}
 .trendnotes{margin:12px 0 0;padding-left:1.2em;font-size:14px;line-height:1.7}
 .sparks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:14px}
@@ -804,8 +772,6 @@ details.fold>summary:hover{color:var(--text)}
   .mt-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
   .mt-row .tierbar{grid-column:1/-1;grid-row:2}
 }
-.mockstd{grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;padding:10px 0 4px}
-.mocklist li .textbtn.has{color:var(--ok)}
 .reftable td small.lv{display:block;font-size:11px;color:var(--text-3);font-weight:500;line-height:1.2}
 /* 模考 page */
 .sec-hh{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
@@ -828,17 +794,11 @@ details.fold>summary:hover{color:var(--text)}
 .mf-std-h span{color:var(--text-2);flex:1 1 200px}
 .mf-actions{display:flex;gap:10px;margin-top:18px}
 .mf-actions .btn.primary{flex:1;max-width:360px;justify-content:center;height:46px;font-size:15.5px}
-.mcards{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:10px}
-.mcard{border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
-.mc-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
-.mc-h b{font-size:15.5px}
-.mc-h span{font-size:12.5px;color:var(--text-3)}
 .mc-s{display:flex;flex-wrap:wrap;gap:6px}
 .mchip{display:inline-flex;align-items:baseline;gap:4px;padding:4px 9px;border-radius:8px;background:var(--surface-2);font-size:13px}
 .mchip .k{color:var(--text-3);font-size:12px}
 .mchip b{font-variant-numeric:tabular-nums;font-size:15px}
 .mchip small{color:var(--ok);font-weight:700;font-size:11.5px}
-.mc-a{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
 .latest{margin-top:10px}
 .latest .sec-h3 small{margin-left:8px;color:var(--text-3);font-weight:500;font-size:12.5px}
 .lt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:10px 0}
@@ -862,26 +822,8 @@ details.fold>summary:hover{color:var(--text)}
 .lt .gain{color:var(--ok);font-weight:600}
 .lt-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .reftable small.lv.eq{color:var(--text-2)}
-.note-inline{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--info);background:var(--info-bg);padding:8px 10px;border-radius:9px;margin:6px 0}
-.board{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;margin-top:10px;border-top:1px solid var(--line)}
-.bd-row{display:contents}
-.bd-row>span{padding:9px 8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;min-width:0}
-.bd-h>span{font-size:12px;color:var(--text-3);font-weight:600;padding-top:7px;padding-bottom:7px}
-.bd-row.top>span{background:color-mix(in srgb,var(--ok-bg) 70%,transparent)}
-.bd-k{font-weight:700;font-size:14px;white-space:nowrap}
-.bd-c b{font-size:16px}
-.bd-c small{font-size:11.5px;color:var(--text-3)}
-.bd-mock{gap:8px}
-.bd-m{display:flex;flex-direction:column;line-height:1.2}
-.bd-m small{font-size:11px;font-weight:600}
-.bd-m small.up{color:var(--ok)}.bd-m small.down{color:var(--bad)}
-.bd-n{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;padding:4px 6px;border-radius:8px;background:color-mix(in srgb,var(--series-1) calc(var(--h) * 55%),transparent);line-height:1.15}
-.bd-n b{font-size:15px;font-variant-numeric:tabular-nums}
-.bd-n small{font-size:10.5px;color:var(--text-2)}
-.bd-n.none{background:none;color:var(--text-3)}
-@media (max-width:600px){.board .msp{width:48px}.bd-row>span{padding:8px 5px}.bd-n{min-width:38px}}
 /* polish */
-.srow-h .textbtn,.ov-t .textbtn,.fsec h3 .textbtn,.panel-h .textbtn,.sec-hh .textbtn{margin-right:0}
+.srow-h .textbtn,.ov-t .textbtn,.fsec h3 .textbtn,.sec-hh .textbtn{margin-right:0}
 .olist{display:flex;flex-direction:column;gap:3px}
 .olist span{display:flex;gap:6px;align-items:baseline}
 .olist i{font-style:normal;font-size:11px;font-weight:700;color:var(--text-3);min-width:12px}
@@ -900,8 +842,89 @@ details.fold>summary:hover{color:var(--text)}
 .clash li>span{display:flex;gap:5px;flex-wrap:wrap}
 .clash-n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--surface-3);font-weight:750;font-size:13px;font-variant-numeric:tabular-nums}
 .boost-all{margin:0 0 14px;font-size:13px;color:var(--text-2)}
-.try-from{flex-wrap:wrap;justify-content:space-between}
-.try-from>span{flex:1 1 200px}
+
+/* ---------- 落點依據: which scores every 落點 on the page is judged on (找校系, 我的志願, 怎麼進步) */
+.ctxbar{display:flex;flex-direction:column;gap:8px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-1)}
+.page>.ctxbar{margin-bottom:0}
+.ctx-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.ctx-lab{font-size:12.5px;font-weight:700;color:var(--text-3);letter-spacing:.04em;white-space:nowrap}
+.ctx-name{font-size:15px}
+.ctx-sel{min-width:0;max-width:100%}
+.ctx-sel select{min-height:36px;font-weight:650;max-width:100%;text-overflow:ellipsis}
+.ctx-edit{margin-left:auto}
+.ctx-note{font-size:12.5px;color:var(--text-3);line-height:1.55}
+.ctx-none{font-size:13.5px;color:var(--text-2)}
+.mchip small.eq{color:var(--text-2);font-weight:600}
+
+/* ---------- 我的成績: pick a source, edit it, see the result */
+.srccards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:14px}
+.srccard{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:inherit;min-width:0}
+.srccard:hover{border-color:var(--line-2);background:var(--surface-2)}
+.srccard[aria-pressed="true"]{border:2px solid var(--ink);padding:11px 13px;background:var(--surface)}
+.sc-h{display:flex;align-items:center;gap:8px;min-width:0}
+.sc-h b{font-size:15px;min-width:0;overflow-wrap:anywhere}
+.sc-on{margin-left:auto;display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--on-ink);background:var(--ink);border-radius:999px;padding:2px 9px 2px 6px;white-space:nowrap}
+.sc-use{margin-left:auto;font-size:12px;font-weight:650;color:var(--text-3);white-space:nowrap}
+.srccard:hover .sc-use{color:var(--text)}
+.sc-sub{font-size:12.5px;color:var(--text-3);line-height:1.45}
+.srccard .mc-s{gap:4px}
+.srccard .mchip{padding:2px 7px;font-size:12px}
+.srccard .mchip b{font-size:14px}
+.srccard.add{align-items:center;justify-content:center;text-align:center;border-style:dashed;border-color:var(--line-2);color:var(--text-2);min-height:96px}
+.srccard.add b{font-size:14.5px;color:var(--text)}
+.sec-hh h2{font-size:17px}
+.h-sub{font-size:13px;font-weight:500;color:var(--text-3);margin-left:8px}
+.sec-act{display:flex;gap:14px}
+.score-panel .sliders{margin-top:16px}
+.mvt{border-collapse:collapse;width:100%;max-width:640px;font-size:14px;margin-top:4px}
+.mvt th,.mvt td{text-align:left;padding:8px 8px;border-top:1px solid var(--line);vertical-align:baseline}
+.mvt thead th{border-top:0;color:var(--text-3);font-size:12px;font-weight:650}
+.mvt tbody th{font-weight:650;white-space:nowrap}
+.mvt td b{font-size:16px;font-variant-numeric:tabular-nums}
+.mvt td small{display:block;font-size:11.5px;color:var(--text-3)}
+.howto{margin:14px 0 0;padding:12px 14px 12px 32px;border-radius:12px;background:var(--surface-2);font-size:13.5px;color:var(--text-2);line-height:1.65}
+.howto li+li{margin-top:4px}
+.howto b{color:var(--text)}
+.result-card .tierbar{margin-top:14px}
+.rc-n{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:10px;font-size:13.5px;color:var(--text-2)}
+.rc-n .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:0}
+.rc-n b{color:var(--text);font-variant-numeric:tabular-nums}
+.rc-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.sw.t1{background:var(--t1)}.sw.t2{background:var(--t2)}.sw.t3{background:var(--t3)}.sw.t4{background:var(--t4)}.sw.t5{background:var(--t5)}.sw.t6{background:var(--t6)}
+
+/* ---------- first visit */
+.start{margin-bottom:16px;padding:20px;border-radius:var(--r-lg);border:1px solid var(--line);background:var(--surface);display:flex;flex-wrap:wrap;align-items:center;gap:12px 14px}
+.start h2{font-size:17px;flex:1 1 100%}
+.steps3{list-style:none;counter-reset:s;margin:0 0 4px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:1 1 100%}
+.steps3 li{counter-increment:s;display:flex;flex-direction:column;gap:2px;padding:12px 14px 12px 46px;position:relative;border-radius:12px;background:var(--surface-2);font-size:13px;color:var(--text-2);line-height:1.5}
+.steps3 li::before{content:counter(s);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:grid;place-items:center;font-weight:800;font-size:12.5px}
+.steps3 b{font-size:14.5px;color:var(--text)}
+
+/* ---------- 怎麼進步 scope */
+.scopebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.scopebar .selectbox select{min-height:38px}
+.heat .hs-m{display:block;margin-top:2px}
+.heat .hs-m .msp{width:56px;height:18px}
+
+/* ---------- filters: grouping */
+.fseg{margin-top:10px;display:flex;width:100%}
+.fseg button{flex:1;padding-inline:6px}
+.fnote{margin-top:-6px}
+.verdict .v-src{font-size:12.5px;color:var(--text-2);font-weight:650;margin-bottom:2px}
+
+@media (max-width:719px){
+  .steps3{grid-template-columns:minmax(0,1fr)}
+  .srccards{grid-template-columns:minmax(0,1fr)}
+  .srccard.add{min-height:0;flex-direction:row;gap:8px}
+  .srccard.add .sc-sub{display:none}
+  .ctxbar{padding:10px 12px}
+  .ctx-top{gap:6px 8px}
+  .ctx-sel{flex:1 1 auto}
+  .ctx-sel select{width:100%}
+  .mvt{font-size:13.5px}
+  .mvt th,.mvt td{padding:7px 5px}
+}
+@media print{#view-scores{display:none!important}.ctxbar{display:none!important}}
 </style>
 </head>
 <body>
@@ -921,14 +944,15 @@ details.fold>summary:hover{color:var(--text)}
 </header>
 
 <main id="main">
+  <section class="view" id="view-scores" aria-label="我的成績" hidden><div class="wrap"><div class="page" id="scores"></div></div></section>
   <section class="view" id="view-explore" aria-label="找校系">
     <div class="wrap explore">
-      <section class="rail" id="rail" aria-label="成績與篩選">
-        <div class="card score-panel" id="scorePanel"></div>
+      <section class="rail" id="rail" aria-label="篩選">
         <div class="filter-panel" id="filterPanel"></div>
       </section>
       <div class="results">
         <h1 class="sr">找校系</h1>
+        <div id="ctxExplore"></div>
         <div class="toolbar">
           <label class="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="sr">搜尋校系</span>
             <input id="q" type="search" placeholder="搜尋學校、科系、面試或審查關鍵字" autocomplete="off" enterkeyhint="search">
@@ -959,7 +983,6 @@ details.fold>summary:hover{color:var(--text)}
   </section>
   <section class="view" id="view-plan" aria-label="我的志願" hidden><div class="wrap"><div class="page" id="plan"></div></div></section>
   <section class="view" id="view-boost" aria-label="怎麼進步" hidden><div class="wrap"><div class="page" id="boost"></div></div></section>
-  <section class="view" id="view-mock" aria-label="模考" hidden><div class="wrap"><div class="page" id="mock"></div></div></section>
   <section class="view" id="view-guide" aria-label="時程與規則" hidden><div class="wrap"><div class="page" id="guide"></div></div></section>
 </main>
 
@@ -1437,13 +1460,16 @@ details.fold>summary:hover{color:var(--text)}
   }
 
   /**
-   * Main evaluation. opts: {std, stdByYear, stdYear, pct}
+   * Main evaluation. opts: {std, stdByYear, stdYear, pct, thS}
+   * S are 學測 級分 (used for 倍率篩選 against the 115 cuts and for 採計). thS, when given, are the scores
+   * 檢定 is judged on with opts.std: a 模考's own 級分 against that 模考's own 五標 (S is then the 模考
+   * read as 學測 級分 by rank). The 檢定-edge check (other years' 學測 五標) always uses S.
    * Returns {tier, reasons[], warnings[], th, cmp, plan, ...}
    */
   function evaluate(d, S, opts) {
     const o = opts || {};
     const reasons = [], warnings = [];
-    const th = checkThreshold(d, S, o.std);
+    const th = checkThreshold(d, o.thS || S, o.std);
     const miss = missingUse(d, S);
     const mathEither = d.sub.some(s => s.k === '數A' && s.m != null) && d.sub.some(s => s.k === '數B' && s.m != null);
     const screenMissing = miss.screen.filter(k => !(mathEither && (k === '數A' || k === '數B') && (val(S, '數A') != null || val(S, '數B') != null)));
@@ -1690,7 +1716,6 @@ details.fold>summary:hover{color:var(--text)}
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmtN = n => Number(n).toLocaleString('en-US');
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const isNarrow = () => window.matchMedia('(max-width: 959px)').matches;
 
   // ------------------------------------------------------------------ reference data
   const SCHOOL = Object.fromEntries(D.schools.map(s => [s.id, s]));
@@ -1755,7 +1780,10 @@ details.fold>summary:hover{color:var(--text)}
   const LV_SHORT = { 頂標: '頂', 前標: '前', 均標: '均', 後標: '後', 底標: '底' };
   const LS = 'apply116-v1';
   const PAGE = 50;
-  const NAV = [['explore', '找校系', '找校系', 'search'], ['plan', '我的志願', '我的志願', 'plan'], ['boost', '怎麼進步', '怎麼進步', 'boost'], ['mock', '模考', '模考', 'mock'], ['guide', '時程與規則', '時程規則', 'guide']];
+  // The order is the order you use it in: scores → departments → 志願; then how to improve, and the calendar.
+  const NAV = [['scores', '我的成績', '成績', 'mock'], ['explore', '找校系', '找校系', 'search'], ['plan', '我的志願', '志願', 'plan'], ['boost', '怎麼進步', '進步', 'boost'], ['guide', '時程與規則', '時程', 'guide']];
+  const TABS = NAV.map(x => x[0]);
+  const HASH_TAB = { '#scores': 'scores', '#mock': 'scores', '#plan': 'plan', '#boost': 'boost', '#guide': 'guide' };
 
   const ICON = {
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
@@ -1795,6 +1823,10 @@ details.fold>summary:hover{color:var(--text)}
     stdCustom: copyStd(D.std['115']),
     f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', skip: [], combos: [], untaken: false, sort: 'chance' },
     fav: [], plan: [], mocks: [], mockV: 3, theme: '',
+    // which scores every 落點 is judged on: 'test' = 學測級分 you typed (or a target), else a saved 模考's id
+    src: 'test',
+    // 怎麼進步 has its own scope (it never borrows 找校系's filters): all 校系 (optionally one 學群), 收藏, or 志願
+    bx: { scope: 'all', group: '' },
   });
   /** 五標 tables: {國: {頂標: 13, …}, …}. A custom one (e.g. a 模考's) must have every level as 1–15 級分. */
   function copyStd(x) { return JSON.parse(JSON.stringify(x)); }
@@ -1900,6 +1932,9 @@ details.fold>summary:hover{color:var(--text)}
     });
     out.mockV = 3;
     out.plan = [...new Set(arr(s.plan, c => BY_CODE[c]))].slice(0, 6);
+    out.src = out.mocks.some(m => m.id === s.src) ? s.src : 'test';
+    const bx = s.bx && typeof s.bx === 'object' ? s.bx : {};
+    out.bx = { scope: ['all', 'fav', 'plan'].includes(bx.scope) ? bx.scope : 'all', group: GROUPS.includes(bx.group) ? bx.group : '' };
     return out;
   }
   function load() {
@@ -1913,23 +1948,59 @@ details.fold>summary:hover{color:var(--text)}
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch (e) { /* storage blocked: keep working in memory */ } }, 150);
   }
-  const ui = { tab: 'explore', scoreOpen: false, more: false, catsOpen: false, helpOpen: false, shown: PAGE, visible: 0, tryS: null, sheet: false };
+  const ui = { tab: 'explore', more: false, catsOpen: false, helpOpen: false, shown: PAGE, visible: 0, tryS: null, trySig: null, sheet: false, mf: null };
 
-  // ------------------------------------------------------------------ evaluation (cached until scores or 五標 year change)
+  // ------------------------------------------------------------------ evaluation (cached until the scores in use change)
   let EV = new Map(), evSig = null;
-  const hasScores = S => SCORE_KEYS.some(k => L.val(S || st.scores, k) != null);
-  /** The 五標 used for 檢定: a 學年度's, or the user's own (自訂, e.g. from a 模考). */
+  /** The 學測 五標 used for 檢定 with 學測 級分: a 學年度's, or the user's own (自訂, e.g. 116 once published). */
   const STD = () => (st.stdYear === 'custom' ? st.stdCustom : D.std[st.stdYear]);
-  const stdName = () => (st.stdYear === 'custom' ? '自訂五標' : `${st.stdYear} 學年度五標`);
-  const opts = () => ({ std: STD(), stdByYear: D.std, stdYear: st.stdYear, pct: D.pct });
+  const stdName = () => (st.stdYear === 'custom' ? '自訂五標' : `${st.stdYear} 學年度學測五標`);
+  /**
+   * The scores every 落點 is judged on ("context"), from st.src:
+   * - 學測級分: S = what you typed; 檢定 against the chosen 學測 五標.
+   * - a 模考: 檢定 compares the 模考's own 級分 (thS) with that 模考's own 五標 (std; a subject without them
+   *   falls back to the 學測 五標), and 倍率篩選 uses the 模考 read as 學測 級分 by rank (S), since the 115 cuts
+   *   are 學測 級分. 英聽 and APCS come from the 模考 when it has them, else from your 學測 entries.
+   */
+  const srcMock = () => (st.src !== 'test' && st.mocks.find(m => m.id === st.src)) || null;
+  function ctxFor(m) {
+    if (!m) return { key: 'test', S: st.scores, thS: st.scores, std: STD(), stdYear: st.stdYear, mock: null, eq: {}, own: [], name: '學測級分', stdName: stdName() };
+    const { S: conv, eq } = mockAsTest(m);
+    const extra = { 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
+    const base = STD(), std = {};
+    for (const k of SCORE_KEYS) std[k] = (m.std && m.std[k]) || base[k];
+    const own = SCORE_KEYS.filter(k => m.std && m.std[k]);
+    return { key: m.id, S: { ...cleanScores(conv), ...extra }, thS: { ...cleanScores(m.s), ...extra }, std, stdYear: null, mock: m, eq, own, name: mName(m), stdName: own.length ? `${mName(m)}的五標` : stdName() };
+  }
+  let CTX = null, ctxSig = null;
+  function cur() {
+    const m = srcMock();
+    const sig = st.src + '|' + JSON.stringify(st.scores) + '|' + st.stdYear + '|' + (st.stdYear === 'custom' ? JSON.stringify(st.stdCustom) : '') + '|' + (m ? JSON.stringify(m) : '');
+    if (sig !== ctxSig) { ctxSig = sig; CTX = ctxFor(m); CTX.sig = sig; }
+    return CTX;
+  }
+  const optsFor = c => ({ std: c.std, thS: c.thS, stdByYear: D.std, stdYear: c.stdYear, pct: D.pct });
+  const hasScores = S => SCORE_KEYS.some(k => L.val(S || cur().S, k) != null);
+  /** Scores S2 on the 學測 scale, with the 檢定 scores moved by the same 級分 (so a what-if on a 模考 stays on that 模考's 五標). */
+  function shifted(c, S2) {
+    if (c.thS === c.S) return { S: S2, thS: S2 };
+    const thS = { ...c.thS, 聽: S2.聽, 識: S2.識, 實: S2.實 };
+    for (const k of SCORE_KEYS) {
+      const a = L.val(c.S, k), b = L.val(S2, k);
+      if (a === b) continue;
+      thS[k] = b == null ? '' : a == null ? String(b) : String(clamp((L.val(c.thS, k) || a) + b - a, 1, 15));
+    }
+    return { S: S2, thS };
+  }
+  const evalAt = (d, c, S2) => { const x = shifted(c, S2); return L.evaluate(d, x.S, { ...optsFor(c), thS: x.thS }); };
   function ensureEval() {
-    const sig = JSON.stringify(st.scores) + '|' + st.stdYear + '|' + (st.stdYear === 'custom' ? JSON.stringify(st.stdCustom) : '');
-    if (sig === evSig) return;
-    evSig = sig;
+    const c = cur();
+    if (c.sig === evSig) return;
+    evSig = c.sig;
     EV = new Map();
-    if (!hasScores()) return;
-    const o = opts();
-    for (const d of D.depts) EV.set(d.c, L.evaluate(d, st.scores, o));
+    if (!hasScores(c.S)) return;
+    const o = optsFor(c);
+    for (const d of D.depts) EV.set(d.c, L.evaluate(d, c.S, o));
   }
   const tierOf = d => { const e = EV.get(d.c); return e ? e.tier : null; };
   /** 二階 採計 a subject you did not take (it counts as 0). 檢定／篩選 subjects you did not take are already 不符. */
@@ -2038,11 +2109,7 @@ details.fold>summary:hover{color:var(--text)}
     if (skip !== 'groups' && f.groups.length && !d.g.some(g => f.groups.includes(g))) return false;
     if (skip !== 'regions' && f.regions.length && !f.regions.includes(CITY_REGION[d.city])) return false;
     if (skip !== 'own' && f.own !== 'all' && (isPub(d) ? 'pub' : 'pri') !== f.own) return false;
-    if (skip !== 'cats') {
-      if (!catOf(d).some(c => f.cats.includes(c))) return false;
-      if (d.cats.includes('青儲') && !f.cats.includes('青儲')) return false;
-      if (d.cats.includes('扶弱') && !f.cats.includes('扶弱')) return false;
-    }
+    if (skip !== 'cats' && !catOk(d, f.cats)) return false;
     if (skip !== 'sat' && f.sat !== 'all' && !SAT_BY[f.sat][3](d)) return false;
     if (skip !== 'st2' && f.st2.some(k => !ST2_TEST[k](d))) return false;
     if (skip !== 'skip' && L.stage1Uses(d, f.skip)) return false;
@@ -2052,16 +2119,21 @@ details.fold>summary:hover{color:var(--text)}
     return true;
   }
   const baseFiltered = skip => D.depts.filter(d => passes(d, skip));
+  /** 一般 departments: the default 組別 (no 青儲、扶弱 or 術科 groups), as 找校系 shows them before any filter. */
+  const catOk = (d, cats) => catOf(d).some(c => cats.includes(c)) && !(d.cats.includes('青儲') && !cats.includes('青儲')) && !(d.cats.includes('扶弱') && !cats.includes('扶弱'));
+  const CAT_SCOPE = D.depts.filter(d => catOk(d, DEFAULT_CATS));
+  /** Every 一般 department you could apply to with these scores (系 that use a subject you did not take are left out). */
+  const defaultScope = () => CAT_SCOPE.filter(d => !usesUntaken(d));
   const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + (st.f.sat !== 'all' ? 1 : 0) + st.f.st2.length + st.f.skip.length + st.f.combos.length + (st.f.untaken ? 1 : 0) + (catsChanged() ? 1 : 0);
   const skipName = k => SKIP_SUBJ.find(x => x[0] === k)[1];
   const comboParts = k => k.split('+');
   const comboName = k => { const ps = comboParts(k); return ps.length === 1 ? subj(ps[0]) : ps.map(p => ABBR[p] || p).join(''); };
   /** Combination chips: how many 系 screen on each, and your 115 rank on it; strongest first once you have scores. */
   function comboChips() {
-    const f = st.f, has = hasScores(), c = {};
+    const f = st.f, has = hasScores(), S = cur().S, c = {};
     for (const d of baseFiltered('combos')) { const k = COMBO_OF[d.c]; if (k) c[k] = (c[k] || 0) + 1; }
     const rows = [...new Set([...Object.keys(c), ...f.combos])].map(k => {
-      const rk = has ? L.comboRank(comboParts(k), st.scores, D.pct) : null;
+      const rk = has ? L.comboRank(comboParts(k), S, D.pct) : null;
       return { k, n: c[k] || 0, rk };
     });
     // With scores: combinations you rank best on come first (only those with 5+ 系, so rare ones do not crowd the top).
@@ -2110,7 +2182,7 @@ details.fold>summary:hover{color:var(--text)}
   const noteHTML = (kind, html) => `<div class="note ${kind}">${icon(kind === 'warn' ? 'alert' : 'info')}<div>${html}</div></div>`;
   function focusKey(el) {
     if (!el || !el.dataset) return null;
-    for (const a of ['slider', 'try', 'focus', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
+    for (const a of ['slider', 'try', 'focus', 'src', 'bscope', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
       if (el.dataset[a] != null) return `[data-${a}="${CSS.escape(el.dataset[a])}"]`;
     }
     return el.id ? '#' + CSS.escape(el.id) : null;
@@ -2176,22 +2248,35 @@ details.fold>summary:hover{color:var(--text)}
   function listenHTML(v, kind) {
     return `<div class="segctl" role="group" aria-labelledby="lab-listen">${[['', '沒考'], ['A', 'A'], ['B', 'B'], ['C', 'C'], ['F', 'F']].map(([x, l]) => `<button type="button" data-listen="${x || 'none'}" aria-pressed="${(v || '') === x}">${l}</button>`).join('')}</div>`;
   }
-  function scoreSummary() {
-    const s = st.scores;
-    const tiles = SCORE_KEYS.map(k => {
-      const v = L.val(s, k);
-      const p = v != null ? L.topPercent(D.pct, [k], v) : null;
-      return `<button class="tile${v == null ? ' none' : ''}" type="button" data-act="editScores" data-focus="${k}" aria-label="${subj(k)} ${v == null ? '沒考' : v + ' 級分'}，按一下修改"><span class="k">${subj(k)}</span><span class="v">${v == null ? '—' : v}</span><span class="p">${v == null ? '沒考' : p != null ? fmtTop(p) : ''}</span></button>`;
-    });
-    tiles.push(`<button class="tile${s.聽 ? '' : ' none'}" type="button" data-act="editScores" data-focus="listen" aria-label="英聽 ${s.聽 || '沒考'}，按一下修改"><span class="k">英聽</span><span class="v">${s.聽 || '—'}</span><span class="p">${s.聽 ? '級' : '沒考'}</span></button>`);
-    tiles.push(`<button class="tile edit" type="button" data-act="editScores">${icon('edit', 'sm')}<span>修改</span></button>`);
-    return `<div class="panel-h"><h2>我的學測級分</h2><span class="hint">百分比是 115 考生排名</span></div><div class="tiles">${tiles.join('')}</div>`;
+  /** Small chips of a set of scores: 級分, the 標 it reaches (in `std`), and for a 模考 the 學測 級分 it reads as. */
+  function chipsHTML(raw, std, eq) {
+    const out = SCORE_KEYS.map(k => {
+      const v = L.val(raw, k);
+      if (v == null) return '';
+      const lv = std && std[k] ? levelIn(std, k, v) : '';
+      const e = eq && eq[k];
+      return `<span class="mchip"><span class="k">${ABBR[k]}</span><b>${v}</b>${lv ? `<small>${LV_SHORT[lv] || '底下'}</small>` : ''}${e && e.g !== v ? `<small class="eq" title="照排名換算的學測級分">≈${e.g}</small>` : ''}</span>`;
+    }).join('');
+    return out + (raw.聽 ? `<span class="mchip"><span class="k">聽</span><b>${raw.聽}</b></span>` : '');
+  }
+  /** Which scores the 落點 on this page use, with a switch: the same bar on 找校系, 我的志願 and 怎麼進步. */
+  function ctxBarHTML() {
+    const c = cur(), has = hasScores(c.S);
+    const pick = st.mocks.length
+      ? `<span class="selectbox ctx-sel"><select data-srcsel aria-label="看落點用哪一份成績"><option value="test" ${c.mock ? '' : 'selected'}>學測級分${hasScores(st.scores) ? '' : '（還沒填）'}</option>${mocksByDate().reverse().map(m => `<option value="${m.id}" ${c.mock === m ? 'selected' : ''}>模考：${esc(mName(m))}・${mdText(m.d)}</option>`).join('')}</select>${icon('chevD', 'sm')}</span>`
+      : '<b class="ctx-name">學測級分</b>';
+    let note = '';
+    if (c.mock) {
+      const lack = SCORE_KEYS.filter(k => L.val(c.thS, k) != null && !c.own.includes(k));
+      note = `檢定：模考級分比${c.own.length ? '這次模考的五標' : stdName()}${c.own.length && lack.length ? `（${lack.map(k => ABBR[k]).join('、')}沒有這次的五標，用${stdName()}）` : ''}。倍率篩選：照排名換算成學測級分（≈）再比 115 門檻。`;
+    } else if (has) note = `檢定用${stdName()}。`;
+    return `<div class="ctxbar"><div class="ctx-top"><span class="ctx-lab">落點依據</span>${pick}<button class="btn sm ctx-edit" type="button" data-tab="scores">${icon('edit', 'sm')}${has ? '改成績' : '輸入成績'}</button></div>
+      ${has ? `<div class="mc-s">${chipsHTML(c.thS, c.std, c.eq)}</div>` : '<p class="ctx-none">還沒有成績：先到「我的成績」填學測級分（或目標分數），或存一次模考。</p>'}
+      ${note ? `<p class="ctx-note">${esc(note)}</p>` : ''}</div>`;
   }
   // ------------------------------------------------------------------ 模考紀錄
   const mocksByDate = () => st.mocks.slice().sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
   const mdText = iso => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}`;
-  const mockTotal = m => SCORE_KEYS.reduce((t, k) => t + (L.val(m.s, k) || 0), 0);
-  const scoreLine = sc => SCORE_KEYS.map(k => L.val(sc, k)).map((v, i) => (v == null ? null : `${ABBR[SCORE_KEYS[i]]}${v}`)).filter(Boolean).join(' ') + (sc.聽 ? ` 聽${sc.聽}` : '');
   // A 模考's 五標 completed with the 檢定 五標 for subjects it does not cover (used to judge 檢定 for that 模考).
   const presetOf = n => MOCK_REF.find(x => x.n === n && x.r);
   // Short display name: built-in 模考 read as 「翰林第二次」.
@@ -2236,14 +2321,14 @@ details.fold>summary:hover{color:var(--text)}
       <span role="columnheader"></span>${L.LEVELS.map(l => `<span role="columnheader">${l.replace('標', '')}</span>`).join('')}
       ${SCORE_KEYS.map(k => `<span role="rowheader">${subj(k)}</span>${L.LEVELS.map(l => `<input type="number" inputmode="numeric" min="1" max="15" value="${(f.std[k] && f.std[k][l]) || ''}" data-mfstd="${k}:${l}" aria-label="${subj(k)}${l}">`).join('')}`).join('')}
       </div><p class="hint">一科五格都填才算。${p && p.std ? ' <button class="textbtn" type="button" data-act="mfStdPreset">改回翰林公布的</button>' : ''}</p>`;
-    return `<section class="sec mform" id="mockForm"><div class="sec-hh"><h2>${f.id ? '修改模考' : '新增一次模考'}</h2>${st.mocks.length ? '<button class="textbtn" type="button" data-act="mfCancel">取消</button>' : ''}</div>
+    return `<section class="sec mform" id="mockForm"><div class="sec-hh"><h2>${f.id ? '修改模考' : '新增一次模考'}</h2><button class="textbtn" type="button" data-act="mfCancel">取消</button></div>
       <div class="mf-top">
         <label class="mf-f"><span>哪一次</span><span class="selectbox"><select id="mfPreset">${MOCK_REF.filter(x => x.r).map(x => `<option value="${esc(x.n)}" ${x.n === pick ? 'selected' : ''}>翰林 ${esc(x.org)}（${x.area ? esc(x.area) + '・' : ''}${esc(x.n.replace('學測模擬考', ''))}，${esc(x.when.replace(/（.*）/, ''))}）</option>`).join('')}<option value="" ${pick ? '' : 'selected'}>其他模考</option></select>${icon('chevD', 'sm')}</span></label>
         ${pick ? '' : '<p class="hint mf-wide">中區（南一）、南一全國跟翰林是不同考試，五標照你的成績單填。</p>'}
         ${presetOf(f.n) ? '' : `<label class="mf-f"><span>名稱</span><input id="mfName" type="text" maxlength="30" value="${esc(f.n)}" placeholder="例如：南一第一次、校內模考"></label>`}
         <label class="mf-f"><span>日期</span><input id="mfDate" type="date" value="${f.d}"></label>
       </div>
-      <h3 class="mf-h">級分 <small>沒考的空著</small>${hasScores() ? '<button class="textbtn" type="button" data-act="mfFromScores">帶入「我的學測級分」</button>' : ''}</h3>
+      <h3 class="mf-h">級分 <small>沒考的空著</small>${hasScores(st.scores) ? '<button class="textbtn" type="button" data-act="mfFromScores">帶入我填的學測級分</button>' : ''}</h3>
       <div class="mf-scores">${SCORE_KEYS.map(k => `<label class="mf-s"><span class="k">${subj(k)}</span><input type="number" inputmode="numeric" min="0" max="15" value="${f.s[k] || ''}" data-mf="${k}" placeholder="—"><small class="lv" data-mflv="${k}">${mfLevel(f, k)}</small></label>`).join('')}
         ${p && !p.r.英聽 && !f.聽 ? '' : `<label class="mf-s"><span class="k">英聽</span><span class="selectbox"><select data-mf="聽"><option value="">—</option>${['A', 'B', 'C', 'F'].map(g => `<option ${f.聽 === g ? 'selected' : ''}>${g}</option>`).join('')}</select>${icon('chevD', 'sm')}</span><small class="lv"></small></label>`}
       </div>
@@ -2252,14 +2337,6 @@ details.fold>summary:hover{color:var(--text)}
       <div class="mf-std"><div class="mf-std-h"><b>這次的五標</b><span>${esc(stdText)}</span><button class="textbtn" type="button" data-act="mfStdToggle" aria-expanded="${f.stdOpen}">${f.stdOpen ? '收起' : stdKeys.length ? '看／修改' : '填五標'}</button></div>${f.stdOpen ? grid : ''}</div>
       <div class="mf-actions"><button class="btn primary" type="button" data-act="mfSave">${icon('check', 'sm')}${f.id ? '存好了' : '存這次模考'}</button></div>
     </section>`;
-  }
-  function mockCardsHTML() {
-    const ms = mocksByDate().reverse();
-    return `<ul class="mcards">${ms.map(m => {
-      const chips = SCORE_KEYS.map(k => { const v = L.val(m.s, k); if (v == null) return ''; const lv = m.std && m.std[k] ? levelIn(m.std, k, v) : ''; return `<span class="mchip"><span class="k">${ABBR[k]}</span><b>${v}</b>${lv ? `<small>${LV_SHORT[lv] || lv.replace('未達底標', '底下')}</small>` : ''}</span>`; }).join('') + (m.s.聽 ? `<span class="mchip"><span class="k">聽</span><b>${m.s.聽}</b></span>` : '');
-      return `<li class="mcard"><div class="mc-h"><b>${esc(mName(m))}</b><span>${mdText(m.d)} · ${esc(stdSource(m))}</span></div><div class="mc-s">${chips}</div>
-        <div class="mc-a"><button class="btn sm" type="button" data-mockuse="${m.id}">看落點</button><button class="textbtn" type="button" data-mockedit="${m.id}">${icon('edit', 'sm')}修改</button><button class="textbtn danger" type="button" data-mockdel="${m.id}" aria-label="刪除 ${esc(mName(m))}">刪除</button></div></li>`;
-    }).join('')}</ul>`;
   }
   function saveMockForm() {
     const f = ui.mf;
@@ -2276,40 +2353,61 @@ details.fold>summary:hover{color:var(--text)}
       if (st.mocks.length >= MOCK_MAX) { toast(`最多存 ${MOCK_MAX} 次，先刪掉舊的`); return; }
       st.mocks.push(rec);
     }
-    ui.mf = null; render();
-    toast(at >= 0 ? `已更新「${mName(rec)}」` : `已存「${mName(rec)}」`);
-    requestAnimationFrame(() => { const el = $('#trendSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    ui.mf = null;
+    st.src = rec.id;
+    render();
+    toast(at >= 0 ? `已更新「${mName(rec)}」` : `已存「${mName(rec)}」，現在用它看落點`);
+    requestAnimationFrame(() => { const el = $('#srcSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   }
-  function useMock(id) {
-    const m = st.mocks.find(x => x.id === id);
-    if (!m) return;
-    // 模考 級分 are read as 學測 級分 by rank, so 檢定 and the 115 cuts use the 學測 scale too
-    const { S, eq } = mockAsTest(m);
-    st.scores = { ...cleanScores(S), 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
-    if (st.stdYear === 'custom' && Object.keys(eq).length) st.stdYear = '115';
-    ui.shown = PAGE; ui.tryS = null; setTab('explore');
-    toast(Object.keys(eq).length ? `已把「${mName(m)}」換算成學測級分（${Object.keys(eq).map(k => ABBR[k] + ' ' + L.val(m.s, k) + '→' + eq[k].g).join('、')}）看落點` : `已用「${mName(m)}」的成績看落點`);
+  /** Use a source (學測級分 or a 模考) for every 落點. */
+  function useSource(id, go) {
+    st.src = id === 'test' || st.mocks.some(m => m.id === id) ? id : 'test';
+    ui.mf = null; ui.shown = PAGE;
+    if (go) setTab(go); else render();
+    toast(`現在用「${cur().name}」看落點`);
   }
-  function tryMock(id) {
-    const m = st.mocks.find(x => x.id === id);
-    if (!m) return;
-    const { S, eq } = mockAsTest(m);
-    ui.tryS = { ...st.scores, ...cleanScores(S), 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
-    ui.tryRaw = { ...st.scores, ...cleanScores(m.s), 聽: m.s.聽 || st.scores.聽, 識: st.scores.識, 實: st.scores.實 };
-    ui.tryFrom = mName(m);
-    ui.tryConv = SCORE_KEYS.filter(k => L.val(m.s, k) != null).map(k => (eq[k] ? `${ABBR[k]} ${L.val(m.s, k)}${eq[k].g !== L.val(m.s, k) ? '→' + eq[k].g : ''}` : `${ABBR[k]} ${L.val(m.s, k)}`)).join('、');
-    ui.tryIsRaw = false;
-    ui.tryAlt = null;
-    ui.keepTry = true;
-    if (ui.tab === 'boost') render(); else setTab('boost');
-    setTimeout(() => { const el = $('#trySec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
+  /** One card per source; pressing one makes it the scores every page uses. */
+  function sourceCardsHTML() {
+    const c = cur();
+    const card = (id, title, sub, chips, on) => `<button type="button" class="srccard" data-src="${id}" aria-pressed="${on}"><span class="sc-h"><b>${title}</b>${on ? `<span class="sc-on">${icon('check', 'sm')}使用中</span>` : '<span class="sc-use">用這份</span>'}</span><span class="sc-sub">${sub}</span><span class="mc-s">${chips}</span></button>`;
+    const test = card('test', '學測級分', '自己填：目標分數，或 2/25 公布的成績', hasScores(st.scores) || st.scores.聽 ? chipsHTML(st.scores, STD()) : '<span class="muted">還沒填</span>', !c.mock);
+    const mocks = mocksByDate().reverse().map(m => card(m.id, esc(mName(m)), `模考・${mdText(m.d)}・${esc(stdSource(m))}`, chipsHTML(m.s, m.std, mockAsTest(m).eq), c.mock === m)).join('');
+    return `<div class="srccards">${test}${mocks}<button type="button" class="srccard add" data-act="mfNew">${icon('plus')}<b>新增模考</b><span class="sc-sub">選翰林哪一次，五標自動帶入</span></button></div>`;
   }
-  function renderMock() {
-    const el = $('#mock');
-    if (!ui.mf && !st.mocks.length) ui.mf = newMockDraft();
-    const head = `<header class="page-h"><div><h1>模考</h1><p>每次模考存一筆，看趨勢、落點和換算的學測級分。</p></div>${ui.mf ? '' : `<button class="btn primary" type="button" data-act="mfNew">${icon('plus', 'sm')}新增模考</button>`}</header>`;
-    el.innerHTML = head + (ui.mf ? mockFormHTML() : '') + (st.mocks.length ? `<section class="sec"><h2>我的模考（${st.mocks.length}）</h2>${mockCardsHTML()}</section>` : '') + (st.mocks.length ? trendHTML(baseFiltered()) : '') + `<section class="sec">${mockRefHTML()}</section>`;
-    bindTips();
+  /** The selected 模考: each subject's 標 on that 模考, the 學測 級分 it reads as, and what 檢定 compares. */
+  function mockViewHTML(m) {
+    const c = cur(), p = mockPreset(m);
+    const rows = SCORE_KEYS.filter(k => L.val(m.s, k) != null).map(k => {
+      const v = L.val(m.s, k), lv = m.std && m.std[k] ? levelIn(m.std, k, v) : '', e = c.eq[k];
+      let next = '';
+      if (lv) { const i = L.LEVELS.indexOf(lv), up = i === -1 ? '底標' : i > 0 ? L.LEVELS[i - 1] : null; next = up ? `再 ${m.std[k][up] - v} 到${up}` : '頂標'; }
+      return `<tr><th scope="row">${subj(k)}</th><td class="num"><b>${v}</b></td><td>${lv ? `${lv}${next && next !== '頂標' ? `<small>${next}</small>` : ''}` : `<span class="muted">${p && p.std && !p.std[k] ? '翰林沒公開這科五標' : '沒有這次的五標'}</span>`}</td><td class="num">${e ? `<b>${e.g}</b><small>前 ${Math.round(e.top)}%</small>` : `<span class="muted">${v}（沒換算）</span>`}</td></tr>`;
+    }).join('') + (m.s.聽 ? `<tr><th scope="row">英聽</th><td><b>${m.s.聽}</b></td><td class="muted">—</td><td class="muted">—</td></tr>` : '');
+    return `<section class="sec" id="srcSec"><div class="sec-hh"><h2>${esc(mName(m))}<small class="h-sub">${mdText(m.d)}</small></h2><span class="sec-act"><button class="textbtn" type="button" data-mockedit="${m.id}">${icon('edit', 'sm')}修改</button><button class="textbtn danger" type="button" data-mockdel="${m.id}" aria-label="刪除 ${esc(mName(m))}">刪除</button></span></div>
+      <p class="sub">${esc(stdSource(m))}</p>
+      <div class="tablewrap"><table class="mvt"><thead><tr><th scope="col">科目</th><th scope="col">模考級分</th><th scope="col">這次的標</th><th scope="col">換算學測級分</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${c.own.length ? `<ol class="howto"><li><b>檢定</b>用你的模考級分比<b>這次模考的五標</b>：系要英文均標，就看你是不是到這次英文的均標。</li><li><b>倍率篩選</b>把模考級分照排名換算成學測級分，再跟 115 一階最低級分比（115 門檻是學測級分）。</li></ol>`
+        : noteHTML('warn', `這次沒有五標：檢定只能拿模考級分比${esc(stdName())}，篩選也只能直接用模考級分，落點不準。按「修改」照成績單填這次的五標。`)}
+    </section>`;
+  }
+  /** Live result of the chosen scores, so a change here shows its effect right away. */
+  function resultCardHTML() {
+    const c = cur();
+    if (!hasScores(c.S)) return '';
+    const scope = defaultScope(), n = {};
+    scope.forEach(d => { const t = tierOf(d); n[t] = (n[t] || 0) + 1; });
+    return `<section class="sec result-card"><div class="sec-hh"><h2>用「${esc(c.name)}」看落點</h2><span class="muted num">${fmtN(scope.length)} 個校系</span></div>
+      ${tierBarHTML(n, scope.length, { label: '落點分布' })}
+      <p class="rc-n">${TIERS.filter(t => n[t]).map(t => `<span><i class="sw ${TC[t]}"></i>${t} <b>${n[t]}</b></span>`).join('')}</p>
+      <div class="rc-act"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}看校系</button><button class="btn" type="button" data-tab="boost">${icon('boost', 'sm')}怎麼進步</button></div></section>`;
+  }
+  function renderScores() {
+    const el = $('#scores'), m = srcMock();
+    const head = `<header class="page-h"><div><h1>我的成績</h1><p>選一份成績，找校系、志願和怎麼進步都會用它看落點。116 學測成績 2/25 公布前，可以用模考或目標分數。</p></div></header>`;
+    const editor = ui.mf ? mockFormHTML() : m ? mockViewHTML(m) : `<section class="sec score-panel" id="scorePanel">${scoreEditor()}</section>`;
+    keepFocus(el, () => {
+      el.innerHTML = head + `<section class="sec"><h2>看落點用哪一份成績</h2><p class="sub">按一下換。每次模考存一筆，就能比較。</p>${sourceCardsHTML()}</section>` + editor + (ui.mf ? '' : resultCardHTML()) + (st.mocks.length ? trendHTML(defaultScope()) : '') + `<section class="sec">${mockRefHTML()}</section>`;
+    });
   }
 
   /**
@@ -2328,28 +2426,20 @@ details.fold>summary:hover{color:var(--text)}
     ${bad.length ? `<p class="hint warn-t">${bad.map(subj).join('、')}的五標沒有由高到低，請檢查。</p>` : ''}`;
   }
   function scoreEditor() {
-    const s = st.scores, any = hasScores();
-    const years = Object.keys(D.std).sort().reverse().map(y => `<option value="${y}" ${y === st.stdYear ? 'selected' : ''}>${y} 學年度學測五標</option>`).join('') + `<option value="custom" ${st.stdYear === 'custom' ? 'selected' : ''}>自訂（例如模考的五標）</option>`;
-    return `<div class="panel-h"><h2>我的學測級分</h2>${any || s.聽 ? '<button class="textbtn" type="button" data-act="clearScores">全部清除</button>' : ''}</div>
-      <p class="panel-note">${any ? '點或拖曳格子改級分。' : '點格子填級分，模考或目標分數也可以。'}下方標的是${stdName()}。</p>
+    const s = st.scores, any = hasScores(s);
+    const years = Object.keys(D.std).sort().reverse().map(y => `<option value="${y}" ${y === st.stdYear ? 'selected' : ''}>${y} 學年度學測五標</option>`).join('') + `<option value="custom" ${st.stdYear === 'custom' ? 'selected' : ''}>自訂（例如 116 五標公布後）</option>`;
+    return `<div class="sec-hh"><h2>學測級分</h2>${any || s.聽 ? '<button class="textbtn" type="button" data-act="clearScores">全部清除</button>' : ''}</div>
+      <p class="sub">${any ? '點或拖曳格子改級分，下面的結果會跟著變。' : '點格子填級分：目標分數也可以。沒考的科目空著。'}格子下的「頂前均後底」是${stdName()}。</p>
       <div class="sliders">${SCORE_KEYS.map(k => sliderHTML('slider', k, subj(k), L.val(s, k) || 0, 15)).join('')}
         <div class="srow listen-row"><span class="srow-l" id="lab-listen">英聽</span>${listenHTML(s.聽)}</div>
       </div>
- <p class="panel-note">模考成績存在<button class="textbtn inline" type="button" data-tab="mock">模考分頁</button>。</p>
-      <details class="more" id="moreScores" ${ui.more ? 'open' : ''}><summary>${icon('chevR', 'sm')}APCS、檢定用五標年份</summary><div class="more-b">
+      <details class="more" id="moreScores" ${ui.more ? 'open' : ''}><summary>${icon('chevR', 'sm')}APCS、檢定用哪一年的五標</summary><div class="more-b">
         ${sliderHTML('slider', '識', 'APCS 觀念', L.val(s, '識') || 0, 5)}
         ${sliderHTML('slider', '實', 'APCS 實作', L.val(s, '實') || 0, 5)}
         <label class="field">檢定用五標<span class="selectbox"><select id="stdYear">${years}</select>${icon('chevD', 'sm')}</span></label>
         ${st.stdYear === 'custom' ? customStdHTML() : ''}
-        <p class="hint">116 五標 2027/2/25 公布，先用${st.stdYear === 'custom' ? '自訂的' : ` ${st.stdYear} 年的`}。數A、數B 都列檢定時過一科就好。</p>
-      </div></details>
-      ${any ? `<div class="panel-f"><button class="btn primary" type="button" data-act="doneScores">${icon('check', 'sm')}完成，看落點</button></div>` : ''}`;
-  }
-  function renderScorePanel() {
-    const el = $('#scorePanel');
-    const open = ui.scoreOpen || !hasScores();
-    el.classList.toggle('editing', open);
-    keepFocus(el, () => { el.innerHTML = open ? scoreEditor() : scoreSummary(); });
+        <p class="hint">116 五標 2027/2/25 公布，先用${st.stdYear === 'custom' ? '自訂的' : ` ${st.stdYear} 年的`}。數A、數B 都列檢定時過一科就好。模考的五標在每次模考裡，不用填在這裡。</p>
+      </div></details>`;
   }
 
   // ------------------------------------------------------------------ filters
@@ -2375,20 +2465,21 @@ details.fold>summary:hover{color:var(--text)}
     for (const [k] of SKIP_SUBJ) { const ks = f.skip.includes(k) ? f.skip : [...f.skip, k]; kc[k] = kpool.filter(d => !L.stage1Uses(d, ks)).length; }
     const nUntaken = hasScores() ? baseFiltered('untaken').filter(usesUntaken).length : 0;
     const n = filterCount();
-    const h = `<div class="filter-h"><h2>篩選</h2><button class="textbtn" type="button" data-act="resetFilters" ${n ? '' : 'hidden'}>${icon('reset', 'sm')}重設</button></div>
+    const h = `<div class="filter-h"><h2>篩選校系</h2><button class="textbtn" type="button" data-act="resetFilters" ${n ? '' : 'hidden'}>${icon('reset', 'sm')}重設</button></div>
       <div class="fsec"><h3>學群${f.groups.length ? '<button class="textbtn" type="button" data-act="groupsAll">全部學群</button>' : ''}</h3><div class="chips">${GROUPS.map(g => chip(g, f.groups.includes(g), `data-group="${g}"`, gc[g] || 0)).join('')}</div></div>
-      <div class="fsec"><h3>地區</h3><div class="chips">${REGIONS.map(r => chip(regionLabel(r), f.regions.includes(r), `data-region="${r}"`, rc[r] || 0)).join('')}</div></div>
-      <div class="fsec"><h3>公私立</h3><div class="segctl" role="group" aria-label="公私立">${[['all', '全部'], ['pub', '公立'], ['pri', '私立']].map(([k, l]) => `<button type="button" data-own="${k}" aria-pressed="${f.own === k}">${l}${k !== 'all' ? `<span class="muted num"> ${oc[k] || 0}</span>` : ''}</button>`).join('')}</div></div>
-      <div class="fsec"><h3>一階科目</h3>
-        <p class="fsub" id="skipLab">不要檢定或倍率篩選用到這些科目的校系</p><div class="chips" role="group" aria-labelledby="skipLab">${SKIP_SUBJ.map(([k, l]) => chip(l, f.skip.includes(k), `data-skip="${k}"`, kc[k])).join('')}</div>
+      <div class="fsec"><h3>學校</h3><div class="chips" role="group" aria-label="地區">${REGIONS.map(r => chip(regionLabel(r), f.regions.includes(r), `data-region="${r}"`, rc[r] || 0)).join('')}</div>
+        <div class="segctl fseg" role="group" aria-label="公私立">${[['all', '公私立都要'], ['pub', '公立'], ['pri', '私立']].map(([k, l]) => `<button type="button" data-own="${k}" aria-pressed="${f.own === k}">${l}${k !== 'all' ? `<span class="muted num"> ${oc[k] || 0}</span>` : ''}</button>`).join('')}</div></div>
+      <div class="fsec"><h3>一階：學測怎麼篩</h3>
+        <p class="fsub" id="skipLab">不要用到這些科目（檢定或倍率篩選）</p><div class="chips" role="group" aria-labelledby="skipLab">${SKIP_SUBJ.map(([k, l]) => chip(l, f.skip.includes(k), `data-skip="${k}"`, kc[k])).join('')}</div>
         <p class="hint">數A、數B 擇一檢定的系，兩科都選才隱藏。</p>
-        <p class="fsub" id="comboLab">只看一階用這個組合篩選的校系</p>${comboChips()}
-        <p class="hint">${hasScores() ? '% 是你在這個組合排 115 考生前幾 %，由強到弱排。' : '輸入成績後會顯示你在每個組合的排名。'}</p>
-        ${hasScores() ? `<label class="fcheck"><input type="checkbox" id="untakenBox" ${f.untaken ? 'checked' : ''}> 也顯示用到我沒考科目的校系<span class="muted num"> ${nUntaken}</span></label><p class="hint">沒考的科目以 0 級分計，用到它的系預設隱藏。</p>` : ''}</div>
-      <div class="fsec"><h3>第二階段</h3>
+        <p class="fsub" id="comboLab">只看用這組科目篩選的</p>${comboChips()}
+        <p class="hint">${hasScores() ? '綠字是你在這組科目排 115 考生前幾 %，最強的排前面。' : '有成績後會標出你在每組科目的排名。'}</p>
+        ${hasScores() ? `<label class="fcheck"><input type="checkbox" id="untakenBox" ${f.untaken ? 'checked' : ''}> 也列出用到我沒考科目的系<span class="muted num"> ${nUntaken}</span></label>` : ''}</div>
+      <div class="fsec"><h3>二階：怎麼甄選</h3>
         <p class="fsub" id="satLab">學測佔二階總成績</p><div class="chips" role="group" aria-labelledby="satLab">${SAT.map(([k, l]) => chip(l, f.sat === k, `data-sat="${k}"`, sc[k] || 0)).join('')}</div>
-        <p class="fsub" id="ivLab">甄試</p><div class="chips" role="group" aria-labelledby="ivLab">${ST2.map(([k, l]) => chip(l, f.st2.includes(k), `data-st2="${k}"`, xc[k] || 0)).join('')}</div></div>
-      <div class="fsec"><details id="catsBox" ${ui.catsOpen || catsChanged() ? 'open' : ''}><summary>${icon('chevR', 'sm')}特殊組別${catsChanged() ? '（已變更）' : ''}</summary><div class="chips">${CATS.map(([k, l]) => chip(l, f.cats.includes(k), `data-cat="${k}"`)).join('')}</div><p class="hint">限特定身分或要考術科的組別，預設隱藏。</p></details></div>`;
+        <p class="fsub" id="ivLab">甄試方式</p><div class="chips" role="group" aria-labelledby="ivLab">${ST2.map(([k, l]) => chip(l, f.st2.includes(k), `data-st2="${k}"`, xc[k] || 0)).join('')}</div></div>
+      <div class="fsec"><details id="catsBox" ${ui.catsOpen || catsChanged() ? 'open' : ''}><summary>${icon('chevR', 'sm')}特殊組別${catsChanged() ? '（已變更）' : ''}</summary><div class="chips">${CATS.map(([k, l]) => chip(l, f.cats.includes(k), `data-cat="${k}"`)).join('')}</div><p class="hint">限特定身分或要考術科的組別，預設隱藏。</p></details></div>
+      <p class="hint fnote">篩選只影響「找校系」。「怎麼進步」有自己的範圍。</p>`;
     keepFocus(el, () => { el.innerHTML = h; });
     const fc = $('#filterCount');
     fc.textContent = n ? String(n) : '';
@@ -2420,13 +2511,19 @@ details.fold>summary:hover{color:var(--text)}
       return `<span class="tb-s ${TC[t]}${off ? ' off' : ''}" style="flex-grow:${c[t]}" title="${t} ${c[t]} 個（${Math.round(share * 100)}%）">${fits ? c[t] : ''}</span>`;
     }).join('')}</div>`;
   }
+  /** First visit: the whole tool in three steps. */
+  const startHTML = () => `<div class="start"><h2>三步驟選系</h2><ol class="steps3">
+      <li><b>輸入成績</b><span>學測級分、模考或目標分數。模考會用它自己的五標。</span></li>
+      <li><b>找校系</b><span>每個系標出落點（穩、適中、衝、難），按 ☆ 收藏。</span></li>
+      <li><b>排志願</b><span>最多 6 個，檢查穩衝搭配、甄試撞期和要交的資料。</span></li></ol>
+    <button class="btn primary" type="button" data-tab="scores">${icon('edit', 'sm')}先輸入成績</button><span class="hint">不輸入也可以先看各系的條件。</span></div>`;
   function renderOverview(base) {
     const el = $('#overview');
     const scope = scopeLabel();
     const outCats = baseFiltered('cats').length - base.length;
     const head = `<div class="ov-t"><h2><b class="num">${fmtN(base.length)}</b> 個校系${scope ? ' · ' + esc(scope) : ''}</h2>${outCats > 0 ? `<button class="textbtn ov-note" type="button" data-act="showCats">另有 ${fmtN(outCats)} 個特殊組別沒列出</button>` : ''}</div>`;
     if (!hasScores()) {
-      el.innerHTML = `<div class="ov-h">${head}</div><div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（模考或目標分數也可以），就會標出每個系的落點。</div></div>`;
+      el.innerHTML = `${startHTML()}<div class="ov-h">${head}</div>`;
       return;
     }
     const c = {};
@@ -2577,7 +2674,8 @@ details.fold>summary:hover{color:var(--text)}
     if ($('#q').value !== st.f.q && document.activeElement !== $('#q')) $('#q').value = st.f.q;
     $('#clearQ').hidden = !st.f.q;
     $('#sort').value = st.f.sort;
-    renderScorePanel();
+    // first visit: the start card says what to do, so the empty 落點依據 bar waits until there are scores
+    keepFocus($('#ctxExplore'), () => { $('#ctxExplore').innerHTML = hasScores() ? ctxBarHTML() : ''; });
     const base = baseFiltered();
     renderFilterPanel();
     renderActive();
@@ -2593,9 +2691,10 @@ details.fold>summary:hover{color:var(--text)}
     return `<li class="step"><span class="dot ${cls}">${mark}</span><div><div class="step-t">${title}</div>${body}</div></li>`;
   }
   function thresholdStep(d, e) {
-    const th = L.checkThreshold(d, st.scores, STD());
+    const c = cur();
+    const th = L.checkThreshold(d, c.thS, c.std);
     if (!th.items.length) return stepHTML('', '檢', '檢定', '<p class="step-d">不設檢定。</p>');
-    const has = hasScores() || !!st.scores.聽;
+    const has = hasScores() || !!c.thS.聽;
     const rows = [];
     const either = th.items.filter(i => i.either);
     if (either.length) {
@@ -2608,7 +2707,7 @@ details.fold>summary:hover{color:var(--text)}
     });
     const cls = has ? (th.ok ? 'ok' : 'bad') : '';
     const risk = e && e.thRisk ? `<p class="step-d" style="color:var(--warn)">${esc(e.warnings.find(w => w.startsWith('檢定邊緣')) || '')}</p>` : '';
-    return stepHTML(cls, has ? icon(th.ok ? 'check' : 'x') : '檢', `檢定<small>用${stdName()}換算</small>`, `<div class="reqs">${rows.join('')}</div>${risk}`);
+    return stepHTML(cls, has ? icon(th.ok ? 'check' : 'x') : '檢', `檢定<small>${c.mock ? `你的模考級分比${esc(c.stdName)}` : `用${esc(c.stdName)}換算`}</small>`, `<div class="reqs">${rows.join('')}</div>${risk}`);
   }
   /** How many people a stage lets through in 115 and 116 (倍率 × 名額), what that does to the cut, and where you land. */
   function flowNote(s, has) {
@@ -2624,7 +2723,7 @@ details.fold>summary:hover{color:var(--text)}
   function stageSteps(d, e) {
     const r = d.r115;
     const has = hasScores();
-    const cmp = e && e.cmp && e.cmp.stages ? e.cmp : L.compare116(d, st.scores, D.pct);
+    const cmp = e && e.cmp && e.cmp.stages ? e.cmp : L.compare116(d, cur().S, D.pct);
     // 116 order: 學測 stages and 術科 stages (no 術科 scores here) by multiple, highest first.
     const steps = cmp.stages.map(s => ({ m: s.m, s }));
     const byM = new Map();
@@ -2669,7 +2768,7 @@ details.fold>summary:hover{color:var(--text)}
   function stage1HTML(d, e) {
     const r = d.r115;
     const plan = L.screenPlan(d);
-    const cmp = e && e.cmp && e.cmp.stages ? e.cmp : L.compare116(d, st.scores, D.pct);
+    const cmp = e && e.cmp && e.cmp.stages ? e.cmp : L.compare116(d, cur().S, D.pct);
     let h = '<section class="d-sec"><h3>第一階段：一階篩選<small>檢定 → 倍率篩選 → 同級分超額篩選</small></h3>';
     const arts = d.arts ? d.arts.items.filter(i => i.i && i.i !== '--').map(i => `<span class="tagc">${esc(i.i)}${i.t ? ' 檢定' + esc(i.t) : ''}${i.m != null ? ' 倍率' + esc(i.m) : ''}</span>`).join('') : '';
     h += `<div class="plan116"><span>116 倍率篩選</span>${plan.length ? plan.map((p, i) => `<span class="tagc">${i + 1}. ${esc(partsLabel(p.parts))} × ${p.m}</span>`).join('') : '<span class="tagc">不篩學測</span>'}${arts}</div>`;
@@ -2731,7 +2830,7 @@ details.fold>summary:hover{color:var(--text)}
   const foldHTML = (title, text) => `<details class="fold"><summary>${icon('chevR', 'sm')}${esc(title)}</summary><div class="long">${esc(text)}</div></details>`;
   function stage2HTML(d) {
     const parts = L.stage2(d);
-    const sat = hasScores() ? L.satShare(d, st.scores) : null;
+    const sat = hasScores() ? L.satShare(d, cur().S) : null;
     let h = `<section class="d-sec"><h3>第二階段：總成績怎麼算<small>116 校系分則</small></h3><p class="s2lead">${stage2Lead(d)}</p>`;
     if (parts.length) {
       h += `<div class="wbars">${parts.map(x => `<div class="wbar"><span class="wl">${esc(x.n)}${x.t ? `<span class="muted">（${esc(x.t)}以上）</span>` : ''}</span><span class="wt"><i style="width:${x.p}%"></i>${x.kind === 'sat' && sat ? `<i class="mine" style="width:${sat.points.toFixed(1)}%"></i>` : ''}</span><b>${x.p}%</b></div>`).join('')}</div>`;
@@ -2758,9 +2857,9 @@ details.fold>summary:hover{color:var(--text)}
     const e = EV.get(d.c);
     let h = '';
     if (e) {
-      h += `<div class="verdict ${TC[e.tier]}">${pillHTML(e.tier, 'lg2')}<div><p class="v-t">${esc(TIER_HELP[e.tier])}</p>${e.reasons.length ? `<ul>${e.reasons.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${e.warnings.length ? `<ul class="warns">${e.warnings.map(x => `<li>${icon('alert')}<span>${esc(x)}</span></li>`).join('')}</ul>` : ''}</div></div>`;
+      h += `<div class="verdict ${TC[e.tier]}">${pillHTML(e.tier, 'lg2')}<div><p class="v-src">用「${esc(cur().name)}」</p><p class="v-t">${esc(TIER_HELP[e.tier])}</p>${e.reasons.length ? `<ul>${e.reasons.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${e.warnings.length ? `<ul class="warns">${e.warnings.map(x => `<li>${icon('alert')}<span>${esc(x)}</span></li>`).join('')}</ul>` : ''}</div></div>`;
     } else {
-      h += `<div style="margin-top:18px">${noteHTML('info', '輸入學測級分後，這裡會逐關比較你和 115 的門檻，判斷落點。 <button class="textbtn" type="button" data-act="goScores">去輸入成績</button>')}</div>`;
+      h += `<div style="margin-top:18px">${noteHTML('info', '輸入成績後，這裡會逐關比較你和 115 的門檻，判斷落點。 <button class="textbtn" type="button" data-tab="scores">去輸入成績</button>')}</div>`;
     }
     h += stage1HTML(d, e) + stage2HTML(d);
     const et = entranceText(d.r115);
@@ -2843,7 +2942,7 @@ details.fold>summary:hover{color:var(--text)}
       if (c('衝') + c('難') >= 4) ck('warn', `${c('衝') + c('難')} 個是「衝」或「難」`, '2 衝 2 適中 2 穩比較安全。');
       if (c('穩') >= 4) ck('warn', `${c('穩')} 個都是「穩」`, '可能浪費機會。考慮把 1–2 個換成更想讀、但要衝一下的系。');
       if (c('無資料')) ck('info', `${c('無資料')} 個沒有可以比的 115 門檻`, '沒有可比的 115 門檻，點進去看原因。');
-    } else ck('info', '輸入成績才能檢查穩衝搭配', '在「找校系」輸入學測級分（或模考、目標分數）。');
+    } else ck('info', '輸入成績才能檢查穩衝搭配', '在「我的成績」填學測級分（或模考、目標分數）。');
     const cf = L.conflicts(P);
     if (cf.length) {
       const sure = cf.some(x => x.sure);
@@ -2960,6 +3059,7 @@ details.fold>summary:hover{color:var(--text)}
     }).join('');
     const h = `<header class="page-h"><div><h1>我的志願</h1><p>最多 6 個，順序就是你的偏好。</p></div>
       <div class="page-actions">${P.length || favs.length ? `<button class="btn sm" type="button" data-act="copyPlan">${icon('copy', 'sm')}複製文字</button><button class="btn sm" type="button" data-act="csvPlan">${icon('download', 'sm')}下載 CSV</button><button class="btn sm" type="button" data-act="printPlan">${icon('print', 'sm')}列印</button>` : ''}</div></header>
+      ${ctxBarHTML()}
       <div class="plan-grid">
         <section class="sec"><h2>六個志願</h2><p class="sub">已排 ${P.length}/6</p><ol class="slots" id="planList">${slots}</ol></section>
         <section class="sec"><h2>檢查</h2><p class="sub">落點搭配、撞期、同校規定和費用</p><div class="mix" aria-label="六個志願的落點">${mix}</div>
@@ -2974,9 +3074,9 @@ details.fold>summary:hover{color:var(--text)}
     keepFocus($('#plan'), () => { $('#plan').innerHTML = h; });
   }
   function planText() {
-    const P = planDepts(), s = st.scores;
+    const P = planDepts(), c = cur(), s = c.thS;
     const lines = [`116 申請入學志願（${new Date().toLocaleDateString('zh-TW')}）`,
-      `學測：${SCORE_KEYS.map(k => `${subj(k)}${L.val(s, k) ?? '沒考'}`).join(' ')} 英聽${s.聽 || '沒考'}（檢定用${stdName()}）`, ''];
+      `${c.mock ? `模考「${c.name}」` : '學測'}：${SCORE_KEYS.map(k => `${subj(k)}${L.val(s, k) ?? '沒考'}${c.eq[k] ? `（學測約 ${c.eq[k].g}）` : ''}`).join(' ')} 英聽${s.聽 || '沒考'}（檢定用${c.stdName}）`, ''];
     const row = (d, i) => {
       const e = EV.get(d.c);
       return `${i != null ? i + 1 + '. ' : '- '}${sch(d)} ${d.n}（${d.c}）【${e ? e.tier : '—'}】${e ? e.reasons.join('；') : ''}${e && e.warnings.length ? '；' + e.warnings.join('；') : ''}\n   ${requirementLine(d)}\n   二階：${partsLine(d, true)}；甄試 ${d.idays.length ? rocText(d.idate) : '不用到校'}；資料截止 ${rocDate(d.dd)}${d.rv ? `\n   審查資料：${d.rv}` : ''}`;
@@ -3012,24 +3112,24 @@ details.fold>summary:hover{color:var(--text)}
   // ------------------------------------------------------------------ boost (what to improve)
   let boostCache = { sig: null, data: null };
   function boostData(scope) {
-    const sig = evSig + '#' + scope.map(d => d.c).join('');
+    const c = cur();
+    const sig = c.sig + '#' + scope.map(d => d.c).join('');
     if (boostCache.sig === sig) return boostCache.data;
-    const o = opts();
     const rows = SCORE_KEYS.map(k => {
-      const cur = L.val(st.scores, k) || 0;
+      const now = L.val(c.S, k) || 0;
       const cells = [1, 2, 3, 4, 5].map(inc => {
-        const to = cur + inc;
+        const to = now + inc;
         if (to > 15) return null;
-        const S2 = { ...st.scores, [k]: String(to) };
+        const S2 = { ...c.S, [k]: String(to) };
         let up = 0, unlock = 0;
         for (const d of scope) {
-          const t0 = tierOf(d), t1 = L.evaluate(d, S2, o).tier;
+          const t0 = tierOf(d), t1 = evalAt(d, c, S2).tier;
           if (TIERS.indexOf(t1) < TIERS.indexOf(t0) && t1 !== '無資料') up++;
           if (t0 === '不符' && t1 !== '不符') unlock++;
         }
         return { to, up, unlock };
       });
-      return { k, cur, cells };
+      return { k, cur: now, cells };
     });
     const block = {};
     for (const d of scope) {
@@ -3041,6 +3141,19 @@ details.fold>summary:hover{color:var(--text)}
     const data = { rows, blockers: Object.entries(block).sort((a, b) => b[1] - a[1]).slice(0, 8) };
     boostCache = { sig, data };
     return data;
+  }
+  /** 怎麼進步's own scope: all 一般 校系 (or one 學群), your 收藏, or your 志願. Never 找校系's filters. */
+  function boostScope() {
+    const bx = st.bx;
+    if (bx.scope === 'fav') return st.fav.map(c => BY_CODE[c]).filter(Boolean);
+    if (bx.scope === 'plan') return planDepts();
+    return CAT_SCOPE.filter(d => (!bx.group || d.g.includes(bx.group)) && (ui.boostAll || !usesUntaken(d)));
+  }
+  function scopeBarHTML(n) {
+    const bx = st.bx;
+    const seg = [['all', '全部校系'], ['fav', `收藏 ${st.fav.length}`], ['plan', `志願 ${st.plan.length}`]].map(([k, l]) => `<button type="button" data-bscope="${k}" aria-pressed="${bx.scope === k}">${l}</button>`).join('');
+    const grp = bx.scope === 'all' ? `<span class="selectbox"><select id="bGroup" aria-label="學群"><option value="">所有學群</option>${GROUPS.map(g => `<option ${bx.group === g ? 'selected' : ''}>${g}</option>`).join('')}</select>${icon('chevD', 'sm')}</span>` : '';
+    return `<div class="scopebar"><span class="ctx-lab">算哪些校系</span><div class="segctl" role="group" aria-label="算哪些校系">${seg}</div>${grp}<span class="muted num">共 ${fmtN(n)} 個</span></div>`;
   }
   // ------------------------------------------------------------------ 模考趨勢
   const COMBO_N = {};
@@ -3062,7 +3175,6 @@ details.fold>summary:hover{color:var(--text)}
       </tbody></table></div>
       <p class="hint">整理自各校 115 學年度模考公告，日期以學校為準。英聽只有第二次考。學測：2027/1/22–1/24。</p><p class="hint">內建五標照翰林「各科成績標準一覽表」（7月全國、9月北北基、10月北北基），並跟公開資料逐一核對過；跟你的成績單不同以成績單為準。中區、南一是不同考試。</p></details>`;
   }
-  const mockLinkHTML = () => `<section class="sec mocklink"><h2>模考趨勢</h2><p class="sub">${st.mocks.length ? `已存 ${st.mocks.length} 次模考。` : ''}趨勢和每次的落點在「模考」分頁。</p><button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}${st.mocks.length ? '看模考趨勢' : '新增模考'}</button></section>`;
   /** One small chart per subject on a shared 級分 scale, plus 落點 per 模考 and a table. */
   /** A 模考's scores read as 學測 級分: each subject with that 模考's 五標 is converted by rank (L.mockToTest). */
   function mockAsTest(m) {
@@ -3073,21 +3185,21 @@ details.fold>summary:hover{color:var(--text)}
     }
     return { S, eq };
   }
-  /** Tier counts in a scope for a set of scores (current 檢定 五標). */
-  function tierCounts(S, scope) {
-    const o = opts(), c = {}, tiers = new Map();
-    for (const d of scope) { const t = L.evaluate(d, S, o).tier; c[t] = (c[t] || 0) + 1; tiers.set(d.c, t); }
+  /** Tier counts in a scope for a score context (a 模考 judged on its own 五標). */
+  function tierCounts(x, scope) {
+    const o = optsFor(x), c = {}, tiers = new Map();
+    for (const d of scope) { const t = L.evaluate(d, x.S, o).tier; c[t] = (c[t] || 0) + 1; tiers.set(d.c, t); }
     return { c, tiers, good: (c.穩 || 0) + (c.適中 || 0) };
   }
   /** For each subject: how many 系 in the scope get a better 落點 with 1 more 級分. */
-  function gainsFor(S, scope, base) {
-    const o = opts(), out = {};
+  function gainsFor(x, scope, base) {
+    const out = {};
     for (const k of SCORE_KEYS) {
-      const v = L.val(S, k);
+      const v = L.val(x.S, k);
       if (v == null || v >= 15) continue;
-      const S2 = { ...S, [k]: String(v + 1) };
+      const S2 = { ...x.S, [k]: String(v + 1) };
       let up = 0;
-      for (const d of scope) { const t0 = base.tiers.get(d.c), t1 = L.evaluate(d, S2, o).tier; if (TIERS.indexOf(t1) < TIERS.indexOf(t0) && t1 !== '無資料') up++; }
+      for (const d of scope) { const t0 = base.tiers.get(d.c), t1 = evalAt(d, x, S2).tier; if (TIERS.indexOf(t1) < TIERS.indexOf(t0) && t1 !== '無資料') up++; }
       out[k] = up;
     }
     return out;
@@ -3108,19 +3220,19 @@ details.fold>summary:hover{color:var(--text)}
   /** 模考分析: the latest 模考 read as 學測 級分, how each subject moved, 落點 per 模考, table. */
   function trendHTML(scope) {
     const ms = mocksByDate();
-    if (!ms.length) return `<section class="sec" id="trendSec"><h2>模考分析</h2><p class="sub">每次模考存一筆，這裡會畫出每一科的變化和每一次的落點。</p><button class="btn sm" type="button" data-act="goMocks">${icon('plus', 'sm')}存第一次模考</button></section>`;
     const subs = SCORE_KEYS.filter(k => ms.some(m => L.val(m.s, k) != null));
     const lvOf = (m, k, v) => (m.std && m.std[k] && v != null ? levelIn(m.std, k, v) : '');
     const conv = new Map(ms.map(m => [m.id, mockAsTest(m)]));
     // a subject is shown on the 學測 scale when every 模考 that has it also has its 五標
     const onTest = k => ms.every(m => L.val(m.s, k) == null || conv.get(m.id).eq[k]);
     const valOf = (m, k) => { const v = L.val(m.s, k); if (v == null) return null; const e = conv.get(m.id).eq[k]; return onTest(k) && e ? e.g : v; };
-    const tierRows = ms.map(m => ({ m, ...tierCounts(conv.get(m.id).S, scope) }));
+    const ctxs = new Map(ms.map(m => [m.id, ctxFor(m)]));
+    const tierRows = ms.map(m => ({ m, ...tierCounts(ctxs.get(m.id), scope) }));
     const std = STD();
 
     // ---- latest 模考, subject by subject
     const lm = ms[ms.length - 1], lc = conv.get(lm.id), lt = tierRows[tierRows.length - 1];
-    const gains = gainsFor(lc.S, scope, lt);
+    const gains = gainsFor(ctxs.get(lm.id), scope, lt);
     const lp = mockPreset(lm);
     const cells = SCORE_KEYS.filter(k => L.val(lm.s, k) != null).map(k => {
       const v = L.val(lm.s, k), lv = lvOf(lm, k, v), e = lc.eq[k];
@@ -3140,7 +3252,7 @@ details.fold>summary:hover{color:var(--text)}
       ${anyEq ? '<p class="sub">學測約＝照模考排名換算的學測級分（估計）</p>' : ''}
       <div class="lt-grid">${cells}</div>
       <p class="sub">穩＋適中 <b>${lt.good}</b> 個${lb ? ` · 最強組合 <b>${esc(comboName(lb.k))}</b>（${fmtTop(lb.top)}）` : ''}</p>
-      <div class="lt-act"><button class="btn sm primary" type="button" data-mockuse="${lm.id}">看換算後的落點</button><button class="btn sm" type="button" data-mocktry="${lm.id}">${icon('boost', 'sm')}拿去試算</button></div></div>`;
+      ${st.src === lm.id ? '' : `<div class="lt-act"><button class="btn sm" type="button" data-src="${lm.id}">用這次看落點</button></div>`}</div>`;
 
     // ---- what changed
     const notes = [];
@@ -3192,11 +3304,11 @@ details.fold>summary:hover{color:var(--text)}
     const table = `<div class="tablewrap"><table class="reftable"><thead><tr><th>模考</th>${subs.map(k => `<th>${ABBR[k]}</th>`).join('')}<th>英聽</th><th>最強組合</th></tr></thead><tbody>
       ${ms.map(m => { const c = conv.get(m.id), b = bestCombo(c.S); return `<tr><th>${esc(mName(m))}<small>${mdText(m.d)}</small></th>${subs.map(k => { const v = L.val(m.s, k), lv = lvOf(m, k, v), e = c.eq[k]; return `<td class="num">${v ?? '—'}${lv ? `<small class="lv">${lv}</small>` : ''}${e ? `<small class="lv eq">學測≈${e.g}</small>` : ''}</td>`; }).join('')}<td>${m.s.聽 || '—'}</td><td>${b ? `${esc(comboName(b.k))} ${fmtTop(b.top)}` : '—'}</td></tr>`; }).join('')}
       </tbody></table></div>`;
-    return `<section class="sec" id="trendSec"><h2>模考分析</h2>${latest}
+    return `<section class="sec" id="trendSec"><h2>模考分析</h2><p class="sub">${ms.length > 1 ? `${ms.length} 次模考的變化` : '再存一次模考就能看進退步'}</p>${latest}
       ${notes.length ? `<h3 class="sec-h3">跟之前比</h3><ul class="trendnotes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       <h3 class="sec-h3">每一科的變化</h3><p class="sub">${allTest ? '換算成學測級分，虛線是學測前標、均標。' : '有五標的科目換算成學測級分，沒有的畫原始級分。'}點圓點看原始級分。</p>
       <div class="sparks">${panels}</div>
-      <h3 class="sec-h3">每次模考的落點</h3><p class="sub">用換算後的級分，範圍是找校系目前的 ${fmtN(scope.length)} 個校系。</p>
+      <h3 class="sec-h3">每次模考的落點</h3><p class="sub">每次都用那次的五標看檢定、換算的學測級分看篩選；範圍是全部 ${fmtN(scope.length)} 個一般校系。</p>
       <div class="mtiers">${bars}</div>
       <h3 class="sec-h3">成績表</h3><p class="sub">大字原始級分，小字是標和換算的學測級分。</p>${table}
       </section>`;
@@ -3216,82 +3328,73 @@ details.fold>summary:hover{color:var(--text)}
   }
   const trendWord = x => (!x || x.n < 2 ? '' : x.last > x.first ? `模考 ${x.first} → ${x.last}，在進步` : x.last < x.first ? `模考 ${x.first} → ${x.last}，要注意` : `模考持平在 ${x.last}`);
   /** 各科一覽: what you entered, how the 模考 went (on the 學測 scale), and what 1–2 more 級分 would do. */
-  function boardHTML(rows, series) {
-    const max1 = Math.max(1, ...rows.map(r => (r.cells[0] ? r.cells[0].up : 0)));
-    const best = rows.reduce((a, r) => (r.cells[0] && (!a || r.cells[0].up > a.cells[0].up) ? r : a), null);
-    const heat = (c, mx) => (c ? `<span class="bd-n" style="--h:${(c.up / mx).toFixed(3)}"><b>${c.up}</b>${c.unlock ? `<small>解鎖 ${c.unlock}</small>` : ''}</span>` : '<span class="bd-n none">—</span>');
-    const body = rows.filter(r => ui.boostAll || r.cur || series.out[r.k]).map(r => {
-      const x = series.out[r.k], lv = r.cur ? levelOf(r.k, r.cur) : '';
-      const gap = x && r.cur ? x.last - r.cur : null;
-      const mock = x ? `${miniSpark(x.vals, subj(r.k) + ' 模考：' + x.vals.filter(v => v != null).join('、'))}<span class="bd-m"><b class="num">${x.last}</b>${gap ? `<small class="${gap > 0 ? 'up' : 'down'}" title="比現在填的${gap > 0 ? '高' : '低'} ${Math.abs(gap)} 級分">${gap > 0 ? '+' + gap : gap}</small>` : ''}</span>` : '<span class="muted">—</span>';
-      return `<div class="bd-row${best === r && best.cells[0].up ? ' top' : ''}" role="row"><span class="bd-k" role="rowheader">${subj(r.k)}</span><span class="bd-c" role="cell"><b class="num">${r.cur || '—'}</b>${lv && lv !== '未達底標' ? `<small>${lv}</small>` : !r.cur ? '<small>沒考</small>' : ''}</span><span class="bd-c bd-mock" role="cell">${mock}</span><span role="cell">${heat(r.cells[0], max1)}</span><span role="cell">${heat(r.cells[1], max1)}</span></div>`;
-    }).join('');
-    const hasMock = Object.keys(series.out).length > 0;
-    return `<section class="sec"><h2>各科一覽</h2><p class="sub">數字是多考 1、2 級分會變好的校系數。</p>
-      <div class="board" role="table" aria-label="各科一覽"><div class="bd-row bd-h" role="row"><span role="columnheader">科目</span><span role="columnheader">現在</span><span role="columnheader">${hasMock ? '模考換算' : '模考'}</span><span role="columnheader">多 1 級分</span><span role="columnheader">多 2 級分</span></div>${body}</div>
-      ${hasMock ? `<p class="hint">模考換算＝照排名換算的學測級分。<button class="textbtn" type="button" data-tab="mock">${icon('mock', 'sm')}看模考分析</button></p>` : `<button class="btn sm" type="button" data-tab="mock">${icon('mock', 'sm')}新增模考</button>`}</section>`;
-  }
   function renderBoost() {
-    const el = $('#boost');
-    const head = `<header class="page-h"><div><h1>怎麼進步</h1><p>哪一科多考幾級分最划算。</p></div></header>`;
-    if (!hasScores()) {
-      el.innerHTML = head + `<div class="cta">${icon('target')}<div><b>先輸入學測級分</b>（模考或目標分數也可以）。</div><button class="btn primary" type="button" data-act="goScores">輸入成績</button>${st.mocks.length ? `<button class="btn" type="button" data-mockuse="${mocksByDate().pop().id}">用最近一次模考（換算成學測級分）</button>` : ''}</div>` + mockLinkHTML();
+    const el = $('#boost'), c = cur();
+    const head = `<header class="page-h"><div><h1>怎麼進步</h1><p>哪一科多考幾級分，能讓最多校系的落點變好。</p></div></header>`;
+    if (!hasScores(c.S)) {
+      el.innerHTML = head + ctxBarHTML();
       return;
     }
-    const scope = baseFiltered();
-    const sl = scopeLabel();
-    el.innerHTML = head + '<div class="sec"><p class="hint">計算中…</p></div>';
+    const scope = boostScope();
+    el.innerHTML = head + ctxBarHTML() + scopeBarHTML(scope.length) + '<div class="sec"><p class="hint">計算中…</p></div>';
     clearTimeout(renderBoost.t);
     renderBoost.t = setTimeout(() => {
       if (ui.tab !== 'boost') return;
+      if (!scope.length) {
+        el.innerHTML = head + ctxBarHTML() + scopeBarHTML(0) + `<div class="cta">${icon('info')}<div>${st.bx.scope === 'fav' ? '還沒有收藏的校系。' : '還沒有排志願。'}到「找校系」按 ☆ 收藏，或換成「全部校系」。</div></div>`;
+        return;
+      }
       const { rows: allRows, blockers: allBlockers } = boostData(scope);
       const series = mockSeries();
       // subjects you have not taken (no score, no 模考) only matter if you are thinking of adding one
-      const taken = k => L.val(st.scores, k) != null || !!series.out[k];
+      const taken = k => L.val(c.S, k) != null || !!series.out[k];
       const untaken = SCORE_KEYS.filter(k => !taken(k));
       const rows = ui.boostAll ? allRows : allRows.filter(r => taken(r.k));
       const NAME_RE = { 國: /國文/, 英: /英文/, 數A: /數學A|數A/, 數B: /數學B|數B/, 社: /社會/, 自: /自然/ };
       const blockers = ui.boostAll ? allBlockers : allBlockers.filter(([lab]) => { const ks = SCORE_KEYS.filter(k => NAME_RE[k].test(lab)); return !ks.length || ks.some(taken); });
-      const allToggle = untaken.length ? `<label class="fcheck boost-all"><input type="checkbox" id="boostAll" ${ui.boostAll ? 'checked' : ''}> 也看沒考的科目（${untaken.map(k => ABBR[k]).join('、')}），想加考的話</label>` : '';
-      const all = rows.flatMap(r => r.cells.filter(Boolean).map(c => ({ ...c, k: r.k, cur: r.cur })));
-      const maxUp = Math.max(1, ...all.map(c => c.up));
-      // "6 級分" is above 均標 5, not equal to it: say "達到" unless it is exactly the line.
-      const lvSentence = (k, v, lv) => {
-        if (!lv || lv === '未達底標') return '';
-        const line = STD() && STD()[k] ? STD()[k][lv] : null;
-        return `${v} 級分達${lv}。`;
-      };
-      const bestOf = r => r.cells.filter(Boolean).reduce((a, c) => (c.up > (a ? a.up : 0) ? c : a), null);
+      const allToggle = untaken.length ? `<label class="fcheck boost-all"><input type="checkbox" id="boostAll" ${ui.boostAll ? 'checked' : ''}> 也算沒考的科目（${untaken.map(k => ABBR[k]).join('、')}），想加考的話</label>` : '';
+      const all = rows.flatMap(r => r.cells.filter(Boolean));
+      const maxUp = Math.max(1, ...all.map(x => x.up));
+      const bestOf = r => r.cells.filter(Boolean).reduce((a, x) => (x.up > (a ? a.up : 0) ? x : a), null);
       const ranked = rows.map(r => ({ r, b: bestOf(r) })).filter(x => x.b && x.b.up > 0).sort((a, b) => b.b.up - a.b.up || (a.b.to - a.r.cur) - (b.b.to - b.r.cur));
+      const scale = c.mock ? '（換算的學測級分）' : '';
       let hero;
       if (ranked.length) {
         const { r, b } = ranked[0];
         const lv = levelOf(r.k, b.to);
-        hero = `<section class="hero"><span class="eyebrow">最值得補強</span><h2>${subj(r.k)} 從 ${r.cur || '沒考'} 考到 ${b.to} 級分</h2>
-          <p><b>${b.up}</b> 個校系落點變好${b.unlock ? `（${b.unlock} 個解鎖）` : ''}。${lvSentence(r.k, b.to, lv)}${trendWord(series.out[r.k]) ? `${esc(trendWord(series.out[r.k]))}。` : ''}</p>
+        const tw = trendWord(series.out[r.k]);
+        hero = `<section class="hero"><span class="eyebrow">最值得補強</span><h2>${subj(r.k)} 從 ${r.cur || '沒考'} 考到 ${b.to} 級分${scale}</h2>
+          <p><b>${b.up}</b> 個校系落點變好${b.unlock ? `（${b.unlock} 個從不符變成可以報）` : ''}。${lv && lv !== '未達底標' ? `${b.to} 級分達學測${lv}。` : ''}${tw ? `${esc(tw)}。` : ''}</p>
           ${ranked.length > 1 ? `<div class="alts">${ranked.slice(1, 4).map(x => `<span>${subj(x.r.k)} ${x.r.cur || '沒考'} → ${x.b.to}：${x.b.up} 個</span>`).join('')}</div>` : ''}</section>`;
-      } else hero = `<section class="hero"><span class="eyebrow">最值得補強</span><h2>這個範圍裡，每科多考 1–5 級分都不會改變落點</h2><p>可以換個學群或放寬篩選再看看。</p></section>`;
+      } else hero = `<section class="hero"><span class="eyebrow">最值得補強</span><h2>這些校系裡，每科多考 1–5 級分都不會改變落點</h2><p>換一個範圍看看（上面的「算哪些校系」）。</p></section>`;
+      // one table: each subject now (with its 模考 trend), then what 1–5 more 級分 would do
+      const subjCell = r => {
+        const x = series.out[r.k], lv = r.cur ? levelOf(r.k, r.cur) : '';
+        const spark = x ? miniSpark(x.vals, subj(r.k) + ' 模考：' + x.vals.filter(v => v != null).join('、')) : '';
+        return `<span class="hs" role="rowheader">${subj(r.k)}<small>${r.cur ? `現在 ${r.cur}${lv && lv !== '未達底標' ? '・' + LV_SHORT[lv] : ''}` : '沒考'}</small>${spark ? `<span class="hs-m" title="${esc(trendWord(x) || '')}">${spark}</span>` : ''}</span>`;
+      };
       const grid = `<div class="heat" role="table" aria-label="每科多考幾級分，落點變好的校系數"><div role="row" style="display:contents"><span class="hh" role="columnheader">科目</span>${[1, 2, 3, 4, 5].map(i => `<span class="hh" role="columnheader">+${i}</span>`).join('')}</div>
-        ${rows.filter(r => r.cur || r.cells.some(c => c && c.up)).map(r => `<div role="row" style="display:contents"><span class="hs" role="rowheader">${subj(r.k)}<small>${r.cur ? '現在 ' + r.cur : '沒考'}</small></span>${r.cells.map(c => c ? `<span class="hc" role="cell" style="--h:${(c.up / maxUp).toFixed(3)}" title="${subj(r.k)} 考到 ${c.to} 級分：${c.up} 個校系落點變好${c.unlock ? `，${c.unlock} 個從不符變成可以報` : ''}"><span class="to">考到 ${c.to}</span><span class="n">${c.up}</span>${c.unlock ? `<span class="u">解鎖 ${c.unlock}</span>` : ''}</span>` : '<span class="hc na" role="cell">—</span>').join('')}</div>`).join('')}</div>`;
+        ${rows.map(r => `<div role="row" style="display:contents">${subjCell(r)}${r.cells.map(x => x ? `<span class="hc" role="cell" style="--h:${(x.up / maxUp).toFixed(3)}" title="${subj(r.k)} 考到 ${x.to} 級分：${x.up} 個校系落點變好${x.unlock ? `，${x.unlock} 個從不符變成可以報` : ''}"><span class="to">考到 ${x.to}</span><span class="n">${x.up}</span>${x.unlock ? `<span class="u">解鎖 ${x.unlock}</span>` : ''}</span>` : '<span class="hc na" role="cell">—</span>').join('')}</div>`).join('')}</div>
+        <p class="hint" style="margin-top:10px">格子裡是落點變好的校系數；解鎖＝從「不符」變成可以報。${Object.keys(series.out).length ? '科目下的小線是模考趨勢。' : ''}</p>`;
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
-      const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${stdName()}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
-      if (!ui.tryS) ui.tryS = { ...st.scores };
+      const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="t" style="width:${(n / maxB) * 100}%"></span><span class="n">${n} 個系</span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${esc(c.stdName)}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
+      if (!ui.tryS || ui.trySig !== c.sig) { ui.tryS = { ...c.S }; ui.trySig = c.sig; }
       const tryGrid = SCORE_KEYS.filter(k => ui.boostAll || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
-      el.innerHTML = head + allToggle + hero + boardHTML(rows, series) +
-        `<section class="sec"><h2>每科多考幾級分，會多出多少機會？</h2><p class="sub">落點變好的校系數，解鎖＝不符變可報</p>${grid}</section>
+      el.innerHTML = head + ctxBarHTML() + scopeBarHTML(scope.length) + allToggle + hero +
+        `<section class="sec"><h2>每科多考幾級分，會多出多少機會？</h2><p class="sub">${c.mock ? '從這次模考換算的學測級分往上加。' : '從你填的學測級分往上加。'}</p>${grid}</section>
         <section class="sec"><h2>擋住你的檢定</h2><p class="sub">因此進不了一階的校系數</p>${blockHTML}</section>
-        <section class="sec" id="trySec"><h2>試算</h2>${ui.tryFrom ? `<div class="note-inline try-from">${icon('mock', 'sm')}<span>「${esc(ui.tryFrom)}」${ui.tryIsRaw ? '原始級分' : '換算成學測級分'}：${esc(ui.tryIsRaw ? ui.tryConv.replace(/→\d+/g, '') : ui.tryConv)}</span><button class="textbtn" type="button" data-act="tryToggleRaw">${ui.tryIsRaw ? '改用換算' : '改用原始級分'}</button></div>` : ''}<p class="sub">暫時改成績看結果，不會改掉你存的成績。</p><div class="try-act">${st.mocks.length ? `<button class="btn sm" type="button" data-mocktry="${mocksByDate().pop().id}">${icon('mock', 'sm')}帶入最近一次模考</button>` : ''}<button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回我的成績</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
+        <section class="sec" id="trySec"><h2>試算</h2><p class="sub">暫時改級分看落點怎麼變，不會改掉你存的成績。${c.mock ? '這裡是換算的學測級分，檢定照這次模考的五標同步加減。' : ''}</p><div class="try-act"><button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回「${esc(c.name)}」</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();
     }, 30);
   }
   function renderTry() {
     const out = $('#tryOut');
     if (!out || !ui.tryS) return;
-    const S2 = ui.tryS, o = opts(), scope = baseFiltered();
+    const c = cur(), S2 = ui.tryS, scope = boostScope();
     const c0 = {}, c1 = {}, better = [], worse = [];
     const has2 = hasScores(S2);
     for (const d of scope) {
-      const t0 = tierOf(d), t1 = has2 ? L.evaluate(d, S2, o).tier : null;
+      const t0 = tierOf(d), t1 = has2 ? evalAt(d, c, S2).tier : null;
       c0[t0] = (c0[t0] || 0) + 1;
       if (t1) c1[t1] = (c1[t1] || 0) + 1;
       if (t1 && TIERS.indexOf(t1) < TIERS.indexOf(t0) && t1 !== '無資料') better.push([d, t0, t1]);
@@ -3299,10 +3402,10 @@ details.fold>summary:hover{color:var(--text)}
     }
     better.sort((a, b) => (L.selectivity(b[0]) || 0) - (L.selectivity(a[0]) || 0));
     const W = out.clientWidth || 600;
-    const same = JSON.stringify(SCORE_KEYS.map(k => L.val(S2, k))) === JSON.stringify(SCORE_KEYS.map(k => L.val(st.scores, k)));
+    const same = JSON.stringify(SCORE_KEYS.map(k => L.val(S2, k))) === JSON.stringify(SCORE_KEYS.map(k => L.val(c.S, k)));
     out.innerHTML = `<div class="cmpbars"><span>現在</span>${tierBarHTML(c0, scope.length, { small: true, width: W, label: '現在' })}<span>試算</span>${has2 ? tierBarHTML(c1, scope.length, { small: true, width: W, label: '試算' }) : '<span class="hint">試算成績都是沒考</span>'}</div>
       <div style="overflow-x:auto"><table class="cmptable"><thead><tr><th scope="col"><span class="sr">成績</span></th>${TIERS.map(t => `<th>${t}</th>`).join('')}</tr></thead><tbody><tr><td>現在</td>${TIERS.map(t => `<td>${c0[t] || 0}</td>`).join('')}</tr><tr><td>試算</td>${TIERS.map(t => { const a = c0[t] || 0, b = c1[t] || 0; const good = t === '穩' || t === '適中'; return `<td class="${b !== a ? ((b > a) === good ? 'up' : 'dn') : ''}">${has2 ? b : '—'}</td>`; }).join('')}</tr></tbody></table></div>
-      ${same ? '<p class="hint" style="margin-top:12px">拖曳上面的格子改成績，這裡會比較落點變化。</p>' : better.length ? `<h3 style="font-size:14.5px;margin-top:18px">落點變好的校系（${better.length}）</h3><ul class="better">${better.slice(0, 40).map(([d, a, b]) => `<li>${pillHTML(a)}<span class="arr">→</span>${pillHTML(b)}<a href="#d=${d.c}" data-open="${d.c}">${esc(sch(d) + ' ' + d.n)}</a></li>`).join('')}</ul>${better.length > 40 ? '<p class="hint">只列前 40 個（依 115 門檻高到低）。</p>' : ''}` : `<p class="hint" style="margin-top:12px">沒有校系的落點變好${worse.length ? `，有 ${worse.length} 個變差` : ''}。</p>`}`;
+      ${same ? '<p class="hint" style="margin-top:12px">拖曳上面的格子改級分，這裡會比較落點變化。</p>' : better.length ? `<h3 style="font-size:14.5px;margin-top:18px">落點變好的校系（${better.length}）</h3><ul class="better">${better.slice(0, 40).map(([d, a, b]) => `<li>${pillHTML(a)}<span class="arr">→</span>${pillHTML(b)}<a href="#d=${d.c}" data-open="${d.c}">${esc(sch(d) + ' ' + d.n)}</a></li>`).join('')}</ul>${better.length > 40 ? '<p class="hint">只列前 40 個（依 115 門檻高到低）。</p>' : ''}` : `<p class="hint" style="margin-top:12px">沒有校系的落點變好${worse.length ? `，有 ${worse.length} 個變差` : ''}。</p>`}`;
   }
 
   // ------------------------------------------------------------------ guide
@@ -3375,6 +3478,7 @@ details.fold>summary:hover{color:var(--text)}
       </ol></section>
       <section class="sec"><h2>這個工具怎麼判斷落點</h2><ul class="tdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul>
         <div class="prose" style="margin-top:16px"><p>照 116 的科目、倍率和順序一關一關看，每關只跟 <b>115 同樣科目</b>的最低級分比。收的人數差超過 10% 就用 115 級分人數表換算。</p>
+        <p>用模考看落點時：<b>檢定</b>拿你的模考級分比<b>那次模考的五標</b>；<b>倍率篩選</b>先把模考級分照排名換算成學測級分，再比 115 門檻。</p>
         <p class="hint">只是一階的估計，不是錄取機率。</p></div></section>
       <section class="sec"><h2>審查資料代碼</h2><p class="sub">課程學習成果最多 3 件、多元表現最多 10 件。</p><div class="codegrid">${Object.entries(REVIEW).map(([k, v]) => `<span class="code"><b>${k}</b>${v}</span>`).join('')}</div></section>
       <section class="sec"><h2>資料來源</h2><ul class="srcs">
@@ -3400,19 +3504,17 @@ details.fold>summary:hover{color:var(--text)}
     if (ui.tab === 'explore') renderExplore();
     else if (ui.tab === 'plan') renderPlan();
     else if (ui.tab === 'boost') renderBoost();
-    else if (ui.tab === 'mock') renderMock();
+    else if (ui.tab === 'scores') renderScores();
     else renderGuide();
     save();
   }
   function setTab(name, fromRoute) {
-    if (!['explore', 'plan', 'boost', 'mock', 'guide'].includes(name)) name = 'explore';
+    if (!TABS.includes(name)) name = 'explore';
     const changed = name !== ui.tab;
+    if (changed && ui.tab === 'scores' && ui.mf && !ui.mf.id) ui.mf = null; // an unsaved new 模考 form does not follow you around
     ui.tab = name;
-    ['explore', 'plan', 'boost', 'mock', 'guide'].forEach(v => { $('#view-' + v).hidden = v !== name; });
+    TABS.forEach(v => { $('#view-' + v).hidden = v !== name; });
     if (!fromRoute && !/^#d=/.test(location.hash)) history.replaceState(null, '', tabHash(name));
-    // 試算 follows your scores, unless a 模考 was loaded into it (kept until 改回我的成績)
-    if (name === 'boost' && !ui.keepTry && !ui.tryFrom) ui.tryS = null;
-    ui.keepTry = false;
     render();
     if (changed) window.scrollTo(0, 0);
   }
@@ -3420,23 +3522,9 @@ details.fold>summary:hover{color:var(--text)}
     const m = /^#d=(\d{6})$/.exec(location.hash);
     if (m && BY_CODE[m[1]]) { if (!$('#detail').open || detailCode !== m[1]) openDetail(m[1], true); return; }
     if ($('#detail').open) { detailPushed = false; $('#detail').close(); }
-    const t = { '#plan': 'plan', '#boost': 'boost', '#mock': 'mock', '#guide': 'guide' }[location.hash] || 'explore';
+    const t = HASH_TAB[location.hash] || 'explore';
     if (t !== ui.tab) setTab(t, true);
   }
-  function focusScoreEditor(k) {
-    const el = (k === 'listen' ? $('#scorePanel [data-listen]') : null) || (k ? $(`[data-slider="${CSS.escape(k)}"]`) : null) || $('#scorePanel .track');
-    if (!el) return;
-    el.focus({ preventScroll: true });
-    if (isNarrow()) el.closest('.srow').scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }
-  function goScores() {
-    if ($('#detail').open) $('#detail').close();
-    ui.scoreOpen = true;
-    if (ui.tab !== 'explore') setTab('explore'); else render();
-    $('#scorePanel').scrollIntoView({ block: 'start', behavior: 'smooth' });
-    setTimeout(() => focusScoreEditor(), 250);
-  }
-
   // ------------------------------------------------------------------ filter sheet (phones and tablets)
   function openSheet() {
     const dlg = $('#sheet');
@@ -3456,15 +3544,13 @@ details.fold>summary:hover{color:var(--text)}
     const r = t.getBoundingClientRect(), n = +t.dataset.max;
     return clamp(Math.floor(((x - r.left) / r.width) * n) + 1, 1, n);
   }
-  // Typing the first score must not swap the editor for the summary tiles mid-entry.
-  function keepEditorOpen() { if ($('#scorePanel').classList.contains('editing')) ui.scoreOpen = true; }
   function commitSlider(t, delay) {
     clearTimeout(commitTimer);
     const kind = t.dataset.slider != null ? 'slider' : 'try';
     const k = t.dataset.slider || t.dataset.try;
     const v = +t.dataset.v;
     const run = () => {
-      if (kind === 'slider') { keepEditorOpen(); st.scores[k] = v ? String(v) : ''; ui.shown = PAGE; render(); }
+      if (kind === 'slider') { st.scores[k] = v ? String(v) : ''; ui.shown = PAGE; render(); }
       else { ui.tryS[k] = v ? String(v) : ''; renderTry(); }
     };
     if (delay) commitTimer = setTimeout(run, delay); else run();
@@ -3524,8 +3610,6 @@ details.fold>summary:hover{color:var(--text)}
   // ------------------------------------------------------------------ events
   const toggle = (arr, v) => { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); };
   const ACTIONS = {
-    editScores: b => { ui.scoreOpen = true; render(); focusScoreEditor(b.dataset.focus); },
-    doneScores: () => { ui.scoreOpen = false; render(); $('#rail').scrollTop = 0; if (isNarrow()) $('#overview').scrollIntoView({ block: 'start', behavior: 'smooth' }); },
     showCats: () => {
       ui.catsOpen = true;
       if (getComputedStyle($('#filterPanel')).display === 'none' || $('#filterPanel').parentElement !== $('#rail')) { openSheet(); }
@@ -3533,16 +3617,13 @@ details.fold>summary:hover{color:var(--text)}
       const b = $('#catsBox');
       if (b) { b.open = true; b.scrollIntoView({ block: 'center', behavior: 'smooth' }); const c = b.querySelector('.chip'); if (c) c.focus({ preventScroll: true }); }
     },
-    clearScores: () => { st.scores = DEFAULT().scores; ui.scoreOpen = true; ui.shown = PAGE; render(); toast('已清除成績'); },
-    goScores: () => goScores(),
+    clearScores: () => { st.scores = DEFAULT().scores; ui.shown = PAGE; render(); toast('已清除學測級分'); },
     resetFilters: () => { st.f = { ...DEFAULT().f, sort: st.f.sort, q: st.f.q, tiers: st.f.tiers }; ui.shown = PAGE; render(); },
     resetAll: () => { st.f = { ...DEFAULT().f, sort: st.f.sort }; $('#q').value = ''; ui.shown = PAGE; render(); },
     resetCats: () => { st.f.cats = DEFAULT_CATS.slice(); ui.shown = PAGE; render(); },
     showTiers: () => { st.f.tiers = TIERS.slice(); render(); },
     showUntaken: () => { st.f.untaken = true; render(); },
-    saveMock: () => saveMock(),
-    goMocks: () => setTab('mock'),
-    mfNew: () => { ui.mf = newMockDraft(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+    mfNew: () => { ui.mf = newMockDraft(); if (ui.tab !== 'scores') setTab('scores'); else render(); requestAnimationFrame(() => { const f = $('#mockForm'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); },
     mfCancel: () => { ui.mf = null; render(); },
     mfSave: () => saveMockForm(),
     mfStdToggle: () => { ui.mf.stdOpen = !ui.mf.stdOpen; render(); },
@@ -3559,13 +3640,7 @@ details.fold>summary:hover{color:var(--text)}
     csvPlan: () => download('apply116-plan.csv', csv(), 'text/csv;charset=utf-8'),
     printPlan: () => { if (ui.tab !== 'plan') setTab('plan'); setTimeout(() => window.print(), 60); },
     exportState: () => download('apply116-backup.json', JSON.stringify(st, null, 1), 'application/json'),
-    tryToggleRaw: () => {
-      if (!ui.tryFrom) return;
-      ui.tryIsRaw = !ui.tryIsRaw;
-      const keep = ui.tryS; ui.tryS = ui.tryIsRaw ? ui.tryRaw : ui.tryAlt || keep; ui.tryAlt = keep;
-      render();
-    },
-    tryReset: () => { ui.tryS = { ...st.scores }; ui.tryFrom = null; ui.tryAlt = null; const n = $('#trySec .try-from'); if (n) n.remove(); $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
+    tryReset: () => { ui.tryS = { ...cur().S }; $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
   };
   /** Chart tooltips: any element with data-tip, on hover, keyboard focus or tap. */
   function bindTips() {
@@ -3603,21 +3678,21 @@ details.fold>summary:hover{color:var(--text)}
       if (ds.sat) { f.sat = ds.sat === f.sat ? 'all' : ds.sat; ui.shown = PAGE; render(); return; }
       if (ds.st2) { toggle(f.st2, ds.st2); ui.shown = PAGE; render(); return; }
       if (ds.skip) { toggle(f.skip, ds.skip); ui.shown = PAGE; render(); return; }
-      if (ds.mockuse) { useMock(ds.mockuse); return; }
+      if (ds.src) { if (ds.src === st.src && !ui.mf) return; useSource(ds.src); return; }
+      if (ds.bscope) { st.bx.scope = ds.bscope; render(); return; }
       if (ds.mockdel) {
         const m = st.mocks.find(x => x.id === ds.mockdel);
-        if (m && confirm(`刪除「${mName(m)}」（${mdText(m.d)}）？`)) { st.mocks = st.mocks.filter(x => x !== m); if (ui.mf && ui.mf.id === m.id) ui.mf = null; render(); toast('已刪除'); }
+        if (m && confirm(`刪除「${mName(m)}」（${mdText(m.d)}）？`)) { st.mocks = st.mocks.filter(x => x !== m); if (st.src === m.id) st.src = 'test'; if (ui.mf && ui.mf.id === m.id) ui.mf = null; render(); toast('已刪除'); }
         return;
       }
       if (ds.stdcopy) {
         const [target, y] = ds.stdcopy.split(':'), tab = stdTable(target);
         if (tab) for (const k of SCORE_KEYS) Object.assign(tab[k], D.std[y][k]);
-        keepEditorOpen(); render(); toast(`已填入 ${y} 學年度學測五標`); return;
+        render(); toast(`已填入 ${y} 學年度學測五標`); return;
       }
-      if (ds.mocktry) { tryMock(ds.mocktry); return; }
       if (ds.mockedit) { const m = st.mocks.find(x => x.id === ds.mockedit); if (m) { ui.mf = editMockDraft(m); render(); requestAnimationFrame(() => $('#mockForm') && $('#mockForm').scrollIntoView({ behavior: 'smooth', block: 'start' })); } return; }
       if (ds.combo) { toggle(f.combos, ds.combo); ui.shown = PAGE; render(); return; }
-      if (ds.listen) { keepEditorOpen(); st.scores.聽 = ds.listen === 'none' ? '' : ds.listen; render(); return; }
+      if (ds.listen) { st.scores.聽 = ds.listen === 'none' ? '' : ds.listen; render(); return; }
       if (ds.clear) {
         const [kind, k] = ds.clear.split(':');
         if (kind === 'slider') { st.scores[k] = ''; ui.shown = PAGE; render(); }
@@ -3658,9 +3733,10 @@ details.fold>summary:hover{color:var(--text)}
       if (t.id === 'mfName' && ui.mf) { ui.mf.n = t.value; return; }
       if (t.dataset.mf === '聽' && ui.mf) { ui.mf.聽 = t.value; return; }
       if (t.id === 'stdYear') { st.stdYear = t.value; render(); return; }
+      if (t.dataset.srcsel != null) { useSource(t.value); return; }
+      if (t.id === 'bGroup') { st.bx.group = t.value; render(); return; }
       if (t.dataset.std) {
         const [target, k, l] = t.dataset.std.split(':'), n = Math.round(Number(t.value)), tab = stdTable(target);
-        keepEditorOpen();
         if (tab && Number.isFinite(n) && n >= 1 && n <= 15) tab[k][l] = n;
         else toast('五標要填 1–15 級分');
         render();
@@ -3747,11 +3823,11 @@ details.fold>summary:hover{color:var(--text)}
   $('#q').value = st.f.q;
   renderCountdown();
   bind();
-  const startTab = { '#plan': 'plan', '#boost': 'boost', '#mock': 'mock', '#guide': 'guide' }[location.hash] || 'explore';
+  const startTab = HASH_TAB[location.hash] || 'explore';
   ui.tab = '';
   setTab(startTab, true);
   route();
-  window.__app = { st: () => st, evaluate: c => EV.get(c), render };
+  window.__app = { st: () => st, evaluate: c => EV.get(c), ctx: () => cur(), render };
 })();
 </script>
 </body>
