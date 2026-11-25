@@ -50,7 +50,7 @@ function layoutIssues() {
   const out = [];
   const vis = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !el.closest('[hidden], dialog:not([open]), details:not([open]) > :not(summary)'); };
   const tops = node => { const rg = document.createRange(); rg.selectNodeContents(node); const t = []; for (const r of rg.getClientRects()) { if (r.width < 0.5) continue; const m = Math.round(r.top + r.height / 2); if (!t.some(x => Math.abs(x - m) < 6)) t.push(m); } return t; };
-  for (const el of document.querySelectorAll('button, .chip, .pill, .tab, .lg, .afchip, .mchip, .tag, .delta, th, h1, h2, h3, summary, .sc-h b, .ctx-lab, .rv-k, .srow-l, .hc .to, .pt, .rm-facts span, .s-d span, .dn .nm')) {
+  for (const el of document.querySelectorAll('button, .chip, .pill, .tab, .lg, .afchip, .sg small, .tag, .delta, th, h1, h2, h3, summary, .sc-h b, .ctx-lab, .rv-k, .srow-l, .hc .to, .pt, .rm-facts span, .s-d span, .dn .nm')) {
     if (!vis(el)) continue;
     for (const t of el.childNodes) if (t.nodeType === 3 && t.textContent.trim().length > 1 && tops(t).length > 1) out.push('wrap "' + t.textContent.trim().slice(0, 20) + '"');
   }
@@ -98,7 +98,7 @@ try {
     ok((await scores(page)).社 === '13', 'arrow key raises a score');
     await page.click('#scores .result-card [data-tab="explore"]');
     await page.waitForSelector('#ctxExplore .ctxbar');
-    ok((await page.locator('#ctxExplore .mchip').count()) === 5, '找校系 shows which scores the 落點 use');
+    ok((await page.locator('#ctxExplore .sg').count()) === 5, '找校系 shows which scores the 落點 use');
 
     await page.click('#filterPanel [data-group="法政"]');
     const ov = await page.locator('#overview').innerText();
@@ -256,9 +256,20 @@ try {
     const saved = await page.evaluate(() => window.__app.st().mocks);
     ok(saved.length === 1 && saved[0].std && saved[0].std.國.均標 === 12 && saved[0].s.國 === '13', '模考 saved with its own 五標');
     ok((await page.evaluate(() => window.__app.st().src)) === saved[0].id, 'a saved 模考 becomes the scores in use');
-    ok((await page.locator('#trendSec').innerText()).includes('差 1 級分到頂標'), 'analysis says how far the next 標 is');
-    ok(/學測約\s*12/.test(await page.locator('.lt .eqv').first().innerText()), '模考 analysis reads 國 13 (前標) as 學測約 12');
+    ok((await page.locator('#srcSec').innerText()).includes('再 1 到頂標'), 'the 模考 view says how far the next 標 is');
+    ok(/^12\b/.test((await page.locator('#srcSec .mvt tbody tr').first().locator('td').nth(2).innerText()).trim()), '模考 view reads 國 13 (前標) as 學測 12');
     ok((await scores(page)).國 === '12', 'using a 模考 does not overwrite the typed 學測 級分');
+    // 還不確定讀什麼: a 學群 opens 找校系 on its 穩過＋應該過, most sought-after first
+    await page.waitForSelector('#strengthSec .gx');
+    const g0 = await page.locator('#strengthSec .gx').first().getAttribute('data-gx');
+    await page.locator('#strengthSec .gx').first().click();
+    await page.waitForSelector('#view-explore:not([hidden]) .row');
+    const fx = await page.evaluate(() => window.__app.st().f);
+    ok(fx.groups.join() === g0 && fx.sort === 'select' && fx.tiers.join() === '穩,適中', `學群 explorer opens 找校系 on ${g0}: ${'穩過＋應該過'}, 最搶手 first`);
+    await page.selectOption('#sort', 'selectLow');
+    ok((await page.locator('#listbar').innerText()).includes('門檻低'), 'sort: 最好進的在前');
+    await page.evaluate(() => { const st = window.__app.st(); st.f = { ...st.f, groups: [], tiers: ['穩', '適中', '衝', '難', '無資料'], sort: 'chance' }; window.__app.render(); });
+    await page.click('#tabs [data-tab="scores"]');
 
     // 看落點 with a 模考 judges 檢定 on that 模考's own 五標: 翰林第三次 英文均標 is 6 (115 學測 均標 is 8)
     await page.click('#scores [data-act="mfNew"]');
@@ -427,7 +438,10 @@ try {
     ok(ms.d === null, 'another exam (中區) never gets 翰林 五標');
     await page.goto(URL_ + '#mock');
     await page.waitForSelector('#trendSec');
-    ok((await page.locator('.srccard[data-src]').count()) === 5 && (await page.locator('#trendSec').innerText()).includes('最近一次'), 'upgraded 模考 render with analysis (old #mock link opens 我的成績)');
+    ok((await page.locator('.srccard[data-src]').count()) === 5 && (await page.locator('#trendSec').innerText()).includes('模考進退步'), 'upgraded 模考 render with analysis (old #mock link opens 我的成績)');
+    // 沒考 on 學測級分 hides that subject in every 模考 too (第一、二次 數A、數B are one paper; many fill both)
+    await page.evaluate(() => { const st = window.__app.st(); st.scores = { ...st.scores, 國: '12', 英: '10', 數A: '', 數B: '8', 社: '13', 自: '' }; st.mocks[0].s.數A = '7'; window.__app.render(); });
+    ok(!(await page.locator('#scores .srccards').innerText()).includes('數A') && !(await page.locator('#trendSec').innerText()).includes('數學A'), 'a subject set to 沒考 is not listed for 模考 either');
     // saved after the 9月/10月 upgrade but before 7月全國 had every subject: only 數學 there, plus one typed row
     await page.waitForTimeout(400);
     await page.evaluate(() => {

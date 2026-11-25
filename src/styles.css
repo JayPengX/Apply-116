@@ -725,21 +725,6 @@ details.fold>summary:hover{color:var(--text)}
 .delta.flat{background:var(--surface-3);color:var(--text-2)}
 .textbtn.danger{color:var(--bad)}
 .trendnotes{margin:12px 0 0;padding-left:1.2em;font-size:14px;line-height:1.7}
-.sparks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:14px}
-.spark{margin:0;border:1px solid var(--line);border-radius:12px;padding:10px 10px 8px;min-width:0}
-.spark figcaption{display:flex;align-items:baseline;gap:8px}
-.spark .sk{font-size:13px;color:var(--text-2);font-weight:650}
-.spark .sv{font-size:20px;font-weight:750;color:var(--text);margin-left:auto}
-.spark svg{display:block;width:100%;height:auto;margin-top:4px;overflow:visible}
-.spark .base{stroke:var(--line-2);stroke-width:1}
-.spark .ref{stroke:var(--line-2);stroke-width:1;stroke-dasharray:3 3}
-.spark .reft{fill:var(--text-3);font-size:10px}
-.spark .ln{fill:none;stroke:var(--series-1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-.spark .pt{fill:var(--series-1);stroke:var(--surface);stroke-width:2}
-.spark .vlab{fill:var(--text);font-size:12px;font-weight:700}
-.spark .hit{fill:transparent;cursor:pointer;outline:none}
-.spark .hit:focus-visible{stroke:var(--focus);stroke-width:2}
-.spark .sx{display:block;font-size:11.5px;color:var(--text-3);margin-top:2px}
 .sec-h3{font-size:15px;margin-top:22px}
 .mtiers{display:grid;gap:10px;margin-top:10px}
 .mt-row{display:grid;grid-template-columns:minmax(7em,10em) minmax(0,1fr) auto;gap:12px;align-items:center;font-size:13px}
@@ -759,8 +744,6 @@ details.fold>summary:hover{color:var(--text)}
 .mockref .hint{margin-top:8px}
 .charttip{position:fixed;z-index:60;max-width:260px;background:var(--ink);color:var(--on-ink);font-size:12.5px;line-height:1.45;padding:6px 9px;border-radius:8px;pointer-events:none;box-shadow:var(--shadow-1)}
 @media (max-width:600px){
-  .mt-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
-  .mt-row .tierbar{grid-column:1/-1;grid-row:2}
 }
 .reftable td small.lv{display:block;font-size:11px;color:var(--text-3);font-weight:500;line-height:1.2}
 /* 模考 page */
@@ -784,34 +767,10 @@ details.fold>summary:hover{color:var(--text)}
 .mf-std-h span{color:var(--text-2);flex:1 1 200px}
 .mf-actions{display:flex;gap:10px;margin-top:18px}
 .mf-actions .btn.primary{flex:1;max-width:360px;justify-content:center;height:46px;font-size:15.5px}
-.mc-s{display:flex;flex-wrap:wrap;gap:6px}
-.mchip{display:inline-flex;align-items:baseline;gap:4px;padding:4px 9px;border-radius:8px;background:var(--surface-2);font-size:13px}
-.mchip .k{color:var(--text-3);font-size:12px}
-.mchip b{font-variant-numeric:tabular-nums;font-size:15px}
-.mchip small{color:var(--ok);font-weight:700;font-size:11.5px}
-.latest{margin-top:10px}
-.latest .sec-h3 small{margin-left:8px;color:var(--text-3);font-weight:500;font-size:12.5px}
-.lt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:10px 0}
-.lt{padding:10px 12px;border-radius:12px;background:var(--surface-2);display:flex;flex-direction:column;gap:2px;min-width:0}
-.lt .k{font-size:12.5px;color:var(--text-3);font-weight:600}
-.lt .v{display:flex;align-items:baseline;gap:6px}
-.lt .v b{font-size:22px;line-height:1.2}
-.lt .lvt{font-size:12.5px;font-weight:700;color:var(--ok)}
-.lt small{font-size:12px;color:var(--text-2)}
-@media (max-width:600px){.mf-scores{grid-template-columns:repeat(3,minmax(0,1fr))}.lt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.mf-scores{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* 模考 × 怎麼進步 */
 .mf-wide{grid-column:1 / -1}
 .mf-s .lv span{display:block;color:var(--text-2);font-weight:600;font-size:11.5px}
-.msp{width:64px;height:22px;flex:none}
-.msp path{fill:none;stroke:var(--series-1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-.msp circle{fill:var(--series-1);stroke:var(--surface);stroke-width:1.5}
-.lt-h{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.lt .eqv{font-size:12.5px;color:var(--text-2);display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 4px}
-.lt .eqv b{font-size:15px;color:var(--text)}
-.lt .eqv small{color:var(--text-3);font-size:11.5px;width:100%}
-.lt .gain{color:var(--ok);font-weight:600}
-.lt-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
-.reftable small.lv.eq{color:var(--text-2)}
 /* polish */
 .srow-h .textbtn,.ov-t .textbtn,.fsec h3 .textbtn,.sec-hh .textbtn{margin-right:0}
 .olist{display:flex;flex-direction:column;gap:3px}
@@ -821,11 +780,8 @@ details.fold>summary:hover{color:var(--text)}
 .rmx tbody th[scope=row]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:1px;width:100%}
 .cb-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block;min-width:0}
 .cb-h{min-width:0}
-.lt .k{white-space:nowrap}
-.lt-h .msp{flex-shrink:1;min-width:0}
 .try-act{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
 .textbtn.inline{display:inline;padding:0 2px;margin:0;vertical-align:baseline;font-size:inherit}
-.lt .eqv small{width:auto;margin-left:4px}
 .clash{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:6px}
 .clash li{display:flex;align-items:center;gap:10px;margin:0}
 .clash li>b{min-width:6.5em;font-variant-numeric:tabular-nums;font-size:13.5px}
@@ -844,7 +800,6 @@ details.fold>summary:hover{color:var(--text)}
 .ctx-edit{margin-left:auto}
 .ctx-note{font-size:12.5px;color:var(--text-3);line-height:1.55}
 .ctx-none{font-size:13.5px;color:var(--text-2)}
-.mchip small.eq{color:var(--text-2);font-weight:600}
 
 /* ---------- 我的成績: pick a source, edit it, see the result */
 .srccards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:14px}
@@ -857,9 +812,6 @@ details.fold>summary:hover{color:var(--text)}
 .sc-use{margin-left:auto;font-size:12px;font-weight:650;color:var(--text-3);white-space:nowrap}
 .srccard:hover .sc-use{color:var(--text)}
 .sc-sub{font-size:12.5px;color:var(--text-3);line-height:1.45}
-.srccard .mc-s{gap:4px}
-.srccard .mchip{padding:2px 7px;font-size:12px}
-.srccard .mchip b{font-size:14px}
 .srccard.add{align-items:center;justify-content:center;text-align:center;border-style:dashed;border-color:var(--line-2);color:var(--text-2);min-height:96px}
 .srccard.add b{font-size:14.5px;color:var(--text)}
 .sec-hh h2{font-size:17px}
@@ -894,7 +846,6 @@ details.fold>summary:hover{color:var(--text)}
 .scopebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
 .scopebar .selectbox select{min-height:38px}
 .heat .hs-m{display:block;margin-top:2px}
-.heat .hs-m .msp{width:56px;height:18px}
 
 /* ---------- filters: grouping */
 .fseg{margin-top:10px;display:flex;width:100%}
@@ -921,7 +872,7 @@ details.fold>summary:hover{color:var(--text)}
    between its parts (系｜組｜校區). Each section heading carries an icon; each school a soft monogram. */
 p,li,dd,td,.hint,.sub,.step-d,.rv-h,.rv-v,.rv-note,.ctx-note,.sc-sub,.long,.s2lead{text-wrap:pretty}
 .nm{word-break:keep-all;overflow-wrap:anywhere}
-.chip,.lg,.afchip,.tag,.pill,.delta,.mchip,.tagc,.code,.facts li,.countdown,.segctl button,.sc-on,.sc-use,.ctx-lab,.rv-k,.srow-l,.hc .to,.pt,.rm-facts>span,.s-d>span,.cal .d,.cal .d small,.lt .k,.mvt td small,.cb-cap>span,.ev .tag,.hb .n,.mt-n,.lab{white-space:nowrap}
+.chip,.lg,.afchip,.tag,.pill,.delta,.tagc,.code,.facts li,.countdown,.segctl button,.sc-on,.sc-use,.ctx-lab,.rv-k,.srow-l,.hc .to,.pt,.rm-facts>span,.s-d>span,.cal .d,.cal .d small,.mvt td small,.cb-cap>span,.ev .tag,.hb .n,.mt-n,.lab{white-space:nowrap}
 .i.xs{width:13px;height:13px;vertical-align:-2px;stroke-width:2.2}
 
 /* icon headings */
@@ -973,19 +924,16 @@ p,li,dd,td,.hint,.sub,.step-d,.rv-h,.rv-v,.rv-note,.ctx-note,.sc-sub,.long,.s2le
 .ctx-sel select{width:100%}
 
 /* level badges: one blue ramp, 頂 strongest (the 落點 colours stay reserved for 落點) */
-.mchip small.lvb{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 4px;border-radius:5px;font-size:11.5px;font-weight:800;align-self:center;line-height:1}
 .lvb.l0{background:var(--series-1);color:var(--on-ink)}
 .lvb.l1{background:color-mix(in srgb,var(--series-1) 55%,var(--surface));color:var(--text)}
 .lvb.l2{background:color-mix(in srgb,var(--series-1) 28%,var(--surface));color:var(--text)}
 .lvb.l3{background:color-mix(in srgb,var(--series-1) 13%,var(--surface));color:var(--text-2)}
 .lvb.l4,.lvb.l5{background:var(--surface-3);color:var(--text-3)}
-.mchip{align-items:center}
 
 /* 我的成績 */
 .srccards{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
 .sc-h b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .result-card .tierbar{margin-top:16px}
-.lt small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* 我的志願 */
 .s-d{gap:2px 16px;margin-top:4px}
@@ -1143,3 +1091,82 @@ button.gb:hover{background:var(--surface-2)}
 .gb.best i{background:color-mix(in srgb,var(--heat) 45%,var(--surface-3))}
 .gi-at{grid-column:1 / -1;font-size:13px;color:var(--text-2)}
 .gi-at b{color:var(--text);font-size:14.5px}
+
+/* 我的成績 v2: aligned score rows, one 模考 table, 強項 → 學群 */
+.srccards{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.srccard{gap:10px;padding:12px 14px 12px}
+.srccard[aria-pressed="true"]{padding:11px 13px}
+.sc-h{gap:8px;align-items:baseline}
+.sc-h b{flex:0 1 auto}
+.sc-h .sc-sub{flex:none;font-size:12.5px}
+.sc-h .sc-on,.sc-h .sc-use{align-self:center}
+.sc-empty{font-size:13.5px}
+.sgrid{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:4px}
+.sg{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 7px;border-radius:10px;background:var(--surface-2);min-width:0}
+.sg small{font-size:11.5px;color:var(--text-3);font-weight:600;white-space:nowrap;line-height:1.1}
+.sg b{font-size:18px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1.1}
+.sg i{font-style:normal;display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 4px;border-radius:5px;font-size:11px;font-weight:800;line-height:1}
+.sg i:empty{background:none}
+.sg.na{background:transparent;border:1px dashed var(--line)}
+.sg.na b{color:var(--text-3);font-weight:500}
+.sc-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:10px}
+.sc-key .lvb,.ttable .lvb{font-style:normal;display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 4px;border-radius:5px;font-size:11px;font-weight:800;line-height:1}
+.srccard.add{min-height:64px;flex-direction:row;gap:8px}
+.mv-how{margin-top:12px}
+.mv-how .howto{margin-top:8px}
+/* 模考進退步 */
+.ttable{border-collapse:collapse;width:100%;font-size:14px}
+.ttable th,.ttable td{padding:9px 6px;border-top:1px solid var(--line);text-align:center;white-space:nowrap}
+.ttable thead th{border-top:0;color:var(--text-3);font-weight:600;font-size:12px;padding-top:4px}
+.ttable thead th b{display:block;color:var(--text);font-size:13.5px}
+.ttable thead th small{font-size:11.5px}
+.ttable th[scope="row"],.ttable thead th:first-child{text-align:left;padding-left:2px}
+.ttable th[scope="row"]{font-weight:650}
+.ttable th[scope="row"] small{display:block;font-size:11px;color:var(--text-3);font-weight:500}
+.ttable td b{font-size:17px;font-weight:750;margin-right:4px;vertical-align:middle}
+.ttable td .lvb{vertical-align:middle}
+.trendnotes{color:var(--text-2);font-size:13.5px}
+.mt-row{grid-template-columns:3.4em minmax(0,1fr) 2.6em;gap:10px}
+.mt-row .tierbar{margin:0}
+.mt-l b{font-size:14px}
+.mt-n{text-align:right;font-size:15px;color:var(--text)}
+/* 擋住你的檢定: label and count on one line, the bar under them */
+.hb{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l n" "t t";gap:6px 12px}
+.hb .l{grid-area:l}
+.hb .n{grid-area:n}
+.hb .t{grid-area:t;height:8px;border-radius:4px;background:color-mix(in srgb,var(--bad) 55%,var(--surface))}
+@media (max-width:760px){.hb{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px}.hb .l{grid-column:auto}}
+/* 強項 → 學群 */
+.str-rank{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.sr-c{display:inline-flex;align-items:baseline;gap:6px;padding:6px 11px;border-radius:10px;background:var(--surface-2);font-size:14px;white-space:nowrap}
+.sr-c small{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.sr-c.hi{background:color-mix(in srgb,var(--ok) 16%,var(--surface))}
+.sr-c.hi small{color:var(--ok);font-weight:700}
+.sr-c.lo small{color:var(--text-3)}
+.hol{margin-top:16px;padding:12px 14px;border-radius:12px;background:var(--surface-2)}
+.hol-l{display:block;font-size:13px;font-weight:650;color:var(--text-2)}
+.hol-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.hol-c .chip b{margin-right:4px}
+.hol .hint{margin-top:8px}
+.gxs{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.gx{display:flex;flex-direction:column;gap:7px;width:100%;text-align:left;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:inherit}
+.gx:hover{background:var(--surface-2);border-color:var(--line-2)}
+.gx-h{display:flex;align-items:baseline;gap:8px;min-width:0}
+.gx-h>b{font-size:15.5px;white-space:nowrap}
+.gx-hol{font-size:11.5px;font-weight:700;color:var(--series-1);background:color-mix(in srgb,var(--series-1) 14%,var(--surface));padding:1px 7px;border-radius:999px;white-space:nowrap}
+.gx-n{margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gx-n b{font-size:17px}
+.gx-n small{font-size:12px;color:var(--text-3);margin-left:3px}
+.gx-bar{display:block;height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.gx-bar i{display:block;height:100%;border-radius:3px;background:var(--ok)}
+.gx-m{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--text-2)}
+.gx-s{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.gx-s i{font-style:normal;padding:0 5px;border-radius:4px;background:var(--surface-3);color:var(--text-2);font-weight:650}
+.gx-s i.on{background:color-mix(in srgb,var(--ok) 20%,var(--surface));color:var(--ok)}
+.gx-b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.gx-more{margin-top:10px}
+.ov-explore{margin-top:10px;display:inline-flex;align-items:center;gap:6px}
+.ctxbar .sgrid{margin-top:10px}
+.ctxbar .sg{padding:5px 2px 6px}
+.ctxbar .sg b{font-size:16px}
+.ttable{max-width:640px}
