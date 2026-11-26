@@ -189,7 +189,7 @@ window.ExamUI = function (ctx) {
     const row = (kind, subj) => {
       const ps = INDEX.filter(p => p.kind === kind && p.subj === subj);
       if (!ps.length) return '';
-      return `<li class="xp-row"><b class="${subj.length > 3 ? 'long' : ''}">${esc(subj === '公民與社會' ? '公民' : subj)}</b><span class="xp-ys">${ps.map(p => { const h = e.hist[p.id] && e.hist[p.id][0]; return `<button type="button" class="xp-y" data-xpaper="${p.id}">${p.y}${h ? `<small>${Math.round((h.g / (h.m || 1)) * 100)}%</small>` : ''}</button>`; }).join('')}</span></li>`;
+      return `<li class="xp-row"><b>${esc(subj === '公民與社會' ? '公民' : subj)}</b><span class="xp-ys">${ps.map(p => { const h = e.hist[p.id] && e.hist[p.id][0]; return `<button type="button" class="xp-y" data-xpaper="${p.id}">${p.y}${h ? `<small>${Math.round((h.g / (h.m || 1)) * 100)}%</small>` : ''}</button>`; }).join('')}</span></li>`;
     };
     const kinds = ['gsat', 'ast'].map(k => {
       const rows = subs.map(sj => row(k, sj)).join('');
