@@ -106,10 +106,14 @@ try {
     const ov = await page.locator('#overview').innerText();
     ok(ov.includes('法政') && /穩過\s*\d+/.test(ov) && /應該過\s*\d+/.test(ov), 'overview shows the scope and tier counts');
     const pills = await page.locator('#list .row .pill').allInnerTexts();
-    ok(pills.length > 10 && pills.every(p => TIER_ORDER.includes(p)), 'rows show the 一階 labels (穩過、應該過…): ' + [...new Set(pills)].join(' '));
-    ok(!pills.includes('過不了'), '過不了 hidden by default');
+    ok(pills.length > 10 && pills.every(p => TIER_ORDER.includes(p)), 'rows show the labels (穩過、應該過…): ' + [...new Set(pills)].join(' '));
     ok((await page.locator('#list .row .pill .sig').count()) === pills.length, 'every label carries its signal icon');
-    ok(pills.every((b, i) => i === 0 || TIER_ORDER.indexOf(pills[i - 1]) <= TIER_ORDER.indexOf(b)), 'sorted by tier');
+    // a row may carry two labels (申請一階, 分發); it is placed by the better one
+    const BEST = ['穩過', '應該過', '邊緣', '機會低', '看不出', '過不了'];
+    const rowBest = (await page.locator('#list .row').evaluateAll(rs => rs.map(r => [...r.querySelectorAll('.pill')].map(p => p.innerText.trim())))).map(ps => ps.map(p => BEST.indexOf(p)).reduce((a, b) => Math.min(a, b), 9));
+    ok(!rowBest.includes(BEST.indexOf('過不了')), '過不了 hidden by default');
+    const TI = ['穩過', '應該過', '邊緣', '機會低', '過不了', '看不出'];
+    ok(rowBest.every((b, i) => i === 0 || TI.indexOf(BEST[rowBest[i - 1]]) <= TI.indexOf(BEST[b])), 'sorted by the better path');
 
     // 第二階段 filters: one 學測-share choice at a time, plus 甄試 chips whose counts match the list they produce
     const spOf = await page.evaluate(() => Object.fromEntries(JSON.parse(document.getElementById('app-data').textContent).depts.map(d => [d.c, d.sp])));
@@ -271,21 +275,28 @@ try {
     await page.selectOption('#sort', 'selectLow');
     ok((await page.locator('#listbar').innerText()).includes('門檻低'), 'sort: 最好進的在前');
     await page.evaluate(() => { const st = window.__app.st(); st.f = { ...st.f, groups: [], tiers: ['穩', '適中', '衝', '難', '無資料'], sort: 'chance' }; window.__app.render(); });
-    // 分科與分發: the two paths compared, 分科 estimated from 學測, the 分發 list judged on 115 最低錄取分數
-    await page.click('#tabs [data-tab="uac"]');
-    await page.waitForSelector('#pathSec');
-    ok(/走申請，還是考分科/.test(await page.locator('#pathSec').innerText()) && (await page.locator('#pathSec .pc-side').count()) === 2, '分科 tab compares 申請 and 分發');
-    // this 模考 has only 國、英: no 分科 can be estimated, so the page asks for them
-    ok((await page.locator('#uacSec').innerText()).includes('還沒有分科成績'), 'without 分科 the 分發 list says what to do');
+    // 分科 lives with 學測 in 我的成績; 落點分布 shows both paths; 找校系 lists both
+    await page.click('#tabs [data-tab="scores"]');
+    await page.waitForSelector('#astSec');
+    // this 模考 has only 國、英: no 分科 can be estimated, so the 分發 lane asks for them
+    ok((await page.locator('.result-card').innerText()).includes('還沒選要考的分科'), 'without 分科 the 分發 lane says what to do');
     const typeAst = async (k, v) => { if (!(await page.locator(`[data-astv="${k}"]`).count())) await page.click(`[data-astmode="${k}:n"]`); await page.fill(`[data-astv="${k}"]`, v); await page.locator(`[data-astv="${k}"]`).blur(); await page.waitForTimeout(150); };
     await typeAst('歷', '45');
     await typeAst('地', '45');
-    await page.waitForSelector('#uacSec .urow');
+    ok((await page.locator('.result-card .rc-lane').count()) === 2 && (await page.locator('.result-card .pc-verdict').count()) === 1, '落點分布 compares 申請 and 分發 with a verdict');
     const ntu = await page.evaluate(() => window.__app.evaluateUac('0001'));
     ok(ntu && ntu.cut === 265.5 && ntu.total > 0, `臺大中文 judged against its 115 最低錄取 265.5 (you ${ntu && ntu.total})`);
     await typeAst('歷', '60');
     const after = await page.evaluate(() => window.__app.evaluateUac('0001').total);
     ok((await page.evaluate(() => window.__app.st().ast.歷)) === '60' && Math.abs(after - ntu.total - 15 * 1.25) < 1e-6, `typing 歷史 60 adds 15 × 1.25 to 臺大中文 (${ntu.total} → ${after})`);
+    await page.click('#tabs [data-tab="explore"]');
+    await page.waitForSelector('#list .row');
+    ok((await page.locator('#list .r-uac').count()) > 0, '找校系 rows show the same 系 in 分發');
+    await page.click('[data-path="uac"]');
+    await page.waitForSelector('#list .urow');
+    ok((await page.locator('#list .row:not(.urow)').count()) === 0 && /分發系組/.test(await page.locator('#overview').innerText()), '只看分發 lists 分發 系組 only');
+    await page.click('[data-path="both"]');
+    await page.click('#tabs [data-tab="scores"]');
     await page.click('[data-astmode="歷:"]');
     ok((await page.evaluate(() => window.__app.evaluateUac('0001').tier)) === '不符', 'not taking 歷史 → 臺大中文 (uses 歷史) is 過不了');
     await page.click('[data-act="astReset"]');
