@@ -870,7 +870,7 @@ loadAppData().then(D => {
         <li><b>分發</b>：只看分數（學測＋分科加權），沒有面試；分科 7/10 考、8/13 放榜，要多準備半年。</li>
         <li>申請錄取了想改考分科，要在 6/13 前聲明放棄。很多人兩條都準備：申請先試，沒上或不滿意再拚分科。</li></ul>
         <p class="sub">學測科目比 115 分發考生，分科比 115 分科考生；「約」是估計。</p>${standHTML()}</details>` : ''}
-      <div class="rc-act"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}看校系</button><button class="btn" type="button" data-tab="boost">${icon('boost', 'sm')}怎麼進步</button></div></section>`;
+      <div class="rc-act"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}看校系</button><button class="btn" type="button" data-tab="boost">${icon('boost', 'sm')}怎麼進步</button><button class="btn" type="button" data-act="reportOpen">${icon('doc', 'sm')}完整報告（可給 AI）</button></div></section>`;
   }
   /**
    * Why 申請 and 分發 disagree for these scores: what blocks each path, and what one 級分 more or less in each
@@ -1733,7 +1733,7 @@ loadAppData().then(D => {
         <div class="fav-act"><button class="btn sm${pi >= 0 ? '' : ' primary'}" type="button" data-plan="${d.c}">${pi >= 0 ? `移出第 ${pi + 1} 志願` : `${icon('plus', 'sm')}排入志願`}</button><button class="star" type="button" data-fav="${d.c}" aria-pressed="true" aria-label="取消收藏：${esc(sch(d) + d.n)}" title="取消收藏">${icon('star')}</button></div></li>`;
     }).join('');
     const h = `<header class="page-h"><div><h1 class="hi">${icon('plan')}<span>我的志願</span></h1><p>最多 6 個，順序就是你的偏好。</p></div>
-      <div class="page-actions">${P.length || favs.length ? `<button class="btn sm" type="button" data-act="copyPlan">${icon('copy', 'sm')}複製文字</button><button class="btn sm" type="button" data-act="csvPlan">${icon('download', 'sm')}下載 CSV</button><button class="btn sm" type="button" data-act="printPlan">${icon('print', 'sm')}列印</button>` : ''}</div></header>
+      <div class="page-actions"><button class="btn sm primary" type="button" data-act="reportOpen">${icon('doc', 'sm')}完整報告（可給 AI）</button>${P.length || favs.length ? `<button class="btn sm" type="button" data-act="copyPlan">${icon('copy', 'sm')}複製文字</button><button class="btn sm" type="button" data-act="csvPlan">${icon('download', 'sm')}下載 CSV</button><button class="btn sm" type="button" data-act="printPlan">${icon('print', 'sm')}列印</button>` : ''}</div></header>
       ${ctxBarHTML()}
       <div class="plan-grid">
         <section class="sec">${hIcon('plan', '六個志願')}<p class="sub">已排 ${P.length}/6</p><ol class="slots" id="planList">${slots}</ol></section>
@@ -1763,6 +1763,146 @@ loadAppData().then(D => {
     if (others.length) { lines.push('', '【其他收藏】'); others.forEach(d => lines.push(row(d))); }
     lines.push('', '說明：一階照 116 的篩選規則一關一關看，每一關只拿 115 同樣科目的最低級分推估（不是保證）；116 改用 115 沒篩過的科目時判「看不出」。116 五標 2027/2/25 公布。');
     return lines.join('\n');
+  }
+  // ------------------------------------------------------------------ 完整報告 (Markdown): everything needed to judge the situation, for a teacher, a parent or an AI
+  const plain = h => String(h || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+  const signed = n => (n > 0 ? '+' + n : String(n));
+  const mdRow = cells => '| ' + cells.map(x => String(x == null ? '' : x).replace(/\|/g, '／')).join(' | ') + ' |';
+  const mdTable = (head, rows) => [mdRow(head), mdRow(head.map(() => '---')), ...rows.map(mdRow)].join('\n');
+  const AI_PROMPT = `你是熟悉台灣大學入學制度（學測、個人申請、分科測驗、分發入學）的升學顧問。下面是一位 116 學年度考生的資料，以及離線選系工具照 116 校系分則和 115 實際結果算出的估計。請：
+1. 先用 3–5 句話說明他的處境：哪幾科是強項、弱項，個人申請和分發入學哪條路比較有利、為什麼。
+2. 檢查他的 6 個志願：穩過／衝的搭配、甄試撞期、二階要準備的東西，具體說要換掉或加入哪些系（可以從「其他可以考慮的校系」挑）。
+3. 依照「怎麼進步」和學習歷程的缺口，排出接下來最值得做的 3 件事。
+4. 報告裡沒有的資料（例如 116 五標、116 分發最低登記標準、各系評分細節），請明說是推估，不要編造數字；最後提醒以甄選會、大考中心公告和各系分則為準。
+請用繁體中文、台灣用語回答。`;
+  /** The whole report. o: {ai: prompt on top, more: other options to consider}. */
+  function reportText(o) {
+    ensureEval(); ensureUac();
+    const c = cur(), has = hasScores(c.S), out = [];
+    const P = planDepts(), favs = st.fav.map(x => BY_CODE[x]).filter(d => d && !st.plan.includes(d.c));
+    const push = (...x) => out.push(...x);
+    push(`# 116 大學選系報告（${todayISO()}）`, '', `> 由「116 大學選系」離線工具產生（${location.origin}${location.pathname}）。資料：116 校系分則（甄選會）、115 一階篩選和分發錄取結果、大考中心五標與級分人數累計表。落點是估計，不是錄取機率。`, '');
+    if (o.ai) push('## 給 AI 的說明', '', AI_PROMPT, '', '下面是資料。', '');
+    // 成績
+    push('## 成績', '');
+    if (!has) push('還沒輸入成績。', '');
+    else {
+      push(`- 看落點用：${c.mock ? `模考「${c.name}」（${c.mock.d}）` : '學測級分（自己輸入的成績或目標）'}`, `- 檢定用的五標：${c.stdName}`, `- 學測 116 年 1/22–1/24 考，2/25 公布成績和五標；之前的 116 五標用 ${st.stdYear === 'custom' ? '自訂' : st.stdYear + ' 年'}的代替。`, '');
+      const rows = SCORE_KEYS.map(k => {
+        const raw = L.val(c.thS, k), g = L.val(c.S, k);
+        if (raw == null) return [subj(k), '沒考', '', '', ...(c.mock ? [''] : [])];
+        const lv = c.mock ? levelIn(c.std, k, raw) : levelOf(k, raw);
+        const top = g != null ? L.topPercent(D.pct, [k], g) : null;
+        return [subj(k), raw, lv || '', top != null ? fmtTop(top) : '', ...(c.mock ? [c.eq[k] ? c.eq[k].g : ''] : [])];
+      });
+      push(mdTable(['科目', c.mock ? '模考級分' : '級分', c.mock ? '這次模考的標' : '標', '在 115 考生排名', ...(c.mock ? ['換算學測級分'] : [])], rows), '');
+      const ex = [c.thS.聽 ? `英聽 ${c.thS.聽} 級` : '英聽沒考', L.val(st.scores, '識') ? `APCS 觀念 ${st.scores.識} 級` : '', L.val(st.scores, '實') ? `APCS 實作 ${st.scores.實} 級` : ''].filter(Boolean);
+      push('- ' + ex.join('、'), '');
+    }
+    const ms = mocksByDate();
+    if (ms.length) {
+      push('### 歷次模考（模考級分，括號是照排名換算的學測級分）', '');
+      push(mdTable(['科目', ...ms.map(m => `${mName(m)} ${mdText(m.d)}`)], SCORE_KEYS.map(k => [subj(k), ...ms.map(m => { const v = L.val(msc(m), k), e = v != null ? L.mockToTest(m.std, k, v, D.pct) : null; return v == null ? '—' : `${v}${e ? `（${e.g}）` : ''}`; })])), '');
+    }
+    // 分科
+    if (U && has) {
+      push('## 分科測驗（走分發用）', '');
+      const plan = astPlan(), rows = ASTK.filter(k => plan[k] != null).map(k => { const m = UM[k]; return [uName(k), plan[k] === 'e' ? '估計' : '自己填', m ? m.v.toFixed(0) : '—', m && m.kind === 'est' ? `${m.lo.toFixed(0)}–${m.hi.toFixed(0)}` : '']; });
+      push(rows.length ? mdTable(['科目', '來源', '60 級分', '估計範圍'], rows) : '還沒選要考的分科。', '', '- 估計：學測（或模考換算）在 115 分發考生排前幾 %，就當作在 115 分科考生也排那裡；分科範圍更深，只是粗估。', '- 學測 g 級分在分發換算成 60 級分制約 4g。', '');
+    }
+    // 興趣
+    const qr = quizResult(st.quiz);
+    if (qr || st.hol.length) {
+      push('## 興趣', '');
+      if (qr) push(`- 興趣測驗（RIASEC，48 題，1–5 分）：代碼 **${qr.code.join('')}**；${QK.map(k => `${k} ${HOL.find(h => h[0] === k)[1]} ${qr.m[k].toFixed(1)}`).join('、')}`);
+      if (st.hol.length) push(`- 用來排學群的興趣碼：${st.hol.join('')}`);
+      push('');
+    }
+    if (has) {
+      // 整體落點
+      const scope = scopeDepts(), us = U ? uScope() : [];
+      const cnt = (xs, f) => { const n = {}; xs.forEach(x => { const t = f(x); n[t] = (n[t] || 0) + 1; }); return TIERS.filter(t => n[t]).map(t => `${TL[t]} ${n[t]}`).join('、'); };
+      push('## 整體落點', '', `- 範圍：${scopeName()}（${fmtN(scope.length)} 個申請校系${U ? `、${fmtN(us.length)} 個分發系組` : ''}）`, `- 申請入學一階：${cnt(scope, tierOf)}`);
+      if (U && hasAst()) {
+        const p = pathCompare(scope, us), [v] = pathVerdict(p);
+        push(`- 分發入學（學測＋分科）：${cnt(us, uTier)}`, `- 工具的判斷：${v}`, `- 只有申請有機會 ${p.aOnly.length} 個系、只有分發有機會 ${p.uOnly.length} 個`);
+      }
+      push('', '落點標籤：' + TIERS.map(t => `「${TL[t]}」＝${TIER_HELP[t]}`).join('；') + '。', '');
+      // 學群
+      const gs = groupFit().slice(0, 6);
+      if (gs.length) push('### 最有機會的學群（穩過＋應該過的系數 / 這個學群的系數）', '', ...gs.map(x => `- ${x.g}：${x.good}/${x.n}，一階常看 ${x.subjects.map(subj).join('、') || '—'}${x.hol.length ? `，符合興趣 ${x.hol.join('')}` : ''}${x.best.length ? `；最搶手：${x.best.map(d => schShort(d) + d.n).join('、')}` : ''}`), '');
+    }
+    // 志願
+    const detail = (d, i) => {
+      const e = EV.get(d.c), req = requirementParts(d), lines = [];
+      lines.push(`### ${i != null ? `${i + 1}. ` : ''}${sch(d)} ${d.n}（${d.c}）`);
+      if (e) {
+        lines.push(`- 落點：**${TL[e.tier]}**——${tw(e.reasons.join('；')) || '—'}`);
+        const ws = e.warnings.filter((w, j, a) => !a.some((x, k) => k !== j && x.length > w.length && x.startsWith(w)));
+        if (ws.length) lines.push(`- 注意：${tw(ws.join('；'))}`);
+        if (!e.th.ok) lines.push(`- 檢定沒過：${thFailParts(e.th).map(x => `${x.what} 要 ${x.need}、你 ${x.mine}`).join('；')}`);
+        const cmp = e.cmp;
+        if (cmp && cmp.stages && cmp.stages.length) lines.push(`- 116 一階（每關對 115 同科目最低）：${cmp.stages.map(x => `${partsLabel(x.parts)} ×${x.m}：${x.ref ? `115 最低 ${x.v}` : x.kind === 'open' ? '115 沒篩掉人' : '115 沒有同樣科目'}${x.mine != null ? `，你 ${x.mine}${x.diff != null ? `（${signed(x.diff)}）` : ''}` : '，你沒考'}`).join(' → ')}`);
+      } else lines.push(`- ${req.th}；116 一階 ${req.one}`);
+      if (e) lines.push(`- ${req.th}`);
+      lines.push(`- 名額 ${d.q}${d.ei ? `，預計甄試 ${d.ei} 人` : ''}；二階：${partsLine(d, true) || '—'}`);
+      if (d.rv) {
+        const codes = [...new Set(L.reviewGroups(d.rv).flatMap(g => g.codes))].filter(x => HAVE_CODES.includes(x));
+        lines.push(`- 審查資料：${d.rv}${codes.length ? `；已有 ${codes.filter(x => st.have.includes(x)).join('、') || '無'}，還沒有 ${codes.filter(x => !st.have.includes(x)).join('、') || '無'}` : ''}`);
+      }
+      lines.push(`- 日期：資料截止 ${rocDate(d.dd)}；甄試 ${d.idays.length ? rocText(d.idate) : '不用到校'}；放榜 ${rocDate(d.rd)}${d.fee ? `；甄試費 ${d.fee} 元` : ''}`);
+      const ub = U && has ? uBestOf(d) : null, ue = ub && UEV.get(ub.c);
+      if (ue) lines.push(`- 同系走分發（${ub.n}）：**${TL[ue.tier]}**${ue.cut != null ? `，你約 ${ue.total.toFixed(0)}、115 最低 ${ue.cut.toFixed(0)}` : ''}`);
+      lines.push(`- 分則：${d.url}`);
+      return lines.join('\n');
+    };
+    push('## 我的志願', '');
+    if (P.length) {
+      P.forEach((d, i) => push(detail(d, i), ''));
+      const ck = planChecks(P);
+      if (ck.length) push('### 工具的志願檢查', '', ...ck.map(x => `- ${{ ok: '✓', warn: '⚠', bad: '✗', info: 'ℹ' }[x.state] || '-'} ${x.title}${x.body ? '：' + plain(x.body) : ''}`), '');
+    } else push('還沒排志願。', '');
+    if (favs.length) { push('## 其他收藏', ''); favs.forEach(d => push(detail(d), '')); }
+    // 學習歷程
+    push('## 學習歷程', '', st.have.length ? `- 已經有：${st.have.map(x => `${x} ${REVIEW[x]}`).join('、')}` : '- 還沒勾選已有的學習歷程。', '- 代碼：' + Object.entries(REVIEW).map(([k, v]) => `${k} ${v}`).join('、'), '- 課程學習成果最多 3 件、多元表現最多 10 件，系列出的是會看的種類，不用每種都有；學習歷程自述（O–Q）自己寫。', '');
+    if (has) {
+      // 怎麼進步
+      const scope = scopeDepts(), { rows, blockers } = boostData(scope);
+      const best = rows.map(r => ({ r, b: r.cells.filter(Boolean).reduce((a, x) => (x.up > (a ? a.up : 0) ? x : a), null) })).filter(x => x.b && x.b.up > 0).sort((a, b) => b.b.up - a.b.up).slice(0, 4);
+      push('## 怎麼進步（申請一階，目前範圍）', '');
+      if (best.length) push(...best.map(({ r, b }) => `- ${subj(r.k)} ${r.cur || '沒考'} → ${b.to} 級分：${b.up} 個系落點變好${b.unlock ? `（${b.unlock} 個從過不了變成可以報）` : ''}`));
+      if (blockers.length) push(`- 擋住最多系的：${blockers.slice(0, 5).map(([w, n]) => `${w}（${n} 個）`).join('、')}`);
+      push('');
+      // 其他選擇
+      if (o.more) {
+        const skip = new Set([...st.plan, ...st.fav]);
+        const pool = scope.filter(d => !skip.has(d.c)).sort((a, b) => (L.selectivity(b) || 0) - (L.selectivity(a) || 0));
+        const one = d => { const e = EV.get(d.c); return `- ${TL[e.tier]}｜${sch(d)} ${d.n}（${d.c}）｜${requirementParts(d).one}｜二階 ${partsLine(d)}`; };
+        const good = pool.filter(d => isGood(tierOf(d))).slice(0, 15), reach = pool.filter(d => tierOf(d) === '衝').slice(0, 10);
+        push('## 其他可以考慮的校系（目前範圍，去年門檻高的在前）', '');
+        if (good.length) push('### 穩過、應該過', '', ...good.map(one), '');
+        if (reach.length) push('### 邊緣（可以衝）', '', ...reach.map(one), '');
+      }
+    }
+    push('## 附註', '', '- 一階：照 116 的科目、倍率和順序一關一關看，每關只跟 115 同樣科目的最低級分比；116 改用 115 沒篩過的科目時判「看不出」。收的人數差 10% 以上用級分人數表換算。', '- 模考：檢定用那次模考的級分和五標；倍率篩選把模考級分照排名換成學測級分再比。', U ? `- 分發：學測、分科換成 60 級分照權重加總，比 115 最低錄取分數；116 最低登記標準 7/29 才公布。` : '', '- 這份報告沒有姓名或學校；分享前可以再刪掉不想給別人看的內容。');
+    return out.filter(x => x != null).join('\n').replace(/\n{3,}/g, '\n\n') + '\n';
+  }
+  function openReport() {
+    const dlg = $('#report');
+    ui.rep = ui.rep || { ai: true, more: true };
+    const draw = () => {
+      const txt = reportText(ui.rep);
+      ui.repText = txt;
+      $('#rpBody').innerHTML = `<p class="sub">一份文字報告：成績、模考、分科估計、興趣、整體落點、每個志願的關卡和準備狀況。可以給老師或家長看，也可以整份貼給 ChatGPT、Claude、Gemini 之類的 AI，請它幫你看。</p>
+        <div class="rp-opt"><label class="fcheck"><input type="checkbox" data-rep="ai" ${ui.rep.ai ? 'checked' : ''}> 開頭加上給 AI 的說明</label><label class="fcheck"><input type="checkbox" data-rep="more" ${ui.rep.more ? 'checked' : ''}> 附上其他可以考慮的校系</label></div>
+        <div class="mv-act"><button class="btn primary sm" type="button" data-act="repCopy">${icon('copy', 'sm')}複製全文</button><button class="btn sm" type="button" data-act="repDownload">${icon('download', 'sm')}下載 .md</button>${navigator.share ? `<button class="btn sm" type="button" data-act="repShare">${icon('upload', 'sm')}分享</button>` : ''}<span class="muted num">${fmtN(txt.length)} 字</span></div>
+        <textarea class="mv-code rp-text" readonly rows="14" aria-label="報告內容">${esc(txt)}</textarea>
+        <p class="hint">報告只在你複製、下載或分享時才離開這台裝置，裡面沒有姓名或學校。</p>`;
+    };
+    $('#rpBody').innerHTML = '<p class="hint">整理中…</p>';
+    if (!dlg.open) dlg.showModal();
+    ui.repDraw = draw;
+    setTimeout(draw, 30);
   }
   /** Clipboard, or the old select-and-copy where the Clipboard API is not allowed (file:// pages, older Safari). */
   function copyText(txt, msg) {
@@ -2530,6 +2670,11 @@ loadAppData().then(D => {
     printPlan: () => { if (ui.tab !== 'plan') setTab('plan'); setTimeout(() => window.print(), 60); },
     exportState: () => download(`apply116-backup-${todayISO()}.json`, JSON.stringify(st, null, 1), 'application/json'),
     moveOpen: () => openMove(),
+    reportOpen: () => openReport(),
+    repCopy: () => copyText(ui.repText, '已複製報告：可以貼給老師或 AI'),
+    repDownload: () => download(`116選系報告-${todayISO()}.md`, ui.repText, 'text/markdown;charset=utf-8'),
+    repShare: () => navigator.share({ title: '116 大學選系報告', text: ui.repText }).catch(() => {}),
+    repClose: () => $('#report').close(),
     moveShare: () => navigator.share({ title: '我的選系資料', text: '在另一台裝置打開這個連結，匯入我的選系資料', url: ui.moveLink }).catch(() => {}),
     moveCopyLink: () => copyText(ui.moveLink, '已複製連結：傳給自己，在另一台打開'),
     moveCopyCode: () => copyText($('#mvCode').value, '已複製轉移碼'),
@@ -2694,6 +2839,7 @@ loadAppData().then(D => {
         render();
         return;
       }
+      if (t.dataset.rep) { ui.rep[t.dataset.rep] = t.checked; ui.repDraw(); return; }
       if (t.id === 'boostAll') { st.f.untaken = t.checked; ui.shown = PAGE; render(); return; }
       if (t.id === 'untakenBox') { st.f.untaken = t.checked; ui.shown = PAGE; render(); return; }
       if (t.id === 'sort') { st.f.sort = t.value; ui.shown = PAGE; render(); return; }

@@ -1329,3 +1329,5 @@ button.gb:hover{background:var(--surface-2)}
 .mv-in{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--text-2);margin-top:6px}
 .mv-in textarea{font-size:16px;background:var(--surface)}
 .mv-q{margin:0;font-size:18px;font-weight:750}
+.rp-opt{display:flex;flex-wrap:wrap;gap:6px 16px}
+.rp-text{min-height:240px;font-size:12.5px}

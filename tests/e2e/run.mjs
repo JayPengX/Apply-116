@@ -208,6 +208,15 @@ try {
     await page.reload();
     await page.waitForSelector('#planList li[data-code]');
     ok((await page.locator('#tabs [data-plancount]').innerText()) === '6/6', 'plan survives reload (and the page reopens on the plan tab)');
+    // 完整報告: one text with scores, 落點, each 志願's stages and what is missing, ready for an AI
+    await page.click('#plan [data-act="reportOpen"]');
+    await page.waitForSelector('#report .rp-text');
+    const rep = await page.inputValue('#report .rp-text');
+    ok(rep.includes('## 給 AI 的說明') && rep.includes('## 成績') && rep.includes('## 我的志願') && (rep.match(/^### [1-6]\. /gm) || []).length === 6 && rep.includes('115 最低'), `完整報告 has the AI prompt, scores and all 6 志願 with their 115 cuts (${rep.length} 字)`);
+    await page.click('#report [data-rep="ai"]');
+    await page.waitForFunction(() => !document.querySelector('#report .rp-text').value.includes('給 AI 的說明'));
+    ok(true, 'the AI prompt can be left out');
+    await page.click('#report [data-act="repClose"]');
     // 我的學習歷程: tick what you have, each 志願 says what is still missing
     await page.click('#haveSec [data-have="O"]');
     await page.waitForFunction(() => window.__app.st().have.includes('O'));
