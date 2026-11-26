@@ -1317,3 +1317,15 @@ button.gb:hover{background:var(--surface-2)}
 .rmx tr.have th[scope=row]{color:var(--text-2)}
 .code.have{border-color:var(--ok)}
 .code.have .i{color:var(--ok)}
+
+/* 換裝置 */
+.move .sheet-b{display:flex;flex-direction:column;gap:14px;padding-bottom:24px}
+.mv-s{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px}
+.mv-s h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+.mv-s .hint{margin:0}
+.mv-n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--on-ink);font-size:12.5px}
+.mv-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.mv-code,.mv-in textarea{width:100%;box-sizing:border-box;font-family:var(--mono);font-size:12px;line-height:1.4;padding:8px 10px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface-2);color:var(--text);resize:vertical;word-break:break-all}
+.mv-in{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--text-2);margin-top:6px}
+.mv-in textarea{font-size:16px;background:var(--surface)}
+.mv-q{margin:0;font-size:18px;font-weight:750}

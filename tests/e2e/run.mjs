@@ -471,6 +471,37 @@ try {
     await ctx.close();
   }
 
+  console.log('換裝置: link and code');
+  {
+    const A = await newPage(browser, devices['iPhone 13']);
+    await A.page.goto(URL_);
+    await A.page.waitForSelector('.row');
+    await A.page.evaluate(() => { const st = window.__app.st(); st.scores.國 = '12'; st.plan = window.__app.D.depts.slice(0, 3).map(d => d.c); st.have = ['O']; window.__app.render(); });
+    await A.page.click('#bottomnav [data-tab="plan"]');
+    await A.page.click('[data-act="moveOpen"]');
+    await A.page.waitForSelector('#mvCode');
+    const code = await A.page.inputValue('#mvCode');
+    ok(/^[zj][A-Za-z0-9_-]+$/.test(code) && code.length < 2000, `transfer code is short and URL-safe (${code.length})`);
+    const B = await newPage(browser, devices['iPhone 13']);
+    await B.page.goto(URL_ + '#import=' + code);
+    await B.page.waitForSelector('[data-act="moveApply"]');
+    ok(/3 個志願/.test(await B.page.locator('#mvBody').innerText()), 'opening the link says what will come in, before replacing anything');
+    await B.page.click('[data-act="moveApply"]');
+    const got = await B.page.evaluate(() => ({ p: window.__app.st().plan.length, g: window.__app.st().scores.國, h: window.__app.st().have.join(), hash: location.hash }));
+    ok(got.p === 3 && got.g === '12' && got.h === 'O' && got.hash === '', 'the other device gets the 志願, scores and 學習歷程, and the link is cleared');
+    // pasting the code works too
+    await B.page.evaluate(() => { window.__app.st().plan = []; window.__app.render(); });
+    await B.page.click('#bottomnav [data-tab="plan"]');
+    await B.page.click('[data-act="moveOpen"]');
+    await B.page.waitForSelector('#mvPaste');
+    await B.page.fill('#mvPaste', code);
+    await B.page.click('[data-act="movePaste"]');
+    await B.page.click('[data-act="moveApply"]');
+    ok((await B.page.evaluate(() => window.__app.st().plan.length)) === 3, 'a pasted code imports the same way');
+    ok(A.errors.length === 0 && B.errors.length === 0, 'no console errors' + (A.errors.concat(B.errors).length ? ': ' + A.errors.concat(B.errors).join(' | ') : ''));
+    await A.ctx.close(); await B.ctx.close();
+  }
+
   console.log('storage blocked');
   {
     const { ctx, page, errors } = await newPage(browser);

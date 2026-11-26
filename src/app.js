@@ -1745,8 +1745,8 @@ loadAppData().then(D => {
       ${haveHTML(P)}
       ${prepHTML(P)}
       ${P.length ? `<section class="sec">${hIcon('cal', '二階行事曆')}<p class="sub">審查資料截止、甄試、放榜和統一日期</p>${calendarHTML(P)}</section>` : ''}
-      <section class="sec no-print">${hIcon('download', '備份與換裝置')}<p class="sub">資料只存在這台裝置，換裝置前先備份。</p>
-        <div class="page-actions" style="margin-top:14px"><button class="btn sm" type="button" data-act="exportState">${icon('download', 'sm')}備份我的資料</button><label class="btn sm">${icon('upload', 'sm')}還原備份<input type="file" id="importState" accept="application/json,.json"></label></div></section>`;
+      <section class="sec no-print">${hIcon('download', '換裝置與備份')}<p class="sub">資料只存在這台裝置，沒有帳號也不上傳。手機和電腦之間用連結或轉移碼帶過去。</p>
+        <div class="page-actions" style="margin-top:14px"><button class="btn sm primary" type="button" data-act="moveOpen">${icon('upload', 'sm')}換裝置／備份</button></div></section>`;
     keepFocus($('#plan'), () => { $('#plan').innerHTML = h; });
   }
   function planText() {
@@ -1764,6 +1764,11 @@ loadAppData().then(D => {
     lines.push('', '說明：一階照 116 的篩選規則一關一關看，每一關只拿 115 同樣科目的最低級分推估（不是保證）；116 改用 115 沒篩過的科目時判「看不出」。116 五標 2027/2/25 公布。');
     return lines.join('\n');
   }
+  /** Clipboard, or the old select-and-copy where the Clipboard API is not allowed (file:// pages, older Safari). */
+  function copyText(txt, msg) {
+    const old = () => { const t = document.createElement('textarea'); t.value = txt; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;opacity:0'; ($('dialog[open]') || document.body).appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { /* not allowed */ } t.remove(); return ok; };
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject(new Error('no clipboard'))).then(() => toast(msg), () => toast(old() ? msg : '無法自動複製，請長按文字選取後複製'));
+  }
   function download(name, text, type) {
     const blob = new Blob([text], { type });
     const a = document.createElement('a');
@@ -1772,6 +1777,70 @@ loadAppData().then(D => {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  // ------------------------------------------------------------------ moving your data to another device (no server: the data rides in the link's # part, which browsers never send)
+  const b64u = u8 => { let b = ''; for (let i = 0; i < u8.length; i += 0x8000) b += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const unb64u = t => { const b = atob(t.replace(/-/g, '+').replace(/_/g, '/')); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+  const pipe = (u8, tf) => new Response(new Blob([u8]).stream().pipeThrough(tf)).arrayBuffer().then(x => new Uint8Array(x));
+  /** Everything you saved, as one short code: z + base64url(length, raw deflate), or j + base64url(JSON) without CompressionStream. */
+  async function packState() {
+    const { theme, ...rest } = st;
+    const raw = new TextEncoder().encode(JSON.stringify(rest));
+    if (!window.CompressionStream) return 'j' + b64u(raw);
+    const z = await pipe(raw, new CompressionStream('deflate-raw')), out = new Uint8Array(z.length + 4);
+    new DataView(out.buffer).setUint32(0, raw.length, true);
+    out.set(z, 4);
+    return 'z' + b64u(out);
+  }
+  async function unpackState(code) {
+    const c = String(code).trim().replace(/^.*#import=/, '').replace(/\s+/g, '');
+    const u = unb64u(c.slice(1));
+    let raw;
+    if (c[0] === 'j') raw = u;
+    else if (c[0] === 'z') {
+      const n = new DataView(u.buffer).getUint32(0, true), z = u.subarray(4);
+      raw = window.DecompressionStream ? await pipe(z, new DecompressionStream('deflate-raw')) : window.tinyInflate(z, new Uint8Array(n));
+    } else throw new Error('not a code');
+    const s = JSON.parse(new TextDecoder().decode(raw));
+    if (!s || s.v !== 1) throw new Error('not a backup');
+    return s;
+  }
+  const linkFor = code => location.origin + location.pathname + '#import=' + code;
+  const stateSummary = s => [`${(s.plan || []).length} 個志願`, `${(s.fav || []).length} 個收藏`, `${(s.mocks || []).length} 次模考`, SCORE_KEYS.some(k => s.scores && L.val(s.scores, k) != null) ? '學測級分' : '', (s.quiz || []).some(x => x) ? '興趣測驗' : '', (s.have || []).length ? '學習歷程勾選' : ''].filter(Boolean).join('、');
+  function applyImported(s) {
+    const theme = st.theme;
+    st = sanitize(s);
+    st.theme = theme;
+    ui.mf = null; ui.shown = PAGE;
+    render();
+  }
+  /** The 換裝置 dialog: send a link to yourself, or copy a code, or a file; the other device opens or pastes it. */
+  async function openMove() {
+    const dlg = $('#move'), body = $('#mvBody');
+    body.innerHTML = '<p class="hint">整理中…</p>';
+    if (!dlg.open) dlg.showModal();
+    const code = await packState(), link = linkFor(code);
+    ui.moveLink = link;
+    body.innerHTML = `<p class="sub">你的資料（${esc(stateSummary(st)) || '目前沒有資料'}）只存在這台裝置。用下面任一種方式帶到另一台：</p>
+      <div class="mv-s"><h3><span class="mv-n">1</span>傳連結給自己（最簡單）</h3><p class="hint">用 LINE、AirDrop、Email 傳給自己，在另一台打開連結就會問要不要匯入。資料在連結 # 後面，不會送到任何伺服器。</p>
+        <div class="mv-act">${navigator.share ? `<button class="btn primary sm" type="button" data-act="moveShare">${icon('upload', 'sm')}分享連結</button>` : ''}<button class="btn sm${navigator.share ? '' : ' primary'}" type="button" data-act="moveCopyLink">${icon('copy', 'sm')}複製連結</button><span class="muted num">${fmtN(link.length)} 字</span></div></div>
+      <div class="mv-s"><h3><span class="mv-n">2</span>轉移碼</h3><p class="hint">在另一台打開這個網站 → 我的志願 → 換裝置，貼上轉移碼。</p>
+        <textarea class="mv-code" id="mvCode" readonly rows="3" aria-label="轉移碼">${esc(code)}</textarea>
+        <div class="mv-act"><button class="btn sm" type="button" data-act="moveCopyCode">${icon('copy', 'sm')}複製轉移碼</button></div>
+        <label class="mv-in"><span>從別台帶過來：貼上轉移碼或連結</span><textarea id="mvPaste" rows="2" placeholder="z…" aria-label="貼上轉移碼或連結"></textarea></label>
+        <div class="mv-act"><button class="btn sm" type="button" data-act="movePaste">${icon('download', 'sm')}匯入</button></div></div>
+      <div class="mv-s"><h3><span class="mv-n">3</span>備份檔</h3><p class="hint">存成檔案放雲端硬碟或 USB，之後再選回來。</p>
+        <div class="mv-act"><button class="btn sm" type="button" data-act="exportState">${icon('download', 'sm')}下載備份檔</button><label class="btn sm">${icon('upload', 'sm')}選擇備份檔<input type="file" id="importState" accept="application/json,.json"></label></div></div>
+      <p class="hint">匯入會取代那台裝置上原本的資料（深淺色設定除外）。</p>`;
+  }
+  /** Before replacing anything: say what is coming in and what will be replaced. */
+  function confirmImport(s) {
+    const dlg = $('#move'), body = $('#mvBody');
+    ui.pending = s;
+    body.innerHTML = `<p class="mv-q">要匯入這份資料嗎？</p><p class="sub">帶進來的：${esc(stateSummary(s)) || '（空的）'}</p>
+      <p class="sub">這台裝置現在的（會被取代）：${esc(stateSummary(st)) || '（空的）'}</p>
+      <div class="mv-act"><button class="btn primary" type="button" data-act="moveApply">${icon('check', 'sm')}匯入並取代</button><button class="btn" type="button" data-act="moveCancel">取消</button></div>`;
+    if (!dlg.open) dlg.showModal();
   }
   function csv() {
     const rows = [['志願', '校系代碼', '學校', '校系', '落點', '理由', '檢定', '116一階（115同科目最低）', '二階', '審查資料', '審查資料截止', '甄試日期', '放榜', '甄試費', '官方網址']];
@@ -2324,6 +2393,12 @@ loadAppData().then(D => {
     if (changed) window.scrollTo(0, 0);
   }
   function route() {
+    if (/^#import=/.test(location.hash)) {
+      const code = location.hash.slice(8);
+      history.replaceState(null, '', location.pathname + location.search);
+      unpackState(code).then(confirmImport, () => toast('這個連結的資料不完整，請重新傳一次'));
+      return;
+    }
     const m = /^#d=(\d{6})$/.exec(location.hash);
     if (m && BY_CODE[m[1]]) { if (!$('#detail').open || detailCode !== m[1]) openDetail(m[1], true); return; }
     if ($('#detail').open) { detailPushed = false; $('#detail').close(); }
@@ -2453,7 +2528,14 @@ loadAppData().then(D => {
     },
     csvPlan: () => download('apply116-plan.csv', csv(), 'text/csv;charset=utf-8'),
     printPlan: () => { if (ui.tab !== 'plan') setTab('plan'); setTimeout(() => window.print(), 60); },
-    exportState: () => download('apply116-backup.json', JSON.stringify(st, null, 1), 'application/json'),
+    exportState: () => download(`apply116-backup-${todayISO()}.json`, JSON.stringify(st, null, 1), 'application/json'),
+    moveOpen: () => openMove(),
+    moveShare: () => navigator.share({ title: '我的選系資料', text: '在另一台裝置打開這個連結，匯入我的選系資料', url: ui.moveLink }).catch(() => {}),
+    moveCopyLink: () => copyText(ui.moveLink, '已複製連結：傳給自己，在另一台打開'),
+    moveCopyCode: () => copyText($('#mvCode').value, '已複製轉移碼'),
+    movePaste: () => { const v = $('#mvPaste').value; if (!v.trim()) { toast('先貼上轉移碼或連結'); return; } unpackState(v).then(confirmImport, () => toast('轉移碼不完整或不是這個工具的')); },
+    moveApply: () => { const s = ui.pending; ui.pending = null; $('#move').close(); if (s) { applyImported(s); toast('已匯入'); } },
+    moveCancel: () => { ui.pending = null; $('#move').close(); },
     tryReset: () => { ui.tryS = { ...cur().thS }; $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
   };
   /** Chart tooltips: any element with data-tip, on hover, keyboard focus or tap. */
@@ -2621,11 +2703,7 @@ loadAppData().then(D => {
         file.text().then(txt => {
           const s = JSON.parse(txt);
           if (!s || s.v !== 1) throw new Error('not a backup');
-          const theme = st.theme;
-          st = sanitize(s);
-          st.theme = theme;
-          render();
-          toast('已還原備份');
+          confirmImport(s);
         }).catch(() => toast('這個檔案不是這個工具的備份檔'));
         t.value = '';
       }
