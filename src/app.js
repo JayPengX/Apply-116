@@ -136,9 +136,9 @@ loadAppData().then(D => {
   const LS = 'apply116-v1';
   const PAGE = 50;
   // The order is the order you use it in: scores → departments → 志願; then how to improve, and the calendar.
-  const NAV = [['scores', '我的成績', '成績', 'mock'], ['explore', '找校系', '找校系', 'search'], ['plan', '我的志願', '志願', 'plan'], ['boost', '怎麼進步', '進步', 'boost'], ['guide', '時程與規則', '時程', 'guide']];
+  const NAV = [['scores', '我的成績', '成績', 'mock'], ['explore', '找校系', '找校系', 'search'], ['plan', '我的志願', '志願', 'plan'], ['boost', '怎麼進步', '進步', 'boost'], ['exam', '考古題', '考古題', 'doc'], ['guide', '時程與規則', '時程', 'guide']];
   const TABS = NAV.map(x => x[0]);
-  const HASH_TAB = { '#scores': 'scores', '#mock': 'scores', '#plan': 'plan', '#uac': 'explore', '#boost': 'boost', '#guide': 'guide' };
+  const HASH_TAB = { '#scores': 'scores', '#mock': 'scores', '#plan': 'plan', '#uac': 'explore', '#boost': 'boost', '#exam': 'exam', '#guide': 'guide' };
 
   const ICON = {
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
@@ -312,6 +312,8 @@ loadAppData().then(D => {
     out.src = out.mocks.some(m => m.id === s.src) ? s.src : 'test';
     out.hol = [...new Set(arr(s.hol, x => HOL.some(h => h[0] === x)))].slice(0, 3);
     out.have = [...new Set(arr(s.have, c => HAVE_CODES.includes(c)))];
+    // 考古題: results, 錯題本 and an exam in progress (checked again by the exam module)
+    out.ex = s.ex && typeof s.ex === 'object' && !Array.isArray(s.ex) ? s.ex : {};
     out.quiz = Array.isArray(s.quiz) ? s.quiz.slice(0, 48).map(x => (Number.isInteger(x) && x >= 0 && x <= 5 ? x : 0)) : [];
     if (s.ast && typeof s.ast === 'object') {
       out.ast = {};
@@ -2531,6 +2533,7 @@ loadAppData().then(D => {
     if (ui.tab === 'explore') renderExplore();
     else if (ui.tab === 'plan') renderPlan();
     else if (ui.tab === 'boost') renderBoost();
+    else if (ui.tab === 'exam') EX.draw();
     else if (ui.tab === 'scores') renderScores();
     else renderGuide();
     // the filter sheet can be opened from 我的成績 and 怎麼進步 too
@@ -2541,7 +2544,9 @@ loadAppData().then(D => {
     if (!TABS.includes(name)) name = 'explore';
     const changed = name !== ui.tab;
     if (changed && ui.tab === 'scores' && ui.mf && !ui.mf.id) ui.mf = null; // an unsaved new 模考 form does not follow you around
+    if (changed && ui.tab === 'exam') EX.leave();
     ui.tab = name;
+    if (changed && name === 'exam') EX.enter();
     TABS.forEach(v => { $('#view-' + v).hidden = v !== name; });
     if (!fromRoute && !/^#d=/.test(location.hash)) history.replaceState(null, '', tabHash(name));
     render();
@@ -2720,6 +2725,7 @@ loadAppData().then(D => {
   function bind() {
     bindTips();
     document.addEventListener('click', ev => {
+      if (EX.onClick(ev)) return;
       const b = ev.target.closest('button, a, [data-open]');
       if (!b || b.closest('.track')) return;
       const ds = b.dataset, f = st.f;
@@ -2827,6 +2833,7 @@ loadAppData().then(D => {
     });
     document.addEventListener('change', ev => {
       const t = ev.target;
+      if (EX.onChange(ev)) return;
       // a choice is final: let go of the <select> so a re-render cannot bring its picker back (Safari on iPhone)
       if (t.tagName === 'SELECT') t.blur();
       if (t.id === 'mfPreset' && ui.mf) {
@@ -2870,6 +2877,7 @@ loadAppData().then(D => {
       }
     });
     document.addEventListener('toggle', ev => {
+      if (EX.onToggle(ev)) return;
       const id = ev.target.id;
       if (id === 'moreScores') ui.more = ev.target.open;
       if (id === 'catsBox') ui.catsOpen = ev.target.open;
@@ -2890,6 +2898,7 @@ loadAppData().then(D => {
     });
     let qTimer = null;
     document.addEventListener('input', ev => {
+      if (EX.onInput(ev)) return;
       const t = ev.target, f = ui.mf;
       if (!f) return;
       if (t.dataset.mf && t.dataset.mf !== '聽') {
@@ -2955,6 +2964,7 @@ loadAppData().then(D => {
   new MutationObserver(() => { if (glueQueued) return; glueQueued = true; requestAnimationFrame(() => { glueQueued = false; glue(document.body); }); }).observe(document.body, { childList: true, subtree: true });
 
   // ------------------------------------------------------------------ init
+  const EX = window.ExamUI({ $, esc, icon, hIcon, toast, copyText, save, getState: () => st });
   $('#tabs').innerHTML = NAV.map(([k, l, , ic]) => `<button class="tab" type="button" data-tab="${k}">${icon(ic)}${l}${k === 'plan' ? '<span class="count" data-plancount></span>' : ''}</button>`).join('');
   $('#bottomnav').innerHTML = NAV.map(([k, , s, ic]) => `<button class="bnav" type="button" data-tab="${k}">${icon(ic)}<span>${s}</span>${k === 'plan' ? '<span class="count" data-plancount></span>' : ''}</button>`).join('');
   if (st.theme) document.documentElement.dataset.theme = st.theme;

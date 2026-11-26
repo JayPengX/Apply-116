@@ -511,6 +511,64 @@ try {
     await A.ctx.close(); await B.ctx.close();
   }
 
+  console.log('考古題');
+  {
+    const { ctx, page, errors } = await newPage(browser, devices['iPhone 13']);
+    await page.goto(URL_ + '#exam');
+    await page.waitForSelector('#exam .xp-y');
+    const papers = await page.locator('#exam .xp-y').count();
+    ok(papers >= 50, `考古題 lists the 學測 and 分科 papers (${papers})`);
+    // practice: choose, cross out, check
+    await page.click('[data-xpaper="gsat-115-eng"]');
+    await page.click('#xMode [data-xact="practice"]');
+    await page.waitForSelector('#exam .xo-b');
+    await page.click('#exam .xo-x[data-xx="A"]');
+    ok(await page.locator('#exam .xo.crossed').count() === 1, 'an option can be crossed out');
+    await page.click('#exam .xo-b[data-xa="B"]');
+    await page.click('#exam [data-xact="check"]');
+    ok(/答對/.test(await page.locator('#exam .xv').innerText()), '115 英文 1 is B: 對答案 says so');
+    // 文意選填: a blank answered from the shared word bank, marked in the passage
+    await page.click('#exam [data-xact="grid"]');
+    await page.click('#exam [data-xgo="21"]');
+    ok(await page.locator('#exam .xo-b').count() === 10 && await page.locator('#exam u.cur').count() === 1, '文意選填 22: 10 shared choices and the blank marked in the passage');
+    await page.click('#exam [data-xact="home"]');
+    // 選填: the keypad fills the cells
+    await page.click('[data-xpaper="gsat-115-ma"]');
+    await page.click('#xMode [data-xact="practice"]');
+    await page.waitForSelector('#exam .xo-b, #exam .xc');
+    await page.click('#exam [data-xact="grid"]');
+    await page.click('#exam [data-xgo="12"]');
+    await page.waitForSelector('#exam .xc');
+    for (const k of ['9', '1', '0']) await page.click(`#exam [data-xkey="${k}"]`);
+    await page.click('#exam [data-xact="check"]');
+    ok(/答對/.test(await page.locator('#exam .xv').innerText()), '115 數學A 13 (選填 9、1、0) is graded right');
+    ok(await page.locator('#exam math').count() > 0, 'formulas are MathML');
+    await page.click('#exam [data-xact="home"]');
+    // 模擬考 with 非選擇題: the AI prompt has the question, the 評分原則 and the answer
+    await page.check('#xOpen');
+    await page.click('[data-xpaper="gsat-115-eng"]');
+    await page.click('#xMode [data-xact="full"]');
+    await page.waitForSelector('#xTime');
+    ok(/^(100|99):/.test(await page.locator('#xTime').innerText()), 'a mock exam counts down from the official 100 minutes');
+    await page.click('#exam [data-xact="grid"]');
+    const last = await page.locator('#exam .xgrid button').count();
+    await page.click(`#exam [data-xgo="${last - 1}"]`);
+    await page.waitForSelector('#xText');
+    await page.fill('#xText', 'My essay.');
+    await page.evaluate(() => { window.__copied = null; navigator.clipboard.writeText = t => { window.__copied = t; return Promise.resolve(); }; });
+    await page.click('#exam [data-xact="ai"]');
+    const prompt = await page.evaluate(() => window.__copied || '');
+    ok(prompt.includes('評分原則') && prompt.includes('My essay.') && prompt.includes('得分'), '非選擇題: the copied AI prompt has the rubric and the answer');
+    await page.fill('#xAi', '12');
+    page.once('dialog', d => d.accept());
+    await page.click('#exam [data-xact="submit"]');
+    await page.waitForSelector('#exam .xres-big');
+    ok(/／/.test(await page.locator('#exam .xres-big').innerText()) && await page.locator('#exam .xrt tbody tr').count() > 40, '交卷 shows the score and every question');
+    ok((await page.evaluate(() => window.__app.st().ex.wrong.length)) > 0, 'wrong answers go to the 錯題本');
+    ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
+    await ctx.close();
+  }
+
   console.log('storage blocked');
   {
     const { ctx, page, errors } = await newPage(browser);

@@ -67,6 +67,7 @@
   </section>
   <section class="view" id="view-plan" aria-label="我的志願" hidden><div class="wrap"><div class="page" id="plan"></div></div></section>
   <section class="view" id="view-boost" aria-label="怎麼進步" hidden><div class="wrap"><div class="page" id="boost"></div></div></section>
+  <section class="view" id="view-exam" aria-label="考古題" hidden><div class="wrap"><div class="page" id="exam"></div></div></section>
   <section class="view" id="view-guide" aria-label="時程與規則" hidden><div class="wrap"><div class="page" id="guide"></div></div></section>
 </main>
 
@@ -103,10 +104,17 @@
   <div class="sheet-b" id="mvBody"></div>
 </dialog>
 
+<dialog class="sheet move" id="xMode" aria-labelledby="xmTitle">
+  <div class="sheet-h"><h2 id="xmTitle">怎麼寫這份考卷？</h2><button class="icon-btn" type="button" data-xact="modeClose" aria-label="關閉"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="sheet-b" id="xmBody"></div>
+</dialog>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script type="application/octet-stream" id="app-data">/*__DATA__*/</script>
 <script>/*__INFLATE__*/</script>
 <script>/*__LOGIC__*/</script>
+<script>window.EXAM_INDEX=/*__EXAMS__*/;</script>
+<script>/*__EXAM__*/</script>
 <script>/*__APP__*/</script>
 </body>
 </html>
