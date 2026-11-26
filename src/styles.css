@@ -1340,9 +1340,10 @@ button.gb:hover{background:var(--surface-2)}
 /* 考古題 */
 .xp-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column}
 .xp-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
-.xp-row>b{min-width:5.5em;font-size:15px}
-.xp-ys{display:flex;flex-wrap:wrap;gap:6px}
-.xp-y{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:52px;min-height:40px;padding:4px 10px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface);color:var(--text);font-weight:650;font-size:14px;font-variant-numeric:tabular-nums}
+.xp-row{display:grid;grid-template-columns:3.4em minmax(0,1fr);gap:8px;align-items:center}
+.xp-row>b{font-size:15px}
+.xp-ys{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.xp-y{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:44px;padding:4px 2px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface);color:var(--text);font-weight:650;font-size:14px;font-variant-numeric:tabular-nums}
 .xp-y:hover{background:var(--surface-2)}
 .xp-y small{font-size:11px;color:var(--ok);font-weight:650}
 .xp-src{margin-top:18px}
@@ -1391,8 +1392,9 @@ button.gb:hover{background:var(--surface-2)}
 .xq-stem img,.xg-b img,.xo-t img{max-width:100%;height:auto;vertical-align:middle}
 img.eq{height:auto;max-height:3em;vertical-align:middle}
 img.crop{display:block;width:100%;max-width:760px;height:auto;border-radius:6px;background:#fff}
-:root[data-theme="dark"] img.crop,:root[data-theme="dark"] .xq-stem img.fig,:root[data-theme="dark"] .xg-b img.fig{filter:invert(.92) hue-rotate(180deg)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) img.crop,:root:not([data-theme="light"]) .xq-stem img.fig,:root:not([data-theme="light"]) .xg-b img.fig{filter:invert(.92) hue-rotate(180deg)}}
+/* pages of the official paper stay paper-white in dark mode (inverting would turn photos into negatives) */
+img.crop{padding:8px;box-sizing:border-box;box-shadow:0 0 0 1px var(--line)}
+.xq-stem img.fig,.xg-b img.fig,.xo-t img{background:#fff;border-radius:4px}
 .xbox{margin:6px 0;padding:8px 12px;border-radius:8px}
 .xbox.ln{border:1px solid var(--line-2)}
 math{font-size:1.05em}
@@ -1400,7 +1402,7 @@ math{font-size:1.05em}
 .xo-list.compact{flex-direction:row;flex-wrap:wrap}
 .xo{display:flex;align-items:stretch;gap:6px}
 .xo-list.compact .xo{flex:1 1 60px}
-.xo-b{flex:1;display:flex;align-items:flex-start;gap:10px;text-align:left;min-height:48px;padding:10px 12px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);color:var(--text);font-size:15.5px;line-height:1.6;transition:background .12s,border-color .12s}
+.xo-b{flex:1;min-width:0;display:flex;align-items:flex-start;gap:10px;text-align:left;min-height:48px;padding:10px 12px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);color:var(--text);font-size:15.5px;line-height:1.6;transition:background .12s,border-color .12s}
 .xo-list.compact .xo-b{justify-content:center;align-items:center}
 .xo-b:hover{background:var(--surface-2)}
 .xo-l{flex:none;display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line-2);font-size:13.5px;font-weight:750}
@@ -1455,3 +1457,43 @@ u.cur{background:var(--warn-bg);color:var(--warn);font-weight:750;border-radius:
 @media (max-width:999px){.xg-b{max-height:46vh;overflow:auto;overscroll-behavior:contain}}
 .xq-cats{margin-top:10px}
 .xq-cat{font-size:12.5px;font-weight:650;padding:2px 8px;border-radius:7px;background:var(--info-bg);color:var(--info)}
+
+/* 考古題: home */
+.xq-subj{flex:1 1 140px}
+.xq-subj select{width:100%}
+.xq-go{width:100%;margin-top:14px;justify-content:center;min-height:46px}
+.xq-more{display:flex;flex-direction:column;gap:12px}
+.xq-wrong{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);color:var(--text);text-align:left}
+.xq-wrong:disabled{opacity:.6}
+.xq-wrong>span{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center}
+.xq-wrong small{grid-column:2;font-size:12.5px;color:var(--text-3)}
+.xq-wrong>b{font-size:22px}
+/* 考古題: focus mode while answering */
+body.xfocus .appbar,body.xfocus .bottomnav{display:none}
+body.xfocus .xr-bar{top:0;padding-top:max(8px,env(safe-area-inset-top))}
+body.xfocus .xr-foot{bottom:0;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+body.xfocus #main{padding-bottom:0}
+@media (max-width:999px){.xg-b{max-height:36vh}}
+.xq-h{flex-wrap:nowrap}
+.xq-sec{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xq-type,.xq-n,.xq-cat{flex:none;white-space:nowrap}
+.xgrid-wrap{margin-bottom:14px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.xgrid-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:13.5px;color:var(--text-2)}
+.xgrid-wrap .xgrid{margin-bottom:8px}
+.xgrid-k{display:flex;align-items:center;gap:6px;margin:0;font-size:12px;color:var(--text-3)}
+.xgrid-k .k{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line-2);margin-left:8px}
+.xgrid-k .k:first-child{margin-left:0}
+.xgrid-k .k.done{background:var(--surface-3)}
+.xgrid-k .k.flag{background:var(--warn)}
+.xgrid-k .k.cur{outline:2px solid var(--ink)}
+@media (min-width:1000px){body.xfocus .xr-body.two .xg{top:64px;max-height:calc(100vh - 150px)}}
+.xrt tr.unans td{color:var(--text-3)}
+.xrt tr.unans td:last-child{color:var(--text-3);font-weight:500}
+img.crop{cursor:zoom-in}
+.xzoom{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#fff}
+.xzoom::backdrop{background:rgba(0,0,0,.6)}
+.xz-b{width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch}
+.xz-b img{display:block;max-width:none;width:180%;height:auto}
+@media (min-width:900px){.xz-b img{width:auto;max-width:100%;margin:0 auto}}
+.xz-x{position:fixed;top:max(10px,env(safe-area-inset-top));right:12px;z-index:2;background:#fff;color:#111}
+.xz-h{position:fixed;bottom:max(12px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);margin:0;padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.65);color:#fff;font-size:12.5px;pointer-events:none}

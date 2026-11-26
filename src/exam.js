@@ -137,9 +137,15 @@ window.ExamUI = function (ctx) {
     if (s.pauseAt) { s.paused += s.end - s.pauseAt; s.pauseAt = null; }
     const e = ex();
     let got = 0, max = 0;
+    let nAns = 0, nRight = 0;
     for (const k of s.qs) {
       const [d, q] = qOf(k);
       if (!q || q.type === 'open' && !(s.a[k.join('#')] && s.a[k.join('#')].ai != null)) continue;
+      const did = answered(s.a[k.join('#')]);
+      if (did) nAns++;
+      if (did && isRight(q, s.a[k.join('#')])) nRight++;
+      // practice counts only what you answered; a mock exam counts every question, as the real one does
+      if (s.mode === 'practice' && !did) continue;
       const v = score(q, s.a[k.join('#')]);
       if (v != null) { got += v; max += q.pts; }
       const key = qKey(d, q), i = e.wrong.indexOf(key);
@@ -149,6 +155,7 @@ window.ExamUI = function (ctx) {
       }
     }
     s.got = Math.round(got * 100) / 100; s.max = Math.round(max * 100) / 100;
+    s.nAns = nAns; s.nRight = nRight;
     if (s.pid && s.mode === 'full') {
       const h = (e.hist[s.pid] = e.hist[s.pid] || []);
       h.unshift({ d: new Date().toISOString().slice(0, 10), g: s.got, m: s.max, t: elapsed(s) });
@@ -167,6 +174,8 @@ window.ExamUI = function (ctx) {
     const root = el();
     if (!root) return;
     const s = sess();
+    // while answering, the app's header and tab bar step aside so the question has the screen
+    document.body.classList.toggle('xfocus', (ui.view === 'run' && !!s && !s.done || ui.view === 'review' && !!s) && !!$('#view-exam') && !$('#view-exam').hidden);
     if (ui.view === 'run' && s && !s.done) return drawRun(root, s);
     if (ui.view === 'review' && s) return drawRun(root, s, true);
     if (ui.view === 'result' && s && s.done) return drawResult(root, s);
@@ -180,22 +189,22 @@ window.ExamUI = function (ctx) {
     const row = (kind, subj) => {
       const ps = INDEX.filter(p => p.kind === kind && p.subj === subj);
       if (!ps.length) return '';
-      return `<li class="xp-row"><b>${esc(subj)}</b><span class="xp-ys">${ps.map(p => { const h = e.hist[p.id] && e.hist[p.id][0]; return `<button type="button" class="xp-y" data-xpaper="${p.id}">${p.y}${h ? `<small>${Math.round((h.g / (h.m || 1)) * 100)}%</small>` : ''}</button>`; }).join('')}</span></li>`;
+      return `<li class="xp-row"><b class="${subj.length > 3 ? 'long' : ''}">${esc(subj === '公民與社會' ? '公民' : subj)}</b><span class="xp-ys">${ps.map(p => { const h = e.hist[p.id] && e.hist[p.id][0]; return `<button type="button" class="xp-y" data-xpaper="${p.id}">${p.y}${h ? `<small>${Math.round((h.g / (h.m || 1)) * 100)}%</small>` : ''}</button>`; }).join('')}</span></li>`;
     };
     const kinds = ['gsat', 'ast'].map(k => {
       const rows = subs.map(sj => row(k, sj)).join('');
-      return rows ? `<section class="sec">${ctx.hIcon(k === 'gsat' ? 'doc' : 'book', `${KIND[k]}歷屆試題`)}<p class="sub">${k === 'gsat' ? '學科能力測驗' : '分科測驗'} 111–115 學年度（108 課綱）。按年份開始。</p><ul class="xp-list">${rows}</ul></section>` : '';
+      return rows ? `<section class="sec">${ctx.hIcon(k === 'gsat' ? 'doc' : 'book', `${KIND[k]}歷屆試題`)}<p class="sub">${k === 'gsat' ? '學科能力測驗' : '分科測驗'} 111–115 學年度（108 課綱）。按年份選模擬考或練習，下面的 % 是上次模擬考的得分率。</p><ul class="xp-list">${rows}</ul></section>` : '';
     }).join('');
     const resume = s && !s.done ? `<section class="sec xr-card"><div><b>${esc(s.title)}</b><small>${s.mode === 'full' ? '模擬考' : '練習'}・第 ${s.i + 1}／${s.qs.length} 題${s.dur ? `・剩 ${fmtT(s.dur - elapsed(s))}` : ''}</small></div><div class="xr-act"><button class="btn primary sm" type="button" data-xact="resume">繼續</button><button class="btn sm" type="button" data-xact="quit">放棄</button></div></section>` : s && s.done ? `<section class="sec xr-card"><div><b>${esc(s.title)}</b><small>上次結果：${s.got}／${s.max} 分</small></div><div class="xr-act"><button class="btn sm" type="button" data-xact="result">看結果</button></div></section>` : '';
     root.innerHTML = `<header class="page-h"><div><h1 class="hi">${icon('doc')}<span>考古題</span></h1><p>大考中心公布的學測、分科歷屆試題。練習模式每題對答案；模擬考照正式時間計時，交卷才看答案。</p></div></header>
       ${resume}
-      <section class="sec"><div class="xq-quick">${ctx.hIcon('boost', '小測驗')}<p class="sub">從同一科 111–115 年的選擇（填）題隨機出題。</p>
-        <div class="xq-row"><span class="selectbox"><select id="xqSubj" aria-label="科目">${subs.map(sj => `<option ${sj === ui.qs ? 'selected' : ''}>${esc(sj)}</option>`).join('')}</select>${icon('chevD', 'sm')}</span>
-        <div class="segctl" role="group" aria-label="題數">${[10, 20, 40].map(n => `<button type="button" data-xqn="${n}" aria-pressed="${(ui.qn || 10) === n}">${n} 題</button>`).join('')}</div>
-        <button class="btn primary sm" type="button" data-xact="quick">開始</button></div>
+      <section class="sec"><div class="xq-quick">${ctx.hIcon('boost', '小測驗')}<p class="sub">從同一科 111–115 年的選擇（填）題隨機出題，每題馬上對答案。</p>
+        <div class="xq-row"><span class="selectbox xq-subj"><select id="xqSubj" aria-label="科目">${subs.map(sj => `<option ${sj === (ui.qs || subs[0]) ? 'selected' : ''}>${esc(sj)}</option>`).join('')}</select>${icon('chevD', 'sm')}</span>
+        <div class="segctl" role="group" aria-label="題數">${[10, 20, 40].map(n => `<button type="button" data-xqn="${n}" aria-pressed="${(ui.qn || 10) === n}">${n} 題</button>`).join('')}</div></div>
         ${catChips(ui.qs || subs[0])}
-        <div class="xq-row"><button class="btn sm" type="button" data-xact="wrong" ${e.wrong.length ? '' : 'disabled'}>${icon('reset', 'sm')}錯題本（${e.wrong.length} 題）</button>
-        <label class="fcheck"><input type="checkbox" id="xOpen" ${e.open ? 'checked' : ''}> 模擬考包含非選擇題（自己用 AI 批改）</label></div></div></section>
+        <button class="btn primary xq-go" type="button" data-xact="quick">${icon('boost', 'sm')}開始 ${esc(ui.qs || subs[0])}${ui.cat ? '・' + esc(ui.cat) : ''} ${ui.qn || 10} 題</button></div></section>
+      <section class="sec xq-more"><button class="xq-wrong" type="button" data-xact="wrong" ${e.wrong.length ? '' : 'disabled'}><span>${icon('reset', 'sm')}<b>錯題本</b><small>${e.wrong.length ? '答錯的題目自動收進來，答對就移出' : '答錯的題目會自動收進來'}</small></span><b class="num">${e.wrong.length}</b></button>
+        <label class="fcheck"><input type="checkbox" id="xOpen" ${e.open ? 'checked' : ''}> 整份考卷包含非選擇題（作答後複製給 AI 批改）</label></section>
       ${kinds || '<p class="hint">考古題資料還沒有放上來。</p>'}
       <p class="hint xp-src">試題、答案和評分原則：財團法人大學入學考試中心基金會（ceec.edu.tw），著作權屬大考中心，本站非營利使用並註明出處。圖表較多的題目直接用官方試卷的截圖。非選擇題沒有自動批改。</p>`;
   }
@@ -247,6 +256,7 @@ window.ExamUI = function (ctx) {
       ${show && q.rubric ? `<details class="fold"><summary>${icon('chevR', 'sm')}評分原則</summary><div class="long">${esc(q.rubric)}</div></details>` : ''}</div>`;
   }
 
+  const shortSec = n => n.replace(/^第[壹貳參肆伍]部分[、，]?/, '').replace(/^[一二三四五六七八九十]+、/, '').replace(/或非選擇題$/, '');
   function drawRun(root, s, review) {
     const k = s.qs[s.i];
     const [d, q] = qOf(k);
@@ -258,9 +268,10 @@ window.ExamUI = function (ctx) {
       <div class="xr-t"><b>${esc(s.title)}</b><small>${s.qs.length > 1 ? `第 ${s.i + 1}／${s.qs.length} 題` : ''}${s.pid ? '' : `・${d.y} ${KIND[d.kind]}${d.subj}`}</small></div>
       ${review ? '<span class="xr-tag">檢討</span>' : `<span class="xr-time${left != null && left < 300 ? ' low' : ''}" id="xTime">${left != null ? fmtT(left) : fmtT(elapsed(s))}</span>`}
       <button class="icon-btn" type="button" data-xact="grid" aria-label="題號列表">${icon('plan')}</button></div>`;
-    const grid = ui.grid ? `<div class="xgrid">${s.qs.map((x, i) => { const kk = x.join('#'), [, qq] = qOf(x); const done = answered(s.a[kk]); const st = review || s.shown.includes(kk) ? (qq && qq.type !== 'open' ? (isRight(qq, s.a[kk]) ? ' ok' : ' bad') : '') : ''; return `<button type="button" data-xgo="${i}" class="${done ? 'done' : ''}${s.f.includes(kk) ? ' flag' : ''}${i === s.i ? ' cur' : ''}${st}">${qq ? esc(qq.n) : '?'}</button>`; }).join('')}</div>` : '';
+    const nDone = s.qs.filter(x => answered(s.a[x.join('#')])).length;
+    const grid = ui.grid ? `<div class="xgrid-wrap"><div class="xgrid-h"><span>已作答 <b>${nDone}</b>／${s.qs.length}・標記 <b>${s.f.length}</b></span>${review ? '' : `<button class="btn sm${s.mode === 'full' ? ' primary' : ''}" type="button" data-xact="submit">${s.mode === 'full' ? '交卷' : '結束練習'}</button>`}</div><div class="xgrid">${s.qs.map((x, i) => { const kk = x.join('#'), [, qq] = qOf(x); const done = answered(s.a[kk]); const st = review || s.shown.includes(kk) ? (qq && qq.type !== 'open' ? (isRight(qq, s.a[kk]) ? ' ok' : ' bad') : '') : ''; return `<button type="button" data-xgo="${i}" class="${done ? 'done' : ''}${s.f.includes(kk) ? ' flag' : ''}${i === s.i ? ' cur' : ''}${st}">${qq ? esc(typeof qq.n === 'number' ? qq.n : String(qq.n).slice(0, 2)) : '?'}</button>`; }).join('')}</div><p class="xgrid-k"><span class="k done"></span>已作答<span class="k flag"></span>標記<span class="k cur"></span>這一題</p></div>` : '';
     const sec = d.secs[q.sec];
-    const tag = `<div class="xq-h"><span class="xq-n">${typeof q.n === 'number' ? q.n + '.' : esc(q.n)}</span><span class="xq-type">${TYPE[q.type] || ''}・${q.pts} 分</span>${q.topic && !(sec && sec.name.includes(q.topic)) ? `<span class="xq-cat">${esc(q.topic)}</span>` : sec ? `<span class="muted">${esc(sec.name.replace(/^[一二三四五六七八九十]+、/, ''))}</span>` : ''}${review ? '' : `<button type="button" class="xq-flag" data-xact="flag" aria-pressed="${flagged}">${icon('flag', 'sm')}${flagged ? '已標記' : '標記'}</button>`}</div>`;
+    const tag = `<div class="xq-h"><span class="xq-n">${typeof q.n === 'number' ? q.n + '.' : esc(q.n)}</span><span class="xq-type">${TYPE[q.type] || ''}・${q.pts} 分</span>${q.topic && !(sec && sec.name.includes(q.topic)) ? `<span class="xq-cat">${esc(q.topic)}</span>` : sec ? `<span class="muted xq-sec">${esc(shortSec(sec.name))}</span>` : ''}${review ? '' : `<button type="button" class="xq-flag" data-xact="flag" aria-pressed="${flagged}">${icon('flag', 'sm')}${flagged ? '已標記' : '標記'}</button>`}</div>`;
     const stem = q.img ? q.img.map(src => `<img class="crop" src="exams/${src}" alt="第 ${q.n} 題" loading="lazy">`).join('') : q.html ? fixSrc(q.html) : q.blank ? `<p class="muted">${q.type === 'open' || q.g != null && d.items[q.g].img ? `第 ${q.n} 題的題目在上面的題組裡` : `文章裡的第 ${q.n} 格`}</p>` : '';
     let ansArea = '';
     if (q.type === 'single' || q.type === 'multi') ansArea = optionsHTML(q, a, s.x[key], show);
@@ -289,12 +300,13 @@ window.ExamUI = function (ctx) {
       const v = score(q, a);
       const ok = q.type === 'open' ? null : isRight(q, a);
       const mine = q.type === 'fill' ? (Array.isArray(a) ? a.map(x => x || '·').join(' ') : '—') : q.type === 'multi' ? (a && a.length ? a.join('') : '—') : q.type === 'open' ? (a && a.text ? '有作答' : '—') : a || '—';
-      return `<tr class="${ok === true ? 'ok' : ok === false ? 'bad' : ''}"><td><button type="button" class="textbtn" data-xrev="${i}">${s.pid ? '' : esc(`${d.y}${KIND[d.kind]} `)}${esc(q.n)}</button></td><td>${TYPE[q.type] || ''}</td><td>${esc(mine)}</td><td>${q.type === 'fill' ? esc(q.ans.join(' ')) : q.type === 'open' ? '—' : esc(q.ans || '—')}</td><td class="num">${v == null ? '—' : v}／${q.pts}</td></tr>`;
+      return `<tr class="${!answered(a) ? 'unans' : ok === true ? 'ok' : ok === false ? 'bad' : ''}"><td><button type="button" class="textbtn" data-xrev="${i}">${s.pid ? '' : esc(`${d.y}${KIND[d.kind]} `)}${esc(q.n)}</button></td><td>${TYPE[q.type] || ''}</td><td>${esc(mine)}</td><td>${q.type === 'fill' ? esc(q.ans.join(' ')) : q.type === 'open' ? '—' : esc(q.ans || '—')}</td><td class="num">${v == null ? '—' : v}／${q.pts}</td></tr>`;
     }).join('');
     const nOpen = s.qs.filter(k => { const [, q] = qOf(k); return q && q.type === 'open'; }).length;
     const pct = s.max ? Math.round((s.got / s.max) * 100) : 0;
+    const practice = s.mode === 'practice';
     root.innerHTML = `<header class="page-h"><div><h1 class="hi">${icon('check')}<span>${esc(s.title)}</span></h1><p>${s.mode === 'full' ? '模擬考' : '練習'}・用時 ${fmtT(elapsed(s))}${s.dur ? `（限時 ${Math.round(s.dur / 60)} 分）` : ''}</p></div></header>
-      <section class="sec xres"><div class="xres-big"><b class="num">${s.got}</b><span>／${s.max} 分</span><small>${pct}%</small></div>
+      <section class="sec xres">${practice ? `<div class="xres-big"><b class="num">${s.nRight || 0}</b><span>／作答 ${s.nAns || 0} 題答對</span><small>${s.nAns ? Math.round(((s.nRight || 0) / s.nAns) * 100) + '%' : ''}</small></div><p class="sub">共 ${s.qs.length} 題${s.qs.length > (s.nAns || 0) ? `，${s.qs.length - (s.nAns || 0)} 題沒寫（不算分）` : ''}・作答的題目得 ${s.got}／${s.max} 分。</p>` : `<div class="xres-big"><b class="num">${s.got}</b><span>／${s.max} 分</span><small>${pct}%</small></div>`}
         <p class="sub">${nOpen ? `另有 ${nOpen} 題非選擇題${s.qs.some(k => { const [, q] = qOf(k); const a = s.a[k.join('#')]; return q && q.type === 'open' && a && a.ai != null; }) ? '，有填 AI 分數的已算進去' : '沒有算分'}。` : ''}答錯的題目會放進錯題本。這是原始分數，不是級分。</p>
         <div class="mv-act"><button class="btn primary sm" type="button" data-xrev="0">${icon('search', 'sm')}逐題檢討</button><button class="btn sm" type="button" data-xact="wrong" ${ex().wrong.length ? '' : 'disabled'}>錯題本（${ex().wrong.length}）</button><button class="btn sm" type="button" data-xact="home">回考古題</button></div></section>
       <section class="sec"><div class="tablewrap"><table class="xrt"><thead><tr><th>題</th><th>題型</th><th>你的答案</th><th>正確答案</th><th>得分</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
@@ -340,6 +352,9 @@ ${text || '（還沒作答）'}
 
   // ---------------------------------------------------------------- events
   function onClick(ev) {
+    // a cropped page: tap to see it full size
+    const im = ev.target.closest && ev.target.closest('img.crop');
+    if (im && el() && el().contains(im)) { zoom(im.getAttribute('src')); return true; }
     const b = ev.target.closest('button, summary');
     if (!b || !(el() && el().contains(b) || b.closest('#xMode'))) return false;
     const ds = b.dataset, s = sess();
@@ -374,7 +389,7 @@ ${text || '（還沒作答）'}
     }
     const act = ds.xact;
     if (!act) return false;
-    if (act === 'home') { ui.view = 'home'; ui.grid = false; draw(); window.scrollTo(0, 0); return true; }
+    if (act === 'home') { if (s && !s.done && s.dur && ui.view === 'run') toast('模擬考還在計時，可以從考古題首頁「繼續」'); ui.view = 'home'; ui.grid = false; draw(); window.scrollTo(0, 0); return true; }
     if (act === 'resume') { ui.view = 'run'; if (s && s.pauseAt) { s.paused += Date.now() - s.pauseAt; s.pauseAt = null; } draw(); return true; }
     if (act === 'quit') { ex().s = null; save(); draw(); return true; }
     if (act === 'result') { ui.view = 'result'; draw(); return true; }
@@ -400,10 +415,24 @@ ${text || '（還沒作答）'}
     if (act === 'modeClose') { $('#xMode').close(); return true; }
     return false;
   }
+  function zoom(src) {
+    let dlg = $('#xZoom');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.id = 'xZoom';
+      dlg.className = 'xzoom';
+      dlg.setAttribute('aria-label', '放大的題目');
+      document.body.appendChild(dlg);
+      dlg.addEventListener('click', e => { if (e.target.closest('[data-zclose]') || e.target === dlg) dlg.close(); });
+    }
+    dlg.innerHTML = `<button class="icon-btn xz-x" type="button" data-zclose aria-label="關閉">${icon('x')}</button><div class="xz-b"><img src="${esc(src)}" alt=""></div><p class="xz-h">左右、上下捲動看完整題目</p>`;
+    dlg.showModal();
+  }
   function pickMode(id) {
     const p = INDEX.find(x => x.id === id);
     const dlg = $('#xMode');
-    $('#xmBody').innerHTML = `<p class="mv-q">${p.y} 學年度${KIND[p.kind]}${esc(p.subj)}</p><p class="sub">${p.n} 題${p.open ? `（其中 ${p.open} 題非選擇題，${ex().open ? '會出現，自己用 AI 批改' : '預設跳過，可在考古題首頁打開'}）` : ''}・正式考試 ${p.min || '—'} 分鐘</p>
+    const h = (ex().hist[id] || [])[0];
+    $('#xmBody').innerHTML = `<p class="mv-q">${p.y} 學年度${KIND[p.kind]}${esc(p.subj)}</p>${h ? `<p class="sub">上次模擬考（${esc(h.d)}）：<b>${h.g}</b>／${h.m} 分，用時 ${fmtT(h.t)}</p>` : ''}<p class="sub">${p.n} 題${p.open ? `（其中 ${p.open} 題非選擇題，${ex().open ? '會出現，自己用 AI 批改' : '預設跳過，可在考古題首頁打開'}）` : ''}・正式考試 ${p.min || '—'} 分鐘</p>
       <div class="xm-opts"><button class="xm-o" type="button" data-xact="full"><b>${icon('cal', 'sm')}模擬考</b><span>照正式時間倒數計時，交卷後才看答案和分數。</span></button>
       <button class="xm-o" type="button" data-xact="practice"><b>${icon('check', 'sm')}練習</b><span>不限時，每題作答後可以馬上對答案。</span></button></div>`;
     if (!dlg.open) dlg.showModal();
@@ -429,8 +458,22 @@ ${text || '（還沒作答）'}
     if (t.dataset && t.dataset.xg != null) { ui.gClosed = t.open ? null : +t.dataset.xg; return true; }
     return false;
   }
+  /** Keyboard while answering: A–E or 1–5 choose, ← → move, Enter checks (練習). */
+  function onKey(ev) {
+    const s = sess();
+    if (ui.view !== 'run' || !s || s.done || !el() || el().offsetParent === null || /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName) || ev.metaKey || ev.ctrlKey || ev.altKey || document.querySelector('dialog[open]')) return false;
+    const k = ev.key;
+    const click = sel => { const b = el().querySelector(sel); if (b && !b.disabled) { b.click(); return true; } return false; };
+    if (k === 'ArrowRight') return click('[data-xact="next"]');
+    if (k === 'ArrowLeft') return click('[data-xact="prev"]');
+    if (k === 'Enter') return click('[data-xact="check"]');
+    if (/^[a-lA-L1-9]$/.test(k)) return click(`.xo-b[data-xa="${k.toUpperCase()}"]`) || click(`[data-xkey="${k}"]`);
+    if (k === '-' ) return click('[data-xkey="-"]');
+    if (k === 'Backspace') return click('[data-xkey="del"]');
+    return false;
+  }
   // leaving the tab pauses a practice clock; a mock exam keeps running, like the real one
-  function leave() { const s = sess(); if (s && !s.done && !s.dur && !s.pauseAt) { s.pauseAt = Date.now(); save(); } clearInterval(timer); }
+  function leave() { const s = sess(); if (s && !s.done && !s.dur && !s.pauseAt) { s.pauseAt = Date.now(); save(); } clearInterval(timer); document.body.classList.remove('xfocus'); }
   function enter() { const s = sess(); if (s && !s.done && s.pauseAt && ui.view === 'run') { s.paused += Date.now() - s.pauseAt; s.pauseAt = null; } draw(); }
-  return { draw, enter, leave, onClick, onInput, onChange, onToggle, has: () => INDEX.length > 0 };
+  return { draw, enter, leave, onClick, onInput, onChange, onToggle, onKey, has: () => INDEX.length > 0 };
 };

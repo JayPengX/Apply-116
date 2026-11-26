@@ -2629,6 +2629,7 @@ loadAppData().then(D => {
     });
     document.addEventListener('pointercancel', () => { if (drag && drag.scrub) commitSlider(drag.t); drag = null; });
     document.addEventListener('keydown', ev => {
+      if (ui.tab === 'exam' && EX.onKey(ev)) { ev.preventDefault(); return; }
       const t = ev.target;
       if (!t.classList || !t.classList.contains('track')) return;
       const n = +t.dataset.max;
@@ -2887,6 +2888,7 @@ loadAppData().then(D => {
       if (id === 'pathWhy' && ui.whyOpen !== ev.target.open) { ui.whyOpen = ev.target.open; if (ui.whyOpen) render(); }
     }, true);
     document.addEventListener('keydown', ev => {
+      if (ui.tab === 'exam' && EX.onKey(ev)) { ev.preventDefault(); return; }
       const t = ev.target;
       if (ev.key === '/' && !ev.metaKey && !ev.ctrlKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !$('dialog[open]')) {
         if (ui.tab !== 'explore') setTab('explore');

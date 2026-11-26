@@ -1072,6 +1072,15 @@ def paper(stem):
                         stem_t = toks
                         break
             else:
+                # a table after the last option is the question's own (表4 …), not part of that option
+                lab, last = opts[-1]
+                cut = next((i for i, t in enumerate(last) if t[0] == 't' and '\x03' in t[1]), None)
+                if cut is not None:
+                    tok = last[cut]
+                    j = tok[1].index('\x03')
+                    keep = last[:cut] + ([('t', tok[1][:j], tok[2])] if tok[1][:j].strip() else [])
+                    stem_t = list(stem_t) + [('br',), ('t', tok[1][j:], tok[2])] + last[cut + 1:]
+                    opts[-1] = (lab, keep)
                 opts = [(lab, tokens_html(o)) for lab, o in opts]
 
             def fill_tables(h):
@@ -1120,6 +1129,8 @@ def paper(stem):
                 qi['blank'] = True  # 綜合測驗: the question is a numbered blank in the passage
             if opts:
                 qi['opts'] = opts
+            if qtype == 'fill' and not cells and a and a != '／':
+                cells, ans[str(n) + '-1'] = [str(n) + '-1'], a  # a 選填 with one cell, keyed by the question number alone
             if qtype == 'fill':
                 qi['cells'] = cells
                 qi['ans'] = [ans[k] for k in cells]
@@ -1141,6 +1152,8 @@ def paper(stem):
                 labs = sorted(set(re.findall(r'[(（]([A-L])[)）]', text))) or sorted(set(re.findall(r'[(（]([1-9])[)）]', text)))
                 im = INLINE_TYPE.search(text)
                 itype = {'單選': 'single', '多選': 'multi', '選填': 'fill', '非選擇': 'open'}[im.group(1)] if im else None
+                if itype == 'fill' and not cells and a and a != '／':
+                    cells, ans[f'{n}-1'] = [f'{n}-1'], a
                 ci['type'] = 'fill' if cells else itype or ('open' if a in (None, '／') else 'multi' if ',' in a or sec['type'] == 'multi' else 'single')
                 if cells:
                     ci['cells'], ci['ans'] = cells, [ans[k] for k in cells]
