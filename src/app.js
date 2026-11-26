@@ -873,11 +873,12 @@ loadAppData().then(D => {
       <div class="rc-act"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}看校系</button><button class="btn" type="button" data-tab="boost">${icon('boost', 'sm')}怎麼進步</button><button class="btn" type="button" data-act="reportOpen">${icon('doc', 'sm')}完整報告（可給 AI）</button></div></section>`;
   }
   /**
-   * Why 申請 and 分發 disagree for these scores: what blocks each path, and what one 級分 more or less in each
-   * subject does to each (a 檢定 cliff hits 申請 hard; 分發 adds subjects up, so one weak subject matters less).
+   * Why 申請 and 分發 disagree for these scores: what blocks each path, and what reaching the next 標 (or losing one
+   * 級分) in each subject does to each. 申請's 檢定 are cliffs at a 標, so the next 標 is where the two paths move apart
+   * or come together; 分發 adds weighted subjects up, so one subject moves it smoothly.
    */
   function pathWhyHTML(scope, us) {
-    const c = cur(), R0 = c.thS;
+    const c = cur(), R0 = c.thS, T = c.mock ? c.std : STD();
     const count = (m, k) => { m[k] = (m[k] || 0) + 1; };
     const aBlock = {}, uBlock = {};
     for (const d of scope) {
@@ -894,36 +895,45 @@ loadAppData().then(D => {
     }
     const top = m => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 3);
     const blockList = (m, none) => { const t = top(m); return t.length ? t.map(([k, n]) => `<li><span>${esc(k)}</span><b class="num">${fmtN(n)}</b></li>`).join('') : `<li class="muted">${none}</li>`; };
-    // one 級分 up or down in each subject you took, on the scale you see (a 模考's own 級分)
-    const goodA = R => { const x = atRaw(c, R); const o = { ...optsFor(c), thS: x.thS }; let n = 0; for (const d of scope) if (isGood(L.evaluate(d, x.S, o).tier)) n++; return n; };
-    const goodU = R => { const x = atRaw(c, R); const M = L.scores60(x.S, astPlan(), UT); let n = 0; for (const u of us) if (isGood(L.evaluateUac(u, M, x.thS, c.std).tier)) n++; return n; };
-    const a0 = scope.filter(d => isGood(tierOf(d))).length, u0 = us.filter(u => isGood(uTier(u))).length;
-    const sgn = n => (n > 0 ? `<span class="delta up">+${n}</span>` : n < 0 ? `<span class="delta down">${n}</span>` : '<span class="muted">0</span>');
+    // the two paths for other scores (on the scale you see: a 模考's own 級分 and 五標)
+    const at = R => {
+      const x = atRaw(c, R), o = { ...optsFor(c), thS: x.thS }, M = L.scores60(x.S, astPlan(), UT);
+      const tA = new Map(scope.map(d => [d.c, L.evaluate(d, x.S, o).tier])), tU = new Map(us.map(u => [u.c, L.evaluateUac(u, M, x.thS, c.std).tier]));
+      const p = pathCompare(scope, us, d => tA.get(d.c), u => tU.get(u.c));
+      return { a: p.app.length, u: p.uac.length, v: pathVerdict(p)[0] };
+    };
+    const p0 = pathCompare(scope, us), now = { a: p0.app.length, u: p0.uac.length, v: pathVerdict(p0)[0] };
     const rows = SCORE_KEYS.filter(k => L.val(R0, k) != null).map(k => {
-      const v = L.val(R0, k);
-      const at = dv => { const w = v + dv; if (w < 1 || w > 15) return null; const R = { ...R0, [k]: String(w) }; return [goodA(R) - a0, goodU(R) - u0]; };
-      return { k, v, dn: at(-1), up: at(1) };
+      const v = L.val(R0, k), lvs = T && T[k] ? L.LEVELS.slice().reverse().map(l => [l, T[k][l]]) : [];
+      // the next 標 up, and every 標 on the way to 均標 (the usual 檢定 line)
+      const ahead = lvs.filter(([, g]) => g > v && g <= 15), mid = ahead.findIndex(([l]) => l === '均標');
+      const ups = ahead.slice(0, Math.max(1, mid + 1)).map(([l, g]) => ({ ...at({ ...R0, [k]: String(g) }), lv: l, to: g }));
+      const dn = v > 1 ? at({ ...R0, [k]: String(v - 1) }) : null;
+      return { k, v, lv: levelIn(T, k, v), dn, up: ups[0] || null, ups };
     });
-    // the subject where one 級分 moves the two paths furthest apart
-    const gap = r => Math.max(...[r.dn, r.up].filter(Boolean).map(([a, u]) => Math.abs(a - u)));
-    const big = rows.slice().sort((x, y) => gap(y) - gap(x))[0];
+    const d = (x, key) => x[key] - now[key];
+    const sgn = n => (n > 0 ? `<span class="delta up">+${n}</span>` : n < 0 ? `<span class="delta down">${n}</span>` : '<span class="muted">0</span>');
+    // the lead: a subject whose next 標 changes which path suits you (fewest 級分 first), else the biggest gap between the paths
+    const cands = rows.flatMap(r => r.ups.map(x => ({ r, x, need: x.to - r.v, gap: Math.abs(d(x, 'a') - d(x, 'u')) })));
+    const flips = cands.filter(o => o.x.v !== now.v).sort((p, q) => p.need - q.need || q.gap - p.gap);
+    const best = flips[0] || cands.sort((p, q) => q.gap - p.gap)[0];
+    const big = best && best.r;
     let lead = '';
-    if (big && gap(big) > 0) {
-      const span = x => (x ? Math.abs(x[0] - x[1]) : -1);
-      const down = span(big.dn) >= span(big.up), [a, u] = down ? big.dn : big.up, dir = down ? '少' : '多';
-      const lv = c.mock ? levelIn(c.std, big.k, big.v) : levelOf(big.k, big.v);
-      lead = `<p class="pw-lead">最敏感的是<b>${subj(big.k)}</b>（你 ${big.v} 級分${lv ? `，${lv}` : ''}）：${dir} 1 級分，申請${GOOD} ${a >= 0 ? '多' : '少'} <b>${Math.abs(a)}</b> 個、分發 ${u >= 0 ? '多' : '少'} <b>${Math.abs(u)}</b> 個。${Math.abs(a) > Math.abs(u) * 1.5 ? '申請的檢定常卡在某一標，掉一級分就整批過不了；分發看加權總分，一科少一點，別科可以補。' : Math.abs(u) > Math.abs(a) * 1.5 ? '這一科在分發的權重比較重（也影響你的分科估計），對分發影響比較大。' : ''}</p>`;
-    }
+    if (best && (flips.length || best.gap >= 10)) {
+      big.up = best.x;
+      const a = d(big.up, 'a'), u = d(big.up, 'u'), need = best.need;
+      lead = `<p class="pw-lead"><b>${subj(big.k)}</b>差 ${need} 級分到${c.mock ? '這次的' : ''}${big.up.lv}（${big.up.to} 級分）：申請${GOOD}${a >= 0 ? '多' : '少'} <b>${Math.abs(a)}</b> 個、分發${u >= 0 ? '多' : '少'} <b>${Math.abs(u)}</b> 個。${big.up.v !== now.v ? `結論會從「${esc(now.v)}」變成「${esc(big.up.v)}」。` : ''}${Math.abs(a) > Math.abs(u) * 1.5 ? `很多申請的系用${subj(big.k)}${big.up.lv}當檢定，沒到就整個系過不了；分發看加權總分，同樣多 ${need} 級分只是總分多一點。` : Math.abs(u) > Math.abs(a) * 1.5 ? '這一科在分發的權重比較重（也影響你的分科估計），對分發影響比較大。' : ''}</p>`;
+    } else lead = '<p class="pw-lead">沒有哪一科差一點點就讓兩條路差很多：兩條路的差別主要來自整體分數和你選的分科。</p>';
     return `<div class="pw">${lead}
       <div class="pw-b"><div><h4>申請：擋住最多系的</h4><ul class="pw-l">${blockList(aBlock, '沒有被檢定擋住的系')}</ul></div>
       <div><h4>分發：擋住最多系組的</h4><ul class="pw-l">${blockList(uBlock, '沒有被檢定擋住的系組')}</ul></div></div>
-      <h4>每科差 1 級分，${GOOD}的數目怎麼變</h4>
-      <div class="tablewrap"><table class="pw-t"><thead><tr><th scope="col">科目</th><th scope="col">少 1 級分<small>申請／分發</small></th><th scope="col">多 1 級分<small>申請／分發</small></th></tr></thead><tbody>
-      ${rows.map(r => `<tr><th scope="row">${subj(r.k)}<small>${r.v}</small></th><td>${r.dn ? `${sgn(r.dn[0])} ／ ${sgn(r.dn[1])}` : '—'}</td><td>${r.up ? `${sgn(r.up[0])} ／ ${sgn(r.up[1])}` : '—'}</td></tr>`).join('')}</tbody></table></div>
-      <ul class="pc-why"><li><b>申請一階</b>：檢定＋倍率篩選，每一科都是一道關卡，一科沒到某一標就整個系過不了。</li>
+      <h4>每科到下一標、或少 1 級分，${GOOD}的數目怎麼變</h4>
+      <div class="tablewrap"><table class="pw-t"><thead><tr><th scope="col">科目</th><th scope="col">往上到這一標<small>申請／分發</small></th><th scope="col">少 1 級分<small>申請／分發</small></th></tr></thead><tbody>
+      ${rows.map(r => `<tr${r === big && lead.includes(subj(r.k)) ? ' class="hl"' : ''}><th scope="row">${subj(r.k)}<small>${r.v}${r.lv ? '・' + (LV_SHORT[r.lv] || '未達') : ''}</small></th><td>${r.up ? `<small>${r.up.lv} ${r.up.to}</small>${sgn(d(r.up, 'a'))} ／ ${sgn(d(r.up, 'u'))}${r.up.v !== now.v ? '<small class="flip">結論會變</small>' : ''}` : '<span class="muted">已頂標</span>'}</td><td>${r.dn ? `${sgn(d(r.dn, 'a'))} ／ ${sgn(d(r.dn, 'u'))}${r.dn.v !== now.v ? '<small class="flip">結論會變</small>' : ''}` : '—'}</td></tr>`).join('')}</tbody></table></div>
+      <ul class="pc-why"><li><b>申請一階</b>：檢定＋倍率篩選，檢定是「到某一標」的門檻，差 1 級分就整個系過不了，所以剛好跨過一標時落點會大跳。</li>
         <li><b>分發</b>：學測和分科照權重加總，一科低可以用別科補；有設學測檢定的系組比申請少。</li>
         <li>分發還要看分科（7 月考），你選的估計或自己填的分數也會影響。</li></ul>
-      <p class="hint">${c.mock ? `用${esc(c.name)}的級分和五標算。` : ''}只算目前篩選裡的校系。</p></div>`;
+      <p class="hint">${c.mock ? `用${esc(c.name)}的級分和五標算。` : `標用${esc(stdName())}。`}只算目前篩選裡的校系。</p></div>`;
   }
   /** Each 學群: how many of its 系 you would likely pass (穩過＋應該過), the subjects its 一階 screens on, the most sought-after one you reach. */
   function groupFit() {
@@ -1652,7 +1662,10 @@ loadAppData().then(D => {
     if (list.length) {
       const who = P.length ? '志願' : '收藏';
       const toWrite = Object.keys(want).filter(c => WRITE.has(c) && !H.has(c)).sort();
-      const toGet = Object.keys(want).filter(c => !WRITE.has(c) && c !== 'A' && REVIEW[c] && !H.has(c)).sort((a, b) => want[b] - want[a]);
+      // a gap is a 系 with nothing you have in a group it reads; then any one of its kinds will do
+      const gap = {};
+      list.forEach((d, i) => { for (const g of ['課程學習成果', '多元表現']) { const cs = codesOf(G[i], g).filter(c => !WRITE.has(c)); if (cs.length && !cs.some(c => H.has(c))) { const x = gap[g] || (gap[g] = { n: 0, cs: {} }); x.n++; cs.forEach(c => { x.cs[c] = (x.cs[c] || 0) + 1; }); } } });
+      const extra = Object.keys(want).filter(c => !WRITE.has(c) && c !== 'A' && REVIEW[c] && !H.has(c) && !Object.values(gap).some(x => x.cs[c])).sort((a, b) => want[b] - want[a]);
       // each 系: a group is covered once you have any kind it reads; what you write must all be there
       const rows = list.map((d, i) => {
         const gs = G[i], parts = [];
@@ -1665,7 +1678,9 @@ loadAppData().then(D => {
         return `<li class="${ok ? 'ok' : ''}"><button type="button" class="hv-d" data-open="${d.c}">${P.length ? `<span class="no">${i + 1}</span>` : ''}<span>${esc(schShort(d))} ${esc(d.n)}</span></button><span class="hv-s">${parts.map(([t, y]) => `<span class="${y ? 'y' : 'x'}">${y ? icon('check', 'xs') : ''}${esc(t)}</span>`).join('')}${other ? `<span class="o">另有 ${other} 項系定資料</span>` : ''}</span></li>`;
       }).join('');
       out = `${toWrite.length ? `<p class="hv-todo"><b>還要寫</b>${toWrite.map(c => `<span><b class="cd">${c}</b>${REVIEW[c]}<small>${want[c]} 個</small></span>`).join('')}</p>` : ''}
-        ${toGet.length ? `<p class="hv-todo soft"><b>你的${who}會看、你還沒有</b>${toGet.slice(0, 8).map(c => `<span><b class="cd">${c}</b>${REVIEW[c]}<small>${want[c]} 個</small></span>`).join('')}</p><p class="hint">這些是系會看的「種類」，有其中幾種就夠，不用每種都有；挑跟系相關、最能代表你的。</p>` : ''}
+        ${Object.entries(gap).map(([g, x]) => `<p class="hv-todo"><b>${x.n} 個${who}的${g}還沒有東西可以放：下面有一種就好</b>${Object.entries(x.cs).sort((a, b) => b[1] - a[1]).map(([c, n], j) => `${j ? '<i>或</i>' : ''}<span><b class="cd">${c}</b>${REVIEW[c]}<small>${n} 個</small></span>`).join('')}</p>`).join('')}
+        ${Object.keys(gap).length ? '' : `<p class="hint hv-okline">${icon('check', 'xs')}每個${who}的課程學習成果、多元表現，你都已經有可以放的。</p>`}
+        ${extra.length ? `<details class="fold"><summary>${icon('chevR', 'sm')}系也會看、但不用特地補的種類（${extra.length}）</summary><p class="hint">有就可以放，沒有也沒關係：系列的是「會看哪些種類」，不是每種都要。${extra.map(c => `${c} ${REVIEW[c]}（${want[c]} 個）`).join('、')}。</p></details>` : ''}
         <h3 class="sec-h3">每個${who}準備到哪</h3><ol class="hv-list">${rows}</ol>`;
     }
     return `<section class="sec" id="haveSec">${hIcon('check', '我的學習歷程')}<p class="sub">勾你已經有的，看${P.length ? '志願' : '收藏'}還缺什麼。修課紀錄（A）由資料庫提供，不用勾。數字是幾個${P.length ? '志願' : '收藏'}會看。</p>
@@ -2284,10 +2299,10 @@ loadAppData().then(D => {
     return [...us];
   }
   /** 申請 vs 分發 on one yardstick: a 分發 系 is placed by the 115 申請 一階 門檻 of the same 系 (its twin). */
-  function pathCompare(scope, us) {
-    const appGood = scope.filter(d => isGood(tierOf(d)));
+  function pathCompare(scope, us, tA = tierOf, tU = uTier) {
+    const appGood = scope.filter(d => isGood(tA(d)));
     const appSet = new Set(appGood.map(d => d.c));
-    const uGood = us.filter(d => isGood(uTier(d)));
+    const uGood = us.filter(d => isGood(tU(d)));
     const sel = d => L.selectivity(d) || 0;
     const top = (xs, f) => { const v = xs.map(f).filter(x => x > 0).sort((a, b) => b - a).slice(0, 5); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
     const twin = d => (d.twin ? BY_CODE[d.twin] : null);
