@@ -494,7 +494,7 @@ loadAppData().then(D => {
   const hayCache = new Map();
   function hay(d) {
     let h = hayCache.get(d.c);
-    if (!h) { h = [sch(d), d.n, d.c, d.g.join(' '), d.rv || '', d.rn || '', d.iv || '', d.notes || '', d.city, d.st2.map(x => x.i).join(' ')].join(' ').toLowerCase(); hayCache.set(d.c, h); }
+    if (!h) { h = normQ([sch(d), schShort(d), d.n, d.c, d.g.join(' '), d.rv || '', d.rn || '', d.iv || '', d.notes || '', d.city, d.st2.map(x => x.i).join(' ')].join(' ')); hayCache.set(d.c, h); }
     return h;
   }
   const daysUntil = iso => Math.round((new Date(iso + 'T00:00:00') - new Date(todayISO() + 'T00:00:00')) / 864e5);
@@ -514,12 +514,28 @@ loadAppData().then(D => {
     if (skip !== 'combos' && f.combos.length && !f.combos.includes(COMBO_OF[d.c])) return false;
     if (skip !== 'untaken' && !f.untaken && usesUntaken(d)) return false;
     if (skip !== 'list' && f.list !== 'all' && !listCodes().includes(d.c)) return false;
-    if (qTerms.length) { const h = hay(d); if (!qTerms.every(t => h.includes(t))) return false; }
+    if (qTerms.length) { const h = hay(d); if (!qTerms.every(t => termHit(t, d, h))) return false; }
     return true;
   }
   /** 收藏 or 志願 when the filters are narrowed to one of them. */
   const listCodes = () => (st.f.list === 'plan' ? st.plan : st.fav);
-  const setQ = q => { const x = q.trim().toLowerCase(); qTerms = x ? x.split(/[\s,，、]+/).filter(Boolean) : []; };
+  const normQ = x => x.toLowerCase().replace(/台/g, '臺');
+  const setQ = q => { const x = normQ(q.trim()); qTerms = x ? x.split(/[\s,，、]+/).filter(Boolean) : []; };
+  /** a, b, c in order inside s (資工 → 資訊工程, 企管 → 企業管理). */
+  const subseq = (t, s) => { let i = 0; for (const ch of s) if (ch === t[i] && ++i === t.length) return true; return false; };
+  // what students type for a school: 東吳大學, 東吳, 臺大, 臺灣大學
+  const ALIAS = new Map();
+  const aliasesOf = d => { let a = ALIAS.get(d.sid); if (!a) { const n = sch(d); a = [...new Set([n, n.replace(/^國立/, ''), schShort(d)])].map(normQ).sort((x, y) => y.length - x.length); ALIAS.set(d.sid, a); } return a; };
+  /**
+   * One search word: anywhere in the 校系's text, or a school name stuck to a 系 (東吳法律, 政大企管),
+   * or a 系 abbreviation whose characters appear in order in its name (資工, 財金, 外文).
+   */
+  function termHit(t, d, h) {
+    if (h.includes(t)) return true;
+    const n = normQ(d.n);
+    for (const a of aliasesOf(d)) if (t.length > a.length && t.startsWith(a)) { const r = t.slice(a.length); if (h.includes(r) || (r.length >= 2 && subseq(r, n))) return true; }
+    return t.length >= 2 && /[\u4e00-\u9fff]/.test(t) && subseq(t, n);
+  }
   // One set of filters for the whole app (找校系, 我的成績, 怎麼進步): each list is worked out once per change.
   const BF = new Map();
   function baseFiltered(skip) {
@@ -568,8 +584,10 @@ loadAppData().then(D => {
     // tier and selectivity once per row, not once per comparison
     const T = new Map(list.map(d => { const t = xTier(d); return [d, t ? TIERS.indexOf(t) : 9]; }));
     const ti = d => T.get(d);
+    const N = new Map(qTerms.length ? list.map(d => { const h = normQ(`${d.isU ? uSch(d) : sch(d)} ${schShort(d)} ${d.n} ${d.c} ${d.g.join(' ')}`); return [d, qTerms.every(t => termHit(t, d, h)) ? 0 : 1]; }) : []);
+    const nm = d => N.get(d) || 0;
     const by = {
-      chance: (a, b) => (ti(a) - ti(b)) || ((xSel(b) || 0) - (xSel(a) || 0)),
+      chance: (a, b) => (ti(a) - ti(b)) || (nm(a) - nm(b)) || ((xSel(b) || 0) - (xSel(a) || 0)),
       select: (a, b) => (xSel(b) || 0) - (xSel(a) || 0),
       // no 115 門檻 → last
       selectLow: (a, b) => (xSel(a) ?? 99) - (xSel(b) ?? 99),
@@ -579,7 +597,8 @@ loadAppData().then(D => {
       quota: (a, b) => b.q - a.q,
       code: () => 0,
     }[k] || (() => 0);
-    return list.slice().sort((a, b) => by(a, b) || (a.c < b.c ? -1 : 1));
+    // with a search, 校系 whose school and name match come before ones that match only in their notes
+    return list.slice().sort((a, b) => (k === 'chance' ? 0 : nm(a) - nm(b)) || by(a, b) || (a.c < b.c ? -1 : 1));
   }
 
   // ------------------------------------------------------------------ small components
@@ -609,7 +628,8 @@ loadAppData().then(D => {
   }
   function keepFocus(root, fn) {
     const a = document.activeElement;
-    const key = a && a !== document.body && root.contains(a) ? focusKey(a) : null;
+    // a <select> is never focused again: Safari on iPhone opens its picker on focus(), so a choice would reopen it
+    const key = a && a !== document.body && a.tagName !== 'SELECT' && root.contains(a) ? focusKey(a) : null;
     fn();
     if (key) { const n = root.querySelector(key); if (n && n !== document.activeElement) n.focus({ preventScroll: true }); }
   }
@@ -897,10 +917,11 @@ loadAppData().then(D => {
     const i = Math.max(0, Math.min(47, ui.qi ?? a.findIndex(x => !x)));
     ui.qi = i;
     const it = QITEMS[i];
+    requestAnimationFrame(() => { ui.qDir = 0; });
     body.innerHTML = `<div class="qz-prog" role="progressbar" aria-valuemin="0" aria-valuemax="48" aria-valuenow="${i + 1}"><i style="width:${((i + 1) / 48) * 100}%"></i></div>
       <p class="qz-n num">${i + 1} / 48</p>
-      <p class="qz-lead">你喜不喜歡做這件事？</p><p class="qz-item">${esc(it.t)}</p>
-      <div class="qz-opts" role="group" aria-label="${esc(it.t)}">${QSCALE.map(([v, l]) => `<button type="button" class="qz-o" data-qans="${v}" aria-pressed="${a[i] === v}">${l}</button>`).join('')}</div>
+      <div class="qz-q${ui.qDir ? (ui.qDir > 0 ? ' fwd' : ' back') : ''}"><p class="qz-lead">你喜不喜歡做這件事？</p><p class="qz-item">${esc(it.t)}</p>
+      <div class="qz-opts" role="group" aria-label="${esc(it.t)}">${QSCALE.map(([v, l]) => `<button type="button" class="qz-o" data-qans="${v}" aria-pressed="${a[i] === v}">${l}${icon('check', 'sm')}</button>`).join('')}</div></div>
       <p class="hint">不用考慮自己會不會做、薪水多少、要念多少書，只看你喜不喜歡。</p>
       <div class="qz-nav"><button class="textbtn" type="button" data-act="quizBack" ${i ? '' : 'disabled'}>${icon('chevR', 'sm')}上一題</button>${a[i] ? `<button class="textbtn" type="button" data-act="quizNext">下一題</button>` : ''}</div>`;
   }
@@ -2002,7 +2023,7 @@ loadAppData().then(D => {
     if (f.groups.length && !u.g.some(g => f.groups.includes(g))) return false;
     if (f.regions.length && !f.regions.includes(CITY_REGION[u.city])) return false;
     if (f.own !== 'all' && (SCHOOL[u.sid].pub ? 'pub' : 'pri') !== f.own) return false;
-    if (qTerms.length) { const h = `${uSch(u)} ${schShort(u)} ${u.n} ${u.c} ${u.g.join(' ')}`.toLowerCase(); if (!qTerms.every(t => h.includes(t))) return false; }
+    if (qTerms.length) { const h = normQ(`${uSch(u)} ${schShort(u)} ${u.n} ${u.c} ${u.g.join(' ')}`); if (!qTerms.every(t => termHit(t, u, h))) return false; }
     return true;
   }
   /** 找校系's list for the chosen 管道: 申請 系 (each with its 分發 groups), 分發 系組 only, or both. */
@@ -2158,9 +2179,11 @@ loadAppData().then(D => {
         <li><div><b>沒考的科目以 0 級分計。</b>用到的科目全沒考就不能篩選。</div></li>
       </ol></section>
       <section class="sec">${hIcon('target', '一階過得了嗎？標籤的意思')}<ul class="tdefs">${TIERS.map(t => `<li>${pillHTML(t)}<span>${esc(TIER_HELP[t])}</span></li>`).join('')}</ul>
-        <div class="prose" style="margin-top:16px"><p>照 116 的科目、倍率和順序一關一關看，每關只跟 <b>115 同樣科目</b>的最低級分比。收的人數差超過 10% 就用 115 級分人數表換算。</p>
-        <p>用模考看落點時：<b>檢定</b>拿你的模考級分比<b>那次模考的五標</b>；<b>倍率篩選</b>先把模考級分照排名換算成學測級分，再比 115 門檻。</p>
-        <p class="hint">只是一階的估計，不是錄取機率。</p></div></section>
+        <p class="hint" style="margin-top:14px">只是估計，不是錄取機率。</p>
+        <details class="fold"><summary>${icon('chevR', 'sm')}怎麼算的</summary><div class="prose">
+        <p><b>申請</b>：照 116 的科目、倍率和順序一關一關看，每關只跟 115 同樣科目的最低級分比。收的人數差超過 10% 就用 115 級分人數表換算。</p>
+        <p><b>模考</b>：檢定拿你的模考級分比那次模考的五標；倍率篩選先把模考級分照排名換算成學測級分，再比 115 門檻。</p>
+        ${U ? `<p><b>分發</b>：學測、分科都換成 60 級分照權重加總，比 115 最低錄取分數；每科平均多 ${L.UAC_SAFE} 級分以上＝穩過。</p>` : ''}</div></details></section>
       <section class="sec">${hIcon('doc', '審查資料代碼')}<p class="sub">課程學習成果最多 3 件、多元表現最多 10 件。</p><div class="codegrid">${Object.entries(REVIEW).map(([k, v]) => `<span class="code"><b>${k}</b>${v}</span>`).join('')}</div></section>
       <section class="sec">${hIcon('book', '資料來源')}<ul class="srcs">
         <li>116 校系分則：甄選會（${esc(D.fetched116)}）</li>
@@ -2311,8 +2334,8 @@ loadAppData().then(D => {
     goStrength: () => { setTab('scores'); requestAnimationFrame(() => { const el = $('#strengthSec'); if (el) el.scrollIntoView({ block: 'start' }); }); },
     astReset: () => { st.ast = null; render(); },
     quizOpen: () => openQuiz(),
-    quizBack: () => { ui.qi = Math.max(0, (ui.qi || 0) - 1); renderQuiz(); },
-    quizNext: () => { ui.qi = Math.min(47, (ui.qi || 0) + 1); renderQuiz(); },
+    quizBack: () => { ui.qi = Math.max(0, (ui.qi || 0) - 1); ui.qDir = -1; renderQuiz(); },
+    quizNext: () => { ui.qi = Math.min(47, (ui.qi || 0) + 1); ui.qDir = 1; renderQuiz(); },
     quizRedo: () => { st.quiz = []; ui.qRedo = false; ui.qi = 0; save(); renderQuiz(); },
     quizApply: () => { const r = quizResult(st.quiz); if (!r) return; st.hol = r.code.slice(); $('#quiz').close(); render(); toast(`用 ${r.code.join('')} 排學群`); requestAnimationFrame(() => { const el = $('#strengthSec'); if (el) el.scrollIntoView({ block: 'start' }); }); },
     gxAll: () => { ui.gxAll = !ui.gxAll; render(); },
@@ -2374,15 +2397,20 @@ loadAppData().then(D => {
       if (ds.skip) { toggle(f.skip, ds.skip); ui.shown = PAGE; render(); return; }
       if (ds.src) { if (ds.src === st.src && !ui.mf) return; useSource(ds.src); return; }
       if (ds.qans) {
+        if (ui.qBusy) return;
         const i = ui.qi || 0;
+        // show the choice land before moving on: the button fills in with a check, then the next item slides in
+        b.parentNode.querySelectorAll('.qz-o').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        b.classList.add('pick');
+        if (navigator.vibrate) navigator.vibrate(8);
+        ui.qBusy = true; ui.qDir = 1;
         st.quiz = Array.from({ length: 48 }, (_, j) => st.quiz[j] || 0);
         st.quiz[i] = +ds.qans;
         save();
         // the next unanswered item, or the result when all 48 are in
         const next = st.quiz.findIndex((x, j) => j > i && !x);
         ui.qi = next >= 0 ? next : st.quiz.findIndex(x => !x) >= 0 ? st.quiz.findIndex(x => !x) : 47;
-        setTimeout(renderQuiz, 120);
-        if (quizResult(st.quiz)) render();
+        setTimeout(() => { ui.qBusy = false; renderQuiz(); if (quizResult(st.quiz)) render(); }, 260);
         return;
       }
       if (ds.list) { st.f.list = ds.list; ui.shown = PAGE; render(); return; }
@@ -2459,6 +2487,8 @@ loadAppData().then(D => {
     });
     document.addEventListener('change', ev => {
       const t = ev.target;
+      // a choice is final: let go of the <select> so a re-render cannot bring its picker back (Safari on iPhone)
+      if (t.tagName === 'SELECT') t.blur();
       if (t.id === 'mfPreset' && ui.mf) {
         const x = presetOf(t.value);
         if (x) Object.assign(ui.mf, { n: x.n, pre: null, d: x.d, std: x.std ? copyStd(x.std) : {} });

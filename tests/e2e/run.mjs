@@ -145,6 +145,13 @@ try {
     await page.waitForTimeout(400);
     const why = await page.locator('#list .row').first().innerText();
     ok(why.includes('過不了') && why.includes('數學B'), 'NTU law blocked by 數B 檢定');
+    // school names stuck to a 系, 台 for 臺, and 系 abbreviations
+    for (const [q, want] of [['東吳法律', '東吳大學法律學系'], ['台大法律', '臺灣大學法律學系'], ['政大外交', '政治大學外交學系']]) {
+      await page.fill('#q', q);
+      await page.waitForTimeout(400);
+      const first = await page.evaluate(() => { const r = document.querySelector('#list .row .r-title'); return r ? r.textContent : ''; });
+      ok(first.includes(want), `search「${q}」finds ${want} first (${first})`);
+    }
     await page.fill('#q', '');
     await page.waitForTimeout(400);
 
@@ -281,7 +288,7 @@ try {
     await page.click('#strengthSec [data-act="quizOpen"]');
     await page.waitForSelector('#quiz[open] .qz-item');
     const like = { R: 1, I: 2, A: 5, S: 4, E: 3, C: 1 };
-    for (let i = 0; i < 48; i++) { await page.click(`#quiz [data-qans="${like['RIASEC'[i % 6]]}"]`); await page.waitForTimeout(130); }
+    for (let i = 0; i < 48; i++) { await page.click(`#quiz [data-qans="${like['RIASEC'[i % 6]]}"]`); await page.waitForTimeout(320); }
     await page.waitForSelector('#quiz .qz-big');
     ok((await page.locator('#quiz .qz-big').innerText()).replace(/\s+/g, '').startsWith('A藝術型S社會型E企業型'), '興趣測驗 scores the 48 answers into a code (ASE)');
     await page.click('[data-act="quizApply"]');
