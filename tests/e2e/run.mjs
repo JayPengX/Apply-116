@@ -312,6 +312,9 @@ try {
     await typeAst('歷', '45');
     await typeAst('地', '45');
     ok((await page.locator('.result-card .rc-lane').count()) === 2 && (await page.locator('.result-card .pc-verdict').count()) === 1, '落點分布 compares 申請 and 分發 with a verdict');
+    await page.click('#pathWhy summary');
+    await page.waitForSelector('#pathWhy .pw-t tbody tr');
+    ok((await page.locator('#pathWhy .pw-t tbody tr').count()) >= 2 && /申請：擋住/.test(await page.locator('#pathWhy').innerText()), '為什麼兩條路不一樣: blockers and ±1 級分 per subject for both paths');
     const ntu = await page.evaluate(() => window.__app.evaluateUac('0001'));
     ok(ntu && ntu.cut === 265.5 && ntu.total > 0, `臺大中文 judged against its 115 最低錄取 265.5 (you ${ntu && ntu.total})`);
     await typeAst('歷', '60');

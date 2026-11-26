@@ -859,13 +859,67 @@ loadAppData().then(D => {
       ${scopeBarHTML(P === 'uac' ? us.length : scope.length)}
       ${!showA ? '' : scope.length ? lane('申請入學', `一階・${fmtN(scope.length)} 個系`, n, scope.length, p ? p.app.length : scope.filter(d => isGood(tierOf(d))).length, p && p.aBest) : empty}
       ${showU ? (hasAst() ? lane('分發入學', `學測＋分科・${fmtN(us.length)} 個系組`, m, us.length, p.uac.length, p.uBest) : `<div class="rc-lane"><div class="rc-h"><b>分發入學</b><small>學測＋分科</small></div><p class="hint">還沒選要考的分科（上面「分科成績」）。</p></div>`) : ''}
-      ${verdict ? `<p class="pc-verdict ${cls}">${esc(verdict)}</p>${hasAst() ? `<p class="rc-cross">只有申請有機會 <b>${p.aOnly.length}</b> 個系・只有分發有機會 <b>${p.uOnly.length}</b> 個</p>` : ''}
+      ${verdict ? `<p class="pc-verdict ${cls}">${esc(verdict)}</p>${hasAst() ? `<p class="rc-cross">只有申請有機會 <b>${p.aOnly.length}</b> 個系・只有分發有機會 <b>${p.uOnly.length}</b> 個</p>
+      <details class="rc-why" id="pathWhy" ${ui.whyOpen ? 'open' : ''}><summary>${icon('info', 'sm')}為什麼兩條路結果不一樣？</summary>${ui.whyOpen ? pathWhyHTML(scope, us) : ''}</details>` : ''}
       <details class="rc-why"><summary>${icon('info', 'sm')}兩條路怎麼選、你在考生裡排哪</summary><ul class="pc-why">
         <li><b>申請</b>：這裡只算一階。過了還有二階（審查資料、面試），看總成績；3 月就知道。</li>
         <li><b>分發</b>：只看分數（學測＋分科加權），沒有面試；分科 7/10 考、8/13 放榜，要多準備半年。</li>
         <li>申請錄取了想改考分科，要在 6/13 前聲明放棄。很多人兩條都準備：申請先試，沒上或不滿意再拚分科。</li></ul>
         <p class="sub">學測科目比 115 分發考生，分科比 115 分科考生；「約」是估計。</p>${standHTML()}</details>` : ''}
       <div class="rc-act"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}看校系</button><button class="btn" type="button" data-tab="boost">${icon('boost', 'sm')}怎麼進步</button></div></section>`;
+  }
+  /**
+   * Why 申請 and 分發 disagree for these scores: what blocks each path, and what one 級分 more or less in each
+   * subject does to each (a 檢定 cliff hits 申請 hard; 分發 adds subjects up, so one weak subject matters less).
+   */
+  function pathWhyHTML(scope, us) {
+    const c = cur(), R0 = c.thS;
+    const count = (m, k) => { m[k] = (m[k] || 0) + 1; };
+    const aBlock = {}, uBlock = {};
+    for (const d of scope) {
+      const e = EV.get(d.c);
+      if (!e || e.tier !== '不符') continue;
+      if (!e.th.ok) thFailParts(e.th).forEach(x => count(aBlock, x.what + ' 檢定'));
+      else count(aBlock, '沒考要篩選的科目');
+    }
+    for (const u of us) {
+      const e = UEV.get(u.c);
+      if (!e || e.tier !== '不符') continue;
+      e.thFail.forEach(alts => count(uBlock, alts.map(a => (a.k === '聽' ? '英聽' : subj(a.k) + ' ') + a.t).join(' 或 ') + ' 檢定'));
+      e.missing.forEach(k => count(uBlock, '沒考' + uName(k)));
+    }
+    const top = m => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const blockList = (m, none) => { const t = top(m); return t.length ? t.map(([k, n]) => `<li><span>${esc(k)}</span><b class="num">${fmtN(n)}</b></li>`).join('') : `<li class="muted">${none}</li>`; };
+    // one 級分 up or down in each subject you took, on the scale you see (a 模考's own 級分)
+    const goodA = R => { const x = atRaw(c, R); const o = { ...optsFor(c), thS: x.thS }; let n = 0; for (const d of scope) if (isGood(L.evaluate(d, x.S, o).tier)) n++; return n; };
+    const goodU = R => { const x = atRaw(c, R); const M = L.scores60(x.S, astPlan(), UT); let n = 0; for (const u of us) if (isGood(L.evaluateUac(u, M, x.thS, c.std).tier)) n++; return n; };
+    const a0 = scope.filter(d => isGood(tierOf(d))).length, u0 = us.filter(u => isGood(uTier(u))).length;
+    const sgn = n => (n > 0 ? `<span class="delta up">+${n}</span>` : n < 0 ? `<span class="delta down">${n}</span>` : '<span class="muted">0</span>');
+    const rows = SCORE_KEYS.filter(k => L.val(R0, k) != null).map(k => {
+      const v = L.val(R0, k);
+      const at = dv => { const w = v + dv; if (w < 1 || w > 15) return null; const R = { ...R0, [k]: String(w) }; return [goodA(R) - a0, goodU(R) - u0]; };
+      return { k, v, dn: at(-1), up: at(1) };
+    });
+    // the subject where one 級分 moves the two paths furthest apart
+    const gap = r => Math.max(...[r.dn, r.up].filter(Boolean).map(([a, u]) => Math.abs(a - u)));
+    const big = rows.slice().sort((x, y) => gap(y) - gap(x))[0];
+    let lead = '';
+    if (big && gap(big) > 0) {
+      const span = x => (x ? Math.abs(x[0] - x[1]) : -1);
+      const down = span(big.dn) >= span(big.up), [a, u] = down ? big.dn : big.up, dir = down ? '少' : '多';
+      const lv = c.mock ? levelIn(c.std, big.k, big.v) : levelOf(big.k, big.v);
+      lead = `<p class="pw-lead">最敏感的是<b>${subj(big.k)}</b>（你 ${big.v} 級分${lv ? `，${lv}` : ''}）：${dir} 1 級分，申請${GOOD} ${a >= 0 ? '多' : '少'} <b>${Math.abs(a)}</b> 個、分發 ${u >= 0 ? '多' : '少'} <b>${Math.abs(u)}</b> 個。${Math.abs(a) > Math.abs(u) * 1.5 ? '申請的檢定常卡在某一標，掉一級分就整批過不了；分發看加權總分，一科少一點，別科可以補。' : Math.abs(u) > Math.abs(a) * 1.5 ? '這一科在分發的權重比較重（也影響你的分科估計），對分發影響比較大。' : ''}</p>`;
+    }
+    return `<div class="pw">${lead}
+      <div class="pw-b"><div><h4>申請：擋住最多系的</h4><ul class="pw-l">${blockList(aBlock, '沒有被檢定擋住的系')}</ul></div>
+      <div><h4>分發：擋住最多系組的</h4><ul class="pw-l">${blockList(uBlock, '沒有被檢定擋住的系組')}</ul></div></div>
+      <h4>每科差 1 級分，${GOOD}的數目怎麼變</h4>
+      <div class="tablewrap"><table class="pw-t"><thead><tr><th scope="col">科目</th><th scope="col">少 1 級分<small>申請／分發</small></th><th scope="col">多 1 級分<small>申請／分發</small></th></tr></thead><tbody>
+      ${rows.map(r => `<tr><th scope="row">${subj(r.k)}<small>${r.v}</small></th><td>${r.dn ? `${sgn(r.dn[0])} ／ ${sgn(r.dn[1])}` : '—'}</td><td>${r.up ? `${sgn(r.up[0])} ／ ${sgn(r.up[1])}` : '—'}</td></tr>`).join('')}</tbody></table></div>
+      <ul class="pc-why"><li><b>申請一階</b>：檢定＋倍率篩選，每一科都是一道關卡，一科沒到某一標就整個系過不了。</li>
+        <li><b>分發</b>：學測和分科照權重加總，一科低可以用別科補；有設學測檢定的系組比申請少。</li>
+        <li>分發還要看分科（7 月考），你選的估計或自己填的分數也會影響。</li></ul>
+      <p class="hint">${c.mock ? `用${esc(c.name)}的級分和五標算。` : ''}只算目前篩選裡的校系。</p></div>`;
   }
   /** Each 學群: how many of its 系 you would likely pass (穩過＋應該過), the subjects its 一階 screens on, the most sought-after one you reach. */
   function groupFit() {
@@ -2539,6 +2593,7 @@ loadAppData().then(D => {
       if (id === 'comboMore') ui.comboOpen = ev.target.open;
       if (id === 'mockRef') ui.mockRefOpen = ev.target.open;
       if (id === 'tierHelp') ui.helpOpen = ev.target.open;
+      if (id === 'pathWhy' && ui.whyOpen !== ev.target.open) { ui.whyOpen = ev.target.open; if (ui.whyOpen) render(); }
     }, true);
     document.addEventListener('keydown', ev => {
       const t = ev.target;
