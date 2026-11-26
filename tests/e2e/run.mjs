@@ -208,6 +208,11 @@ try {
     await page.reload();
     await page.waitForSelector('#planList li[data-code]');
     ok((await page.locator('#tabs [data-plancount]').innerText()) === '6/6', 'plan survives reload (and the page reopens on the plan tab)');
+    // 我的學習歷程: tick what you have, each 志願 says what is still missing
+    await page.click('#haveSec [data-have="O"]');
+    await page.waitForFunction(() => window.__app.st().have.includes('O'));
+    ok((await page.locator('#haveSec .hv-list li').count()) === 6 && /還要寫|會看、你還沒有/.test(await page.locator('#haveSec').innerText()), '學習歷程 checklist lists the 6 志願 and what is missing');
+    ok(/有了/.test(await page.locator('#prep').innerText()), 'the 審查資料 matrix marks what you have');
     await page.click('#tabs [data-tab="explore"]');
     await page.waitForSelector('.row');
     ok((await scores(page)).英 === '15' && /英\s*15/.test(await page.locator('#ctxExplore').innerText()), 'scores survive reload');

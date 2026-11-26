@@ -128,6 +128,7 @@ loadAppData().then(D => {
     { n: '116 學測', d: '2027-01-22', when: '2027/1/22–1/24', r: null },
   ];
   const MOCK_MAX = 30;
+  const HAVE_CODES = 'BCDEFGHIJKLMNOPQ'.split('');
   const REVIEW = { A: '修課紀錄', B: '書面報告', C: '實作作品', D: '自然科學探究與實作成果', E: '社會領域探究活動成果', F: '自主學習計畫與成果', G: '社團活動經驗', H: '擔任幹部經驗', I: '服務學習經驗', J: '競賽表現', K: '非修課紀錄之成果作品', L: '檢定證照', M: '特殊優良表現證明', N: '多元表現綜整心得', O: '高中學習歷程反思', P: '就讀動機', Q: '未來學習計畫與生涯規劃' };
   const SCORE_KEYS = ['國', '英', '數A', '數B', '社', '自'];
   const ABBR = { 國: '國', 英: '英', 數A: '數A', 數B: '數B', 社: '社', 自: '自', 識: 'APCS觀念', 實: 'APCS實作' };
@@ -197,6 +198,8 @@ loadAppData().then(D => {
     hol: [],
     // 興趣測驗 answers (48 × 1–5, 0 = not yet)
     quiz: [],
+    // 學習歷程 the student already has (審查資料 codes B–Q; A 修課紀錄 comes from the 資料庫)
+    have: [],
     // 分科: which subjects you will take and how to score them ({數甲: 'e' (estimate) | '0'–'60'}); null = follow 學測
     ast: null,
   });
@@ -308,6 +311,7 @@ loadAppData().then(D => {
     out.plan = [...new Set(arr(s.plan, c => BY_CODE[c]))].slice(0, 6);
     out.src = out.mocks.some(m => m.id === s.src) ? s.src : 'test';
     out.hol = [...new Set(arr(s.hol, x => HOL.some(h => h[0] === x)))].slice(0, 3);
+    out.have = [...new Set(arr(s.have, c => HAVE_CODES.includes(c)))];
     out.quiz = Array.isArray(s.quiz) ? s.quiz.slice(0, 48).map(x => (Number.isInteger(x) && x >= 0 && x <= 5 ? x : 0)) : [];
     if (s.ast && typeof s.ast === 'object') {
       out.ast = {};
@@ -621,7 +625,7 @@ loadAppData().then(D => {
   const noteHTML = (kind, html) => `<div class="note ${kind}">${icon(kind === 'warn' ? 'alert' : 'info')}<div>${html}</div></div>`;
   function focusKey(el) {
     if (!el || !el.dataset) return null;
-    for (const a of ['slider', 'try', 'focus', 'src', 'list', 'gsel', 'gx', 'hol', 'astmode', 'astv', 'path', 'qans', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
+    for (const a of ['slider', 'try', 'focus', 'src', 'list', 'gsel', 'gx', 'hol', 'astmode', 'astv', 'path', 'qans', 'have', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
       if (el.dataset[a] != null) return `[data-${a}="${CSS.escape(el.dataset[a])}"]`;
     }
     return el.id ? '#' + CSS.escape(el.id) : null;
@@ -1448,7 +1452,7 @@ loadAppData().then(D => {
     學習歷程自述: '自己寫，列出的幾項都寫到，做成一個 PDF 上傳',
     其他: '自己做成一個 PDF，內容依各系規定',
   };
-  const codeChip = (c, t) => `<span class="code">${c ? `<b>${esc(c)}</b>` : ''}${esc(t)}</span>`;
+  const codeChip = (c, t) => { const h = c && HAVE_CODES.includes(c) && st.have.includes(c); return `<span class="code${h ? ' have' : ''}"${h ? ' title="你有了"' : ''}>${c ? `<b>${esc(c)}</b>` : ''}${esc(t)}${h ? icon('check', 'xs') : ''}</span>`; };
   function reviewHTML(d) {
     const gs = L.reviewGroups(d.rv);
     if (!gs.length) return '';
@@ -1630,6 +1634,43 @@ loadAppData().then(D => {
   const compBar = d => `<div class="cbar" aria-hidden="true">${L.stage2(d).map(x => `<span class="${kindCls(x.kind)}" style="flex-grow:${x.p}"></span>`).join('')}</div>`;
   const compCap = d => (d.sp ? '' : '<span class="nosat">不計學測</span>') + L.stage2(d).map(x => `<span><i class="sw ${kindCls(x.kind)}"></i>${esc(x.n)} ${x.p}%</span>`).join('');
   const REVIEW_ORDER = ['修課紀錄', '課程學習成果', '多元表現', '學習歷程自述'];
+  // the 學習歷程 a student can tick, by how they are handed in
+  const HAVE_GROUPS = [['課程學習成果', 'BCDE', '上傳到學習歷程資料庫的'], ['多元表現', 'FGHIJKLMN', 'N 綜整心得申請時自己寫'], ['學習歷程自述', 'OPQ', '申請時自己寫，寫好就勾']];
+  const WRITE = new Set(['N', 'O', 'P', 'Q']);
+  /**
+   * 我的學習歷程: tick what you have, then see what your 志願 (or 收藏) will look at that you do not have yet.
+   * 課程學習成果 and 多元表現 list the kinds a 系 reads (any of them will do); what you write yourself (N–Q) is asked for.
+   */
+  function haveHTML(P) {
+    const H = new Set(st.have), list = P.length ? P : st.fav.map(c => BY_CODE[c]).filter(Boolean);
+    const G = list.map(d => L.reviewGroups(d.rv));
+    const codesOf = (gs, g) => (gs.find(x => x.g === g) || { codes: [] }).codes;
+    const want = {};
+    G.forEach(gs => gs.forEach(x => x.codes.forEach(c => { want[c] = (want[c] || 0) + 1; })));
+    const chips = HAVE_GROUPS.map(([g, cs, how]) => `<div class="hv-g"><p class="hv-h"><b>${g}</b><small>${how}</small></p><div class="chips">${cs.split('').map(c => `<button type="button" class="chip hv" data-have="${c}" aria-pressed="${H.has(c)}"><b class="cd">${c}</b>${REVIEW[c]}${want[c] ? `<span class="n" title="${want[c]} 個${P.length ? '志願' : '收藏'}會看">${want[c]}</span>` : ''}</button>`).join('')}</div></div>`).join('');
+    let out = '';
+    if (list.length) {
+      const who = P.length ? '志願' : '收藏';
+      const toWrite = Object.keys(want).filter(c => WRITE.has(c) && !H.has(c)).sort();
+      const toGet = Object.keys(want).filter(c => !WRITE.has(c) && c !== 'A' && REVIEW[c] && !H.has(c)).sort((a, b) => want[b] - want[a]);
+      // each 系: a group is covered once you have any kind it reads; what you write must all be there
+      const rows = list.map((d, i) => {
+        const gs = G[i], parts = [];
+        for (const g of ['課程學習成果', '多元表現']) { const cs = codesOf(gs, g).filter(c => c !== 'N'); if (cs.length) parts.push([g, cs.some(c => H.has(c))]); }
+        const ws = [...codesOf(gs, '多元表現'), ...codesOf(gs, '學習歷程自述')].filter(c => WRITE.has(c));
+        const done = ws.filter(c => H.has(c)).length;
+        if (ws.length) parts.push([`自己寫 ${done}/${ws.length}`, done === ws.length]);
+        const other = (gs.find(x => x.g === '其他') || { items: [] }).items.length;
+        const ok = parts.every(x => x[1]);
+        return `<li class="${ok ? 'ok' : ''}"><button type="button" class="hv-d" data-open="${d.c}">${P.length ? `<span class="no">${i + 1}</span>` : ''}<span>${esc(schShort(d))} ${esc(d.n)}</span></button><span class="hv-s">${parts.map(([t, y]) => `<span class="${y ? 'y' : 'x'}">${y ? icon('check', 'xs') : ''}${esc(t)}</span>`).join('')}${other ? `<span class="o">另有 ${other} 項系定資料</span>` : ''}</span></li>`;
+      }).join('');
+      out = `${toWrite.length ? `<p class="hv-todo"><b>還要寫</b>${toWrite.map(c => `<span><b class="cd">${c}</b>${REVIEW[c]}<small>${want[c]} 個</small></span>`).join('')}</p>` : ''}
+        ${toGet.length ? `<p class="hv-todo soft"><b>你的${who}會看、你還沒有</b>${toGet.slice(0, 8).map(c => `<span><b class="cd">${c}</b>${REVIEW[c]}<small>${want[c]} 個</small></span>`).join('')}</p><p class="hint">這些是系會看的「種類」，有其中幾種就夠，不用每種都有；挑跟系相關、最能代表你的。</p>` : ''}
+        <h3 class="sec-h3">每個${who}準備到哪</h3><ol class="hv-list">${rows}</ol>`;
+    }
+    return `<section class="sec" id="haveSec">${hIcon('check', '我的學習歷程')}<p class="sub">勾你已經有的，看${P.length ? '志願' : '收藏'}還缺什麼。修課紀錄（A）由資料庫提供，不用勾。數字是幾個${P.length ? '志願' : '收藏'}會看。</p>
+      ${chips}${list.length ? out : '<p class="hint" style="margin-top:12px">收藏或排志願之後，這裡會列出每個系還缺什麼。</p>'}</section>`;
+  }
   function prepHTML(P) {
     if (!P.length) return '';
     const sps = P.map(d => d.sp || 0), lo = Math.min(...sps), hi = Math.max(...sps);
@@ -1647,7 +1688,8 @@ loadAppData().then(D => {
       rows += groupRow(g);
       for (const c of codes) {
         const has = G.map(gs => codesOf(gs, g).includes(c)), n = has.filter(Boolean).length;
-        rows += `<tr${n === P.length && P.length > 1 ? ' class="all"' : ''}><th scope="row" title="${esc(c + ' ' + REVIEW[c])}"><b class="cd">${c}</b>${esc(REVIEW[c])}</th>${cells(has)}<td class="cnt">${n}</td></tr>`;
+        const mine = st.have.includes(c);
+        rows += `<tr class="${n === P.length && P.length > 1 ? 'all' : ''}${mine ? ' have' : ''}"><th scope="row" title="${esc(c + ' ' + REVIEW[c])}"><b class="cd">${c}</b>${esc(REVIEW[c])}${mine ? `<span class="hv-ok">${icon('check', 'xs')}有了</span>` : ''}</th>${cells(has)}<td class="cnt">${n}</td></tr>`;
       }
     }
     // 其他: each 系 defines its own R, S, T, so rows are the items themselves.
@@ -1700,6 +1742,7 @@ loadAppData().then(D => {
         </section>
       </div>
       <section class="sec">${hIcon('star', '收藏')}<p class="sub">${favs.length ? `${favs.length} 個 · 從這裡排進志願` : '在「找校系」按星號收藏想考慮的校系'}</p>${favs.length ? `<ol class="favs" id="favList">${favRows}</ol>` : `<div style="margin-top:14px"><button class="btn primary" type="button" data-tab="explore">${icon('search', 'sm')}去找校系</button></div>`}</section>
+      ${haveHTML(P)}
       ${prepHTML(P)}
       ${P.length ? `<section class="sec">${hIcon('cal', '二階行事曆')}<p class="sub">審查資料截止、甄試、放榜和統一日期</p>${calendarHTML(P)}</section>` : ''}
       <section class="sec no-print">${hIcon('download', '備份與換裝置')}<p class="sub">資料只存在這台裝置，換裝置前先備份。</p>
@@ -2484,6 +2527,7 @@ loadAppData().then(D => {
         toast(`${ds.gx}學群裡${GOOD}的系，去年門檻高的在前`);
         return;
       }
+      if (ds.have) { toggle(st.have, ds.have); render(); return; }
       if (ds.hol) {
         if (st.hol.includes(ds.hol)) st.hol = st.hol.filter(x => x !== ds.hol);
         else if (st.hol.length >= 3) { toast('最多選 3 個'); return; } else st.hol = [...st.hol, ds.hol];
