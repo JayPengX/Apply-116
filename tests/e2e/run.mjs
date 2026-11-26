@@ -105,18 +105,18 @@ try {
     await page.click('#filterPanel [data-group="法政"]');
     const ov = await page.locator('#overview').innerText();
     ok(ov.includes('法政') && /穩過\s*\d+/.test(ov) && /應該過\s*\d+/.test(ov), 'overview shows the scope and tier counts');
-    const pills = await page.locator('#list .row .pill').allInnerTexts();
+    const pills = (await page.locator('#list .row .pill').allTextContents()).map(x => x.trim()); // rows off screen skip layout, so read text, not innerText
     ok(pills.length > 10 && pills.every(p => TIER_ORDER.includes(p)), 'rows show the labels (穩過、應該過…): ' + [...new Set(pills)].join(' '));
     ok((await page.locator('#list .row .pill .sig').count()) === pills.length, 'every label carries its signal icon');
     // a row may carry two labels (申請一階, 分發); it is placed by the better one
     const BEST = ['穩過', '應該過', '邊緣', '機會低', '看不出', '過不了'];
-    const rowBest = (await page.locator('#list .row').evaluateAll(rs => rs.map(r => [...r.querySelectorAll('.pill')].map(p => p.innerText.trim())))).map(ps => ps.map(p => BEST.indexOf(p)).reduce((a, b) => Math.min(a, b), 9));
+    const rowBest = (await page.locator('#list .row').evaluateAll(rs => rs.map(r => [...r.querySelectorAll('.pill')].map(p => p.textContent.trim())))).map(ps => ps.map(p => BEST.indexOf(p)).reduce((a, b) => Math.min(a, b), 9));
     ok(!rowBest.includes(BEST.indexOf('過不了')), '過不了 hidden by default');
     const TI = ['穩過', '應該過', '邊緣', '機會低', '過不了', '看不出'];
     ok(rowBest.every((b, i) => i === 0 || TI.indexOf(BEST[rowBest[i - 1]]) <= TI.indexOf(BEST[b])), 'sorted by the better path');
 
     // 第二階段 filters: one 學測-share choice at a time, plus 甄試 chips whose counts match the list they produce
-    const spOf = await page.evaluate(() => Object.fromEntries(JSON.parse(document.getElementById('app-data').textContent).depts.map(d => [d.c, d.sp])));
+    const spOf = await page.evaluate(() => Object.fromEntries(window.__app.D.depts.map(d => [d.c, d.sp])));
     const listed = () => page.locator('#list .row[data-code]').evaluateAll(els => els.map(e => e.dataset.code));
     const ovCount = async () => Number((await page.locator('#overview h2 b').innerText()).replace(/,/g, ''));
     await page.click('#filterPanel [data-sat="light"]');
@@ -181,7 +181,7 @@ try {
     ok((await page.locator('#prep .cbars li').count()) === 6, '二階準備 shows a score-mix bar per 志願');
     // each matrix row's count matches its dots, and the P row agrees with the 系' own 審查資料 lists
     const mx = await page.evaluate(() => {
-      const D = JSON.parse(document.getElementById('app-data').textContent);
+      const D = window.__app.D;
       const by = Object.fromEntries(D.depts.map(d => [d.c, d]));
       const rows = [...document.querySelectorAll('#prep .rmx tbody tr:not(.gh)')];
       const pRow = rows.find(r => r.querySelector('.cd') && r.querySelector('.cd').textContent === 'P');
@@ -384,7 +384,7 @@ try {
     await page.waitForFunction(() => !document.querySelector('#detail').open);
 
     // a full plan, so the 二階準備 matrix is on the page for the overflow check
-    await page.evaluate(() => { const D = JSON.parse(document.getElementById('app-data').textContent); window.__app.st().plan = D.depts.filter(d => d.g.includes('法政')).slice(0, 6).map(d => d.c); window.__app.render(); });
+    await page.evaluate(() => { const D = window.__app.D; window.__app.st().plan = D.depts.filter(d => d.g.includes('法政')).slice(0, 6).map(d => d.c); window.__app.render(); });
     for (const tab of ['scores', 'explore', 'plan', 'boost', 'guide']) {
       await page.click(`#bottomnav [data-tab="${tab}"]`);
       if (tab === 'plan') ok((await page.locator('#prep .rmx').count()) === 1, '二階準備 matrix on phone');

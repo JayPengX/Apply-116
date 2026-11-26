@@ -1,12 +1,22 @@
-/* 116 申請入學選系: interface. Depends on window.Logic (src/logic.js, the pure scoring rules) and the embedded #app-data JSON. */
-(function () {
+/* 116 申請入學選系: interface. Depends on window.Logic (src/logic.js, the pure scoring rules) and the embedded #app-data (gzipped JSON, base64). */
+/** The embedded data: base64 → gzip → JSON. DecompressionStream where there is one, tiny-inflate otherwise. */
+async function loadAppData() {
+  const b64 = document.getElementById('app-data').textContent.trim();
+  const bin = atob(b64), gz = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) gz[i] = bin.charCodeAt(i);
+  if (window.DecompressionStream) return JSON.parse(await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+  // gzip: a 10-byte header (no name or extras, written by the build), raw deflate, then CRC32 and the size (LE)
+  const n = gz[gz.length - 4] | (gz[gz.length - 3] << 8) | (gz[gz.length - 2] << 16) | (gz[gz.length - 1] << 24);
+  return JSON.parse(new TextDecoder().decode(window.tinyInflate(gz.subarray(10, gz.length - 8), new Uint8Array(n >>> 0))));
+}
+loadAppData().then(D => {
   'use strict';
   const L = window.Logic;
-  const D = JSON.parse(document.getElementById('app-data').textContent);
   const $ = (s, el) => (el || document).querySelector(s);
   const $$ = (s, el) => [...(el || document).querySelectorAll(s)];
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const fmtN = n => Number(n).toLocaleString('en-US');
+  // thousands separators without toLocaleString (slow when called for every count)
+  const fmtN = n => { const [i, f] = String(n).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (f ? '.' + f : ''); };
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
   // ------------------------------------------------------------------ reference data
@@ -504,7 +514,9 @@
   }
   function sorted(list) {
     const k = st.f.sort;
-    const ti = d => { const t = xTier(d); return t ? TIERS.indexOf(t) : 9; };
+    // tier and selectivity once per row, not once per comparison
+    const T = new Map(list.map(d => { const t = xTier(d); return [d, t ? TIERS.indexOf(t) : 9]; }));
+    const ti = d => T.get(d);
     const by = {
       chance: (a, b) => (ti(a) - ti(b)) || ((xSel(b) || 0) - (xSel(a) || 0)),
       select: (a, b) => (xSel(b) || 0) - (xSel(a) || 0),
@@ -951,7 +963,9 @@
     }
     const c = {};
     base.forEach(d => { const t = xTier(d); c[t] = (c[t] || 0) + 1; });
-    const W = el.clientWidth || 600;
+    // the bar's width only decides which counts fit inside; reading it now would force a layout of the whole page
+    const W = ui.ovW || Math.max(280, Math.min(innerWidth - 64, 820));
+    requestAnimationFrame(() => { ui.ovW = el.clientWidth || ui.ovW; });
     el.innerHTML = `<div class="ov-h">${head}</div>
       ${tierBarHTML(c, base.length, { width: W, tiers: st.f.tiers, label: '落點分布' })}
       <div class="legend" role="group" aria-label="一階過得了嗎？按一下隱藏或顯示">${TIERS.map(t => `<button type="button" class="lg ${TC[t]}" data-tier="${t}" aria-pressed="${st.f.tiers.includes(t)}" title="${esc(TIER_SHORT[t])}">${sigHTML(t)}${TL[t]}<b>${c[t] || 0}</b></button>`).join('')}</div>
@@ -1892,7 +1906,9 @@
   }
   // 分發 selectivity on the 申請 scale (avg 級分 per subject), so mixed rows sort together
   const uSel15 = u => { const x = L.uacSelectivity(u, UT); if (x == null) return null; for (let g = 15; g >= 1; g--) if (L.topPercent(D.pct, ['英'], g) >= 100 - x) return g; return 1; };
-  const xSel = d => (d.isU ? uSel15(d) : L.selectivity(d));
+  // how hard a 系 was in 115 does not depend on your scores: work it out once
+  const SEL = new Map();
+  const xSel = d => { if (!SEL.has(d)) SEL.set(d, d.isU ? uSel15(d) : L.selectivity(d)); return SEL.get(d); };
   const uShort = e => (e.tier === '不符' ? (e.missing.length ? `要考${e.missing.map(uName).join('、')}` : '檢定沒過')
     : e.tier === '無資料' ? (e.arts ? '要考術科' : '沒有 115 分數')
       : `<span>你約 <b>${e.total.toFixed(0)}</b></span><span>115 最低 <b>${e.cut.toFixed(0)}</b></span>`);
@@ -2450,5 +2466,5 @@
   ui.tab = '';
   setTab(startTab, true);
   route();
-  window.__app = { st: () => st, evaluate: c => EV.get(c), evaluateUac: c => { ensureUac(); return UEV.get(c); }, ctx: () => cur(), render };
-})();
+  window.__app = { D, st: () => st, evaluate: c => EV.get(c), evaluateUac: c => { ensureUac(); return UEV.get(c); }, ctx: () => cur(), render };
+});

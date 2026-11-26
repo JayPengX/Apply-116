@@ -6,9 +6,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+        with: { node-version: '22.23.5' } # the committed docs/index.html embeds gzip output: same Node, same bytes
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - run: npm ci
       - run: npm run build
       - run: npm test
       - run: npx -y playwright@1.49.1 install --with-deps chromium && npm i --no-save playwright@1.49.1

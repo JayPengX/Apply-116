@@ -1232,3 +1232,5 @@ button.gb:hover{background:var(--surface-2)}
 .rc-why summary{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:650;color:var(--text-2);cursor:pointer}
 @media (max-width:719px){.row>.r-uac,.row>.ucs,.row>.unote{grid-column:1 / -1}}
 .segctl button:disabled{opacity:.4;cursor:not-allowed}
+/* rows off screen are not laid out until scrolled near (most of the first 50 on a phone) */
+.list>.row{content-visibility:auto;contain-intrinsic-size:auto 230px}

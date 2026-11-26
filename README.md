@@ -24,7 +24,7 @@
 4. **怎麼進步**：範圍跟「我的成績」共用（全部校系、可選一個學群／收藏／志願），**不會**跟著找校系的篩選走。最值得補強的一科；每科多考 1–5 級分會多出幾個校系（附模考趨勢）；哪個檢定擋住你最多系；試算（暫時改級分看落點怎麼變）。用模考時，從換算的學測級分往上加，檢定照那次模考的五標同步加減。
 5. **時程與規則**：116 官方日程（含倒數）、一定要知道的規則、落點怎麼判斷、審查資料代碼表。
 
-整個工具是**一個 HTML 檔**，資料全部內建，不用網路、不用安裝，手機和電腦都能用。
+整個工具是**一個 HTML 檔**（約 1.7 MB，網路傳輸約 1.1 MB），資料全部內建，不用網路、不用安裝，手機和電腦都能用。
 
 - 線上版：GitHub Pages（`docs/index.html`）
 - 離線版：下載 [`docs/index.html`](docs/index.html)，用瀏覽器打開就好。
@@ -87,6 +87,7 @@
 ```bash
 pip install xlrd            # 只有重新解析官方 xls 時需要；也需要 poppler-utils (pdftotext)
 npm run data                # 官方原始檔 → data/official/*.json → build/app-data.json
+npm ci                      # esbuild（壓縮 JS、CSS）
 npm run build               # → dist/index.html 與 docs/index.html（單一檔案）
 npm test                    # 邏輯與資料測試（node --test）
 npm run test:e2e            # 瀏覽器測試（Playwright Chromium；擋掉所有網路請求）
@@ -95,8 +96,9 @@ npm run test:e2e            # 瀏覽器測試（Playwright Chromium；擋掉所�
 ```
 src/logic.js     落點規則（純函式，瀏覽器與 Node 共用）
 src/app.js       介面
-src/index.html   版面；build 時把 CSS、JS、資料內嵌進來
-scripts/         資料處理（parse_official.py、build_data.py、build.mjs；legacy/ 是 115 圖片判讀時的程式）
+src/index.html   版面；build 時把 CSS、JS（esbuild 壓縮）和資料（gzip＋base64，頁面用 DecompressionStream 解開）內嵌進來
+src/vendor/      tiny-inflate（MIT）：沒有 DecompressionStream 的舊瀏覽器（iOS 16.4 以前）解資料用
+scripts/         資料處理（parse_official.py、fetch_uac.py、parse_uac.py、build_data.py、build.mjs；legacy/ 是 115 圖片判讀時的程式）
 tests/           單元、資料、瀏覽器測試
 ```
 

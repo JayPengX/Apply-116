@@ -84,8 +84,25 @@
   }
 
   /** How many 115 考生 scored >= v on this subject combination. Returns null if no official table. */
+  /** A function of one 系 alone (not of your scores): computed once per 系 and remembered. */
+  function perDept(fn) {
+    const memo = new WeakMap();
+    return d => { if (!memo.has(d)) memo.set(d, fn(d)); return memo.get(d); };
+  }
+  // the same (table, subjects, 級分) lookups repeat thousands of times per evaluation pass
+  const CA_MEMO = new WeakMap();
   function countAtOrAbove(pct, parts, v) {
-    if (!pct || !parts || parts.some(p => !SUBJ.includes(p))) return null;
+    if (!pct || !parts) return null;
+    let memo = CA_MEMO.get(pct);
+    if (!memo) CA_MEMO.set(pct, (memo = new Map()));
+    const mk = parts.join() + '|' + v;
+    if (memo.has(mk)) return memo.get(mk);
+    const r = countAtOrAboveRaw(pct, parts, v);
+    memo.set(mk, r);
+    return r;
+  }
+  function countAtOrAboveRaw(pct, parts, v) {
+    if (parts.some(p => !SUBJ.includes(p))) return null;
     const key = SUBJ.filter(s => parts.includes(s)).join('');
     const tab = pct[key];
     if (!tab) return null;
@@ -147,7 +164,7 @@
   }
 
   /** 116 screening plan: items with multiples, grouped by equal multiple, highest first. */
-  function screenPlan(d) {
+  const screenPlan = perDept(function screenPlan(d) {
     const items = d.sub.filter(s => s.m != null && s.k !== '聽');
     const by = new Map();
     for (const s of items) {
@@ -158,7 +175,7 @@
     return [...by.entries()].sort((a, b) => Number(b[0]) - Number(a[0])).map(([m, ss]) => ({
       m: Number(m), parts: [...new Set(ss.flatMap(s => s.p || []))], keys: ss.map(s => s.k),
     }));
-  }
+  });
 
   // ------------------------------------------------------------ 116 stages first, 115 cuts only where they apply
   const STAGE_SUBJ = ['國', '英', '數A', '數B', '社', '自', '識', '實'];
@@ -210,7 +227,7 @@
    *   none  no 115 cut applies: 115 never screened these subjects together, or it cut nobody but 116 lets clearly
    *         fewer through (st.open says so), or the 115 data is a sibling group's
    */
-  function align116(d) {
+  const align116 = perDept(function align116(d) {
     const r = d.r115;
     const plan = screenPlan(d);
     const artsM = d.arts ? d.arts.items.filter(i => i.m != null) : [];
@@ -247,7 +264,7 @@
       return st;
     });
     return { stages, dropped: cuts.filter(c => c.k && !used.has(c.i)), cuts, arts116: artsM, artsAfter };
-  }
+  });
 
   /**
    * Compare my scores with the 116 stages (see align116). Each stage with a 115 cut gets res:
@@ -373,7 +390,7 @@
    * 學測 subjects a 系 needs in 一階 (檢定 or 倍率篩選), as groups of alternatives: [['國'], ['數A', '數B'], …].
    * A group is needed unless one of its subjects is still allowed; 數A and 數B both set as 檢定 = pass either one.
    */
-  function stage1Groups(d) {
+  const stage1Groups = perDept(function stage1Groups(d) {
     const out = [], seen = new Set();
     const add = g => { const key = g.join('|'); if (!seen.has(key)) { seen.add(key); out.push(g); } };
     const mathT = d.sub.filter(s => (s.k === '數A' || s.k === '數B') && s.t && !s.apcs);
@@ -388,7 +405,7 @@
       }
     }
     return out;
-  }
+  });
   /** True when the 系 needs one of these subjects in 一階 (no alternative left). */
   function stage1Uses(d, subjects) {
     if (!subjects || !subjects.length) return false;
@@ -396,10 +413,10 @@
   }
 
   /** The subjects a 系 screens on by 倍率 in 一階 (all stages together), in fixed order; [] when it has no 倍率篩選. */
-  function screenSubjects(d) {
+  const screenSubjects = perDept(function screenSubjects(d) {
     const ps = new Set(d.sub.filter(s => s.m != null && s.k !== '聽').flatMap(s => s.p || []));
     return STAGE_SUBJ.filter(s => ps.has(s));
-  }
+  });
   /** Key of that combination, e.g. "國+英+社" ('' when none). */
   const comboKey = d => screenSubjects(d).join('+');
   /** Your 級分 total and 115 rank on a combination ({sum, top} or null when you did not take one of them). */

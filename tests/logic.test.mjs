@@ -267,20 +267,21 @@ test('115 screened nobody, but 116 screens other subjects or fewer people → �
   assert.match(e.reasons.join('；'), /國文 ×6/);
   assert.match(e.reasons.join('；'), /115 一階沒有篩掉人/);
   // 115: 自 ×4.5, 名額 11 (about 50 people) screened nobody; 116: 自 ×3.5, 名額 9 (about 32): clearly fewer people
-  const fewer = dept({ sub: [sub('自', null, 3.5)], mult: { 自: 4.5 }, cut: [], q: 11 });
-  fewer.q = 9;
+  const fewer = { ...dept({ sub: [sub('自', null, 3.5)], mult: { 自: 4.5 }, cut: [], q: 11 }), q: 9 };
   const ef = L.evaluate(fewer, S({ 自: 15 }), O);
   assert.equal(ef.tier, '無資料');
   assert.match(ef.reasons.join('；'), /從約 50 減到約 32/);
-  // 名額 13 (about 46): within 10% of 115, so 115's "nobody was screened" still applies
-  fewer.q = 13;
-  assert.deepEqual(L.evaluate(fewer, S({ 自: 15 }), O).cmp.stages.map(s => s.kind), ['open']);
-  assert.equal(L.evaluate(fewer, S({ 自: 15 }), O).tier, '適中');
+  // 名額 13 (about 46): within 10% of 115, so 115's "nobody was screened" still applies (a new 系 object: a 系's
+  // data is fixed, and the per-系 work is remembered)
+  const near = { ...dept({ sub: [sub('自', null, 3.5)], mult: { 自: 4.5 }, cut: [], q: 11 }), q: 13 };
+  assert.deepEqual(L.evaluate(near, S({ 自: 15 }), O).cmp.stages.map(s => s.kind), ['open']);
+  assert.equal(L.evaluate(near, S({ 自: 15 }), O).tier, '適中');
   // a 115 combination that screened nobody: its subjects come only from the 115 分則 (r115.combo)
   const combo = dept({ sub: [{ k: '國英社', p: ['國', '英', '社'], t: null, m: 7, w: null }], mult: { 組合: 7 }, cut: [], q: 1 });
   assert.equal(L.evaluate(combo, S({ 國: 12, 英: 12, 社: 12 }), O).tier, '無資料');
-  combo.r115.combo = ['國', '英', '社'];
-  const ec = L.evaluate(combo, S({ 國: 12, 英: 12, 社: 12 }), O);
+  const combo2 = dept({ sub: [{ k: '國英社', p: ['國', '英', '社'], t: null, m: 7, w: null }], mult: { 組合: 7 }, cut: [], q: 1 });
+  combo2.r115.combo = ['國', '英', '社'];
+  const ec = L.evaluate(combo2, S({ 國: 12, 英: 12, 社: 12 }), O);
   assert.deepEqual(ec.cmp.stages.map(s => s.kind), ['open']);
   assert.equal(ec.tier, '適中');
 });
