@@ -67,12 +67,29 @@ loadAppData().then(D => {
   // 興趣測驗: the RIASEC Markers (Armstrong, Allison & Rounds, 2008, Journal of Vocational Behavior 73, 287–299),
   // activities set A, 8 per type; free for noncommercial use with credit. Chinese wording is ours (not normed).
   const QUIZ = {
-    R: ['出貨前檢查零件的品質', '砌磚或鋪磁磚', '在海上鑽油平台工作', '組裝電子零件', '在工廠操作研磨機器', '修理壞掉的水龍頭', '在工廠組裝產品', '幫房子鋪地板'],
-    I: ['研究人體的構造', '研究動物的行為', '做植物或動物的研究', '開發新的治療方法', '做生物學研究', '研究鯨魚和其他海洋生物', '在生物實驗室工作', '繪製海底的地形圖'],
-    A: ['指揮合唱團', '導一齣戲', '幫雜誌設計美術', '寫一首歌', '寫書或劇本', '演奏樂器', '幫電影或電視節目表演特技', '設計舞台布景'],
-    S: ['給別人未來方向的建議', '在非營利組織當志工', '幫助有藥物或酒精問題的人', '教別人一套運動', '幫助有家庭問題的人', '在營隊照顧小朋友的活動', '教小朋友閱讀', '協助長輩處理日常生活'],
-    E: ['向別人推銷餐廳加盟', '在百貨公司賣東西', '管理一間飯店的營運', '經營一家美髮店', '管理大公司裡的一個部門', '管理一家服飾店', '賣房子', '經營一家玩具店'],
-    C: ['處理公司每個月的薪資發放', '用手持裝置盤點庫存', '用電腦程式產生客戶帳單', '管理員工的資料', '計算並記錄統計和其他數字資料', '操作計算機', '處理客戶的銀行交易', '記錄出貨和進貨'],
+    // Test the quality of parts before shipment / Lay brick or tile / Work on an offshore oil-drilling rig /
+    // Assemble electronic parts / Operate a grinding machine in a factory / Fix a broken faucet /
+    // Assemble products in a factory / Install flooring in houses
+    R: ['出貨前檢驗零件的品質', '砌磚或貼磁磚', '在海上的鑽油平台工作', '組裝電子零件', '在工廠操作研磨機', '修理漏水的水龍頭', '在工廠的生產線組裝產品', '幫人家裡鋪設木地板'],
+    // Study the structure of the human body / Study animal behavior / Do research on plants or animals /
+    // Develop a new medical treatment or procedure / Conduct biological research / Study whales and other marine life /
+    // Work in a biology lab / Make a map of the bottom of an ocean
+    I: ['研究人體的構造', '觀察研究動物的行為', '研究植物或動物', '研發新的醫療方法', '從事生物學研究', '研究鯨魚和其他海洋生物', '在生物實驗室工作', '繪製海底地形圖'],
+    // Conduct a musical choir / Direct a play / Design artwork for magazines / Write a song / Write books or plays /
+    // Play a musical instrument / Perform stunts for a movie or television show / Design sets for plays
+    A: ['指揮合唱團', '執導一齣舞台劇', '為雜誌設計插畫和版面', '寫一首歌', '寫小說或劇本', '演奏樂器', '在電影或電視劇裡當特技演員', '設計舞台劇的布景'],
+    // Give career guidance to people / Do volunteer work at a non-profit organization / Help people who have problems
+    // with drugs or alcohol / Teach an individual an exercise routine / Help people with family-related problems /
+    // Supervise the activities of children at a camp / Teach children how to read / Help elderly people with their daily activities
+    S: ['幫別人做生涯規劃諮詢', '在公益團體當志工', '協助有藥癮或酗酒問題的人', '一對一教別人一套健身運動', '協助有家庭困擾的人', '在營隊帶小朋友的活動', '教小朋友識字閱讀', '協助長輩打理日常生活'],
+    // Sell restaurant franchises to individuals / Sell merchandise at a department store / Manage the operations of a hotel /
+    // Operate a beauty salon or barber shop / Manage a department within a large company / Manage a clothing store /
+    // Sell houses / Run a toy store
+    E: ['推銷餐廳的加盟方案', '在百貨公司專櫃賣東西', '管理一間飯店的營運', '開一間美髮店或理髮店', '管理大公司裡的一個部門', '經營一家服飾店', '當房仲賣房子', '開一家玩具店'],
+    // Generate the monthly payroll checks for an office / Inventory supplies using a hand-held computer / Use a computer
+    // program to generate customer bills / Maintain employee records / Compute and record statistical and other numerical
+    // data / Operate a calculator / Handle customers' bank transactions / Keep shipping and receiving records
+    C: ['處理公司每個月的薪資', '用手持掃描器盤點存貨', '用電腦軟體開立客戶帳單', '整理和更新員工資料', '計算並記錄各種統計數字', '操作計算機算帳', '在銀行櫃台幫客戶辦理存提款', '登記貨品進出貨的紀錄'],
   };
   const QK = 'RIASEC'.split('');
   // one type after another, so the same kind of activity never comes twice in a row
@@ -869,7 +886,7 @@ loadAppData().then(D => {
       <p class="qz-n num">${i + 1} / 48</p>
       <p class="qz-lead">你喜不喜歡做這件事？</p><p class="qz-item">${esc(it.t)}</p>
       <div class="qz-opts" role="group" aria-label="${esc(it.t)}">${QSCALE.map(([v, l]) => `<button type="button" class="qz-o" data-qans="${v}" aria-pressed="${a[i] === v}">${l}</button>`).join('')}</div>
-      <p class="hint">別管會不會做、薪水多少、要讀多少書，只想你喜不喜歡。</p>
+      <p class="hint">不用考慮自己會不會做、薪水多少、要念多少書，只看你喜不喜歡。</p>
       <div class="qz-nav"><button class="textbtn" type="button" data-act="quizBack" ${i ? '' : 'disabled'}>${icon('chevR', 'sm')}上一題</button>${a[i] ? `<button class="textbtn" type="button" data-act="quizNext">下一題</button>` : ''}</div>`;
   }
   function openQuiz() {
