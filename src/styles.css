@@ -957,7 +957,7 @@ p,li,dd,td,.hint,.sub,.step-d,.rv-h,.rv-v,.rv-note,.ctx-note,.sc-sub,.long,.s2le
   .ctx-edit{margin-left:0;width:40px;min-height:40px;padding:0}
   .ctx-edit .lbl{display:none}
   .ctx-sel select{min-height:40px}
-  .lb-sort{display:none}
+  .lb-sort{flex-basis:100%;order:-1;color:var(--text-2)}
   .slot{grid-template-columns:22px 50px minmax(0,1fr);grid-template-areas:"no pill ctrl" "main main main";row-gap:8px}
   .slot .no{grid-area:no}
   .slot>.pill{grid-area:pill}

@@ -824,7 +824,7 @@ loadAppData().then(D => {
         <span class="gx-bar"><i style="width:${((x.share / maxShare) * 100).toFixed(1)}%"></i></span>
         <span class="gx-m">${x.subjects.length ? `<span class="gx-s">看重 ${x.subjects.map(k => `<i class="${strong.has(k) ? 'on' : ''}">${ABBR[k]}</i>`).join('')}</span>` : ''}${x.best.length ? `<span class="gx-b">最搶手：${x.best.map(d => esc(schShort(d) + ' ' + d.n)).join('、')}</span>` : ''}</span>
       </button></li>`;
-    return `<section class="sec" id="strengthSec">${hIcon('compass', '還不確定讀什麼？')}<p class="sub">從強項看哪些學群最有機會。按一個學群，列出你${GOOD}的系，最搶手的在前。</p>
+    return `<section class="sec" id="strengthSec">${hIcon('compass', '還不確定讀什麼？')}<p class="sub">從強項看哪些學群最有機會。按一個學群，列出你${GOOD}的系，去年門檻高的在前。</p>
       <div class="str-rank" aria-label="各科在 115 考生的排名">${ranks.map(x => `<span class="sr-c ${cls(x.top)}"><b>${subj(x.k)}</b><small>${fmtTop(x.top)}</small></span>`).join('')}</div>
       <div class="hol"><span class="hol-l">興趣量表結果（可略過，選 1–3 個）</span><div class="hol-c" role="group" aria-label="興趣代碼">${HOL.map(([h, n, d]) => `<button type="button" class="chip" data-hol="${h}" aria-pressed="${st.hol.includes(h)}" title="${d}"><b>${h}</b>${n}</button>`).join('')}</div>
         <p class="hint">高一做過大考中心興趣量表的話，選結果的前 1–3 碼。沒做過或忘了：<a href="${COLLEGO}" target="_blank" rel="noopener">到 ColleGo! 看興趣代碼和適合的學類</a>（要上網）。</p></div>
@@ -1106,7 +1106,8 @@ loadAppData().then(D => {
       h = `<li class="empty"><b>沒有符合的校系</b><span>${hiddenTiers ? '這些落點標籤都被隱藏了，或篩選太嚴。' : '試著放寬篩選或換個關鍵字。'}</span><button class="btn sm" type="button" data-act="${hiddenTiers ? 'showTiers' : 'resetAll'}">${hiddenTiers ? '顯示所有落點' : '清除所有篩選'}</button></li>`;
     }
     $('#list').innerHTML = h;
-    const SORT_NOTE = { chance: '穩過在前，同一級裡最搶手的在前', select: '115 一階門檻高 → 低', selectLow: '115 一階門檻低 → 高' };
+    // what each order means, in a few words under the menu
+    const SORT_NOTE = { chance: '穩過在前；同一級裡去年門檻高的在前', select: '去年門檻高的在前：越前面越熱門', selectLow: '去年門檻低的在前：越前面越好進', sat: '二階總成績裡學測佔比高的在前', satLow: '二階總成績裡學測佔比低的在前', date: '到校甄試早的在前', quota: '名額多的在前', code: '照甄選會校系代碼' };
     const sortName = SORT_NOTE[st.f.sort] || ($('#sort').selectedOptions[0] ? $('#sort').selectedOptions[0].textContent : '');
     const hidden = has ? TIERS.filter(t => !st.f.tiers.includes(t)) : [];
     const nUntaken = has && !st.f.untaken && st.f.path !== 'uac' ? baseFiltered('untaken').filter(d => usesUntaken(d) && st.f.tiers.includes(tierOf(d))).length : 0;
@@ -2269,7 +2270,7 @@ loadAppData().then(D => {
         st.f = { ...DEFAULT().f, groups: [ds.gx], tiers: ['穩', '適中'], sort: 'select' };
         $('#q').value = ''; qTerms = []; ui.shown = PAGE;
         setTab('explore');
-        toast(`${ds.gx}學群裡${GOOD}的系，最搶手的在前`);
+        toast(`${ds.gx}學群裡${GOOD}的系，去年門檻高的在前`);
         return;
       }
       if (ds.hol) {

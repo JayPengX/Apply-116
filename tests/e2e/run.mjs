@@ -273,7 +273,7 @@ try {
     const fx = await page.evaluate(() => window.__app.st().f);
     ok(fx.groups.join() === g0 && fx.sort === 'select' && fx.tiers.join() === '穩,適中', `學群 explorer opens 找校系 on ${g0}: ${'穩過＋應該過'}, 最搶手 first`);
     await page.selectOption('#sort', 'selectLow');
-    ok((await page.locator('#listbar').innerText()).includes('門檻低'), 'sort: 最好進的在前');
+    ok((await page.locator('#listbar').innerText()).includes('門檻低'), 'sort: 去年門檻低 → 高 says what it means');
     await page.evaluate(() => { const st = window.__app.st(); st.f = { ...st.f, groups: [], tiers: ['穩', '適中', '衝', '難', '無資料'], sort: 'chance' }; window.__app.render(); });
     // 分科 lives with 學測 in 我的成績; 落點分布 shows both paths; 找校系 lists both
     await page.click('#tabs [data-tab="scores"]');
