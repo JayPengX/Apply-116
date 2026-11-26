@@ -464,7 +464,7 @@
     for (const y of Object.keys(stdByYear || {})) {
       if (String(y) === String(baseYear)) continue;
       const r = checkThreshold(d, S, stdByYear[y]);
-      if (!r.ok) risky.push({ year: y, fails: r.fails });
+      if (!r.ok) risky.push({ year: y, fails: r.fails, items: r.items.filter(i => !i.ok && !(i.either && i.groupOk) && i.k !== '聽') });
     }
     return risky;
   }
@@ -504,7 +504,14 @@
     const risk = thresholdRisk(d, S, o.stdByYear, o.stdYear);
     if (risk.length) {
       res.thRisk = risk;
-      warnings.push('檢定邊緣：如果 116 五標跟 ' + risk.map(r => r.year).join('、') + ' 年一樣，你會卡在 ' + risk[0].fails.join('、'));
+      // 116 五標 come out with the scores (2/25), so the check uses the other recent years: say which level moved and by how much
+      const r0 = risk[0], years = risk.map(r => r.year).join('、');
+      const named = /^\d+$/.test(String(o.stdYear));
+      const parts = r0.items.map(i => {
+        const now = th.items.find(x => x.k === i.k && x.label === i.label);
+        return `${SUBJ_NAME[i.k]}${i.label}${named && now && now.need != null ? ` ${o.stdYear} 年是 ${now.need} 級分、` : ' '}${r0.year} 年是 ${i.need} 級分，你 ${i.mine}`;
+      });
+      warnings.push(`檢定邊緣：116 五標還沒公布（2/25 才公布），每年會差一點。${parts.length ? parts.join('；') : r0.fails.join('、')}。116 如果跟 ${years} 年一樣，你就過不了`);
     }
 
     // 116 is the rule: its stages decide what is compared, and a 115 cut is used only for the same subjects.
