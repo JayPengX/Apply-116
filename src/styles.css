@@ -1225,3 +1225,8 @@ button.gb:hover{background:var(--surface-2)}
 .tab .tl-s{display:none}
 @media (max-width:1279px){.tab .tl-l{display:none}.tab .tl-s{display:inline}.tab{padding:0 10px}}
 .nw{white-space:nowrap}
+/* a long 最搶手 line truncates instead of widening the card (older Chromium sizes buttons by their min-content) */
+.gxs>li{min-width:0}
+.gx{min-width:0;overflow:hidden}
+.gx-m{min-width:0;max-width:100%}
+.gx-b{flex:1 1 100%;min-width:0}

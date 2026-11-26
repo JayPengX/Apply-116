@@ -48,6 +48,8 @@ const scores = page => page.evaluate(() => window.__app.st().scores);
 // sentences whose last line is only 1–3 characters. Runs in the page.
 function layoutIssues() {
   const out = [];
+  // wider than the device: older Chromium then widens the layout viewport and fixed bars drift off the finger
+  if (document.documentElement.scrollWidth > screen.width + 1) out.push(`page ${document.documentElement.scrollWidth}px wide on a ${screen.width}px screen`);
   const vis = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !el.closest('[hidden], dialog:not([open]), details:not([open]) > :not(summary)'); };
   const tops = node => { const rg = document.createRange(); rg.selectNodeContents(node); const t = []; for (const r of rg.getClientRects()) { if (r.width < 0.5) continue; const m = Math.round(r.top + r.height / 2); if (!t.some(x => Math.abs(x - m) < 6)) t.push(m); } return t; };
   for (const el of document.querySelectorAll('button, .chip, .pill, .tab, .lg, .afchip, .sg small, .tag, .delta, th, h1, h2, h3, summary, .sc-h b, .ctx-lab, .rv-k, .srow-l, .hc .to, .pt, .rm-facts span, .s-d span, .dn .nm')) {
