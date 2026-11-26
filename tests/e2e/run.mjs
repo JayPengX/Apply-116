@@ -265,6 +265,15 @@ try {
     ok((await page.locator('#srcSec').innerText()).includes('再 1 到頂標'), 'the 模考 view says how far the next 標 is');
     ok(/^12\b/.test((await page.locator('#srcSec .mvt tbody tr').first().locator('td').nth(2).innerText()).trim()), '模考 view reads 國 13 (前標) as 學測 12');
     ok((await scores(page)).國 === '12', 'using a 模考 does not overwrite the typed 學測 級分');
+    // 興趣測驗: 48 activities, one at a time; the code orders the 學群
+    await page.click('#strengthSec [data-act="quizOpen"]');
+    await page.waitForSelector('#quiz[open] .qz-item');
+    const like = { R: 1, I: 2, A: 5, S: 4, E: 3, C: 1 };
+    for (let i = 0; i < 48; i++) { await page.click(`#quiz [data-qans="${like['RIASEC'[i % 6]]}"]`); await page.waitForTimeout(130); }
+    await page.waitForSelector('#quiz .qz-big');
+    ok((await page.locator('#quiz .qz-big').innerText()).replace(/\s+/g, '').startsWith('A藝術型S社會型E企業型'), '興趣測驗 scores the 48 answers into a code (ASE)');
+    await page.click('[data-act="quizApply"]');
+    ok((await page.evaluate(() => window.__app.st().hol.join(''))) === 'ASE' && !(await page.locator('#quiz').evaluate(d => d.open)), 'the code is applied to the 學群 ordering');
     // 還不確定讀什麼: a 學群 opens 找校系 on its 穩過＋應該過, most sought-after first
     await page.waitForSelector('#strengthSec .gx');
     const g0 = await page.locator('#strengthSec .gx').first().getAttribute('data-gx');

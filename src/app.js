@@ -64,6 +64,28 @@ loadAppData().then(D => {
   const HOL = [['R', '實用型', '動手做、操作機具'], ['I', '研究型', '分析、解決問題'], ['A', '藝術型', '創作、表達'], ['S', '社會型', '教人、幫助人'], ['E', '企業型', '領導、說服'], ['C', '事務型', '整理、有條理']];
   const HOL_G = { R: ['工程', '資訊', '生物資源', '地球環境', '建築設計', '遊憩運動'], I: ['數理化', '生命科學', '醫藥衛生', '資訊', '地球環境', '工程'], A: ['藝術', '建築設計', '大眾傳播', '文史哲', '外語'], S: ['教育', '社會心理', '醫藥衛生', '遊憩運動', '文史哲'], E: ['管理', '財經', '法政', '大眾傳播'], C: ['財經', '管理', '資訊'] };
   const COLLEGO = 'https://collego.edu.tw/Learningplan/interest';
+  // 興趣測驗: the RIASEC Markers (Armstrong, Allison & Rounds, 2008, Journal of Vocational Behavior 73, 287–299),
+  // activities set A, 8 per type; free for noncommercial use with credit. Chinese wording is ours (not normed).
+  const QUIZ = {
+    R: ['出貨前檢查零件的品質', '砌磚或鋪磁磚', '在海上鑽油平台工作', '組裝電子零件', '在工廠操作研磨機器', '修理壞掉的水龍頭', '在工廠組裝產品', '幫房子鋪地板'],
+    I: ['研究人體的構造', '研究動物的行為', '做植物或動物的研究', '開發新的治療方法', '做生物學研究', '研究鯨魚和其他海洋生物', '在生物實驗室工作', '繪製海底的地形圖'],
+    A: ['指揮合唱團', '導一齣戲', '幫雜誌設計美術', '寫一首歌', '寫書或劇本', '演奏樂器', '幫電影或電視節目表演特技', '設計舞台布景'],
+    S: ['給別人未來方向的建議', '在非營利組織當志工', '幫助有藥物或酒精問題的人', '教別人一套運動', '幫助有家庭問題的人', '在營隊照顧小朋友的活動', '教小朋友閱讀', '協助長輩處理日常生活'],
+    E: ['向別人推銷餐廳加盟', '在百貨公司賣東西', '管理一間飯店的營運', '經營一家美髮店', '管理大公司裡的一個部門', '管理一家服飾店', '賣房子', '經營一家玩具店'],
+    C: ['處理公司每個月的薪資發放', '用手持裝置盤點庫存', '用電腦程式產生客戶帳單', '管理員工的資料', '計算並記錄統計和其他數字資料', '操作計算機', '處理客戶的銀行交易', '記錄出貨和進貨'],
+  };
+  const QK = 'RIASEC'.split('');
+  // one type after another, so the same kind of activity never comes twice in a row
+  const QITEMS = Array.from({ length: 48 }, (_, i) => ({ k: QK[i % 6], t: QUIZ[QK[i % 6]][Math.floor(i / 6)] }));
+  const QSCALE = [[1, '很不喜歡'], [2, '不喜歡'], [3, '說不上來'], [4, '喜歡'], [5, '很喜歡']];
+  /** Mean like-rating per type (1–5) and the 3-letter code; null until every item is answered. */
+  function quizResult(a) {
+    if (!a || a.length !== 48 || a.some(x => !(x >= 1 && x <= 5))) return null;
+    const m = Object.fromEntries(QK.map(k => [k, 0]));
+    a.forEach((x, i) => { m[QITEMS[i].k] += x / 8; });
+    const order = QK.slice().sort((x, y) => m[y] - m[x]);
+    return { m, code: order.slice(0, 3), spread: m[order[0]] - m[order[5]], top: m[order[0]] };
+  }
 
   /** Logic text names the tiers by their keys (「適中」); show the student-facing names. */
   const tw = t => String(t).replace(/「(穩|適中|衝|難|不符|無資料)」/g, (_, k) => `「${TL[k]}」`);
@@ -158,6 +180,8 @@ loadAppData().then(D => {
     bx: { scope: 'all', group: '' },
     // 興趣量表 (Holland) codes the student picked, at most 3: only used to order 學群 in 探索
     hol: [],
+    // 興趣測驗 answers (48 × 1–5, 0 = not yet)
+    quiz: [],
     // 分科: which subjects you will take and how to score them ({數甲: 'e' (estimate) | '0'–'60'}); null = follow 學測
     ast: null,
   });
@@ -270,6 +294,7 @@ loadAppData().then(D => {
     const bx = s.bx && typeof s.bx === 'object' ? s.bx : {};
     out.bx = { scope: ['all', 'fav', 'plan'].includes(bx.scope) ? bx.scope : 'all', group: GROUPS.includes(bx.group) ? bx.group : '' };
     out.hol = [...new Set(arr(s.hol, x => HOL.some(h => h[0] === x)))].slice(0, 3);
+    out.quiz = Array.isArray(s.quiz) ? s.quiz.slice(0, 48).map(x => (Number.isInteger(x) && x >= 0 && x <= 5 ? x : 0)) : [];
     if (s.ast && typeof s.ast === 'object') {
       out.ast = {};
       for (const k of L.AST) { const v = s.ast[k]; if (v === 'e' || (/^\d{1,2}$/.test(v) && +v <= 60)) out.ast[k] = v; }
@@ -551,7 +576,7 @@ loadAppData().then(D => {
   const noteHTML = (kind, html) => `<div class="note ${kind}">${icon(kind === 'warn' ? 'alert' : 'info')}<div>${html}</div></div>`;
   function focusKey(el) {
     if (!el || !el.dataset) return null;
-    for (const a of ['slider', 'try', 'focus', 'src', 'bscope', 'gsel', 'gx', 'hol', 'astmode', 'astv', 'path', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
+    for (const a of ['slider', 'try', 'focus', 'src', 'bscope', 'gsel', 'gx', 'hol', 'astmode', 'astv', 'path', 'qans', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
       if (el.dataset[a] != null) return `[data-${a}="${CSS.escape(el.dataset[a])}"]`;
     }
     return el.id ? '#' + CSS.escape(el.id) : null;
@@ -810,6 +835,44 @@ loadAppData().then(D => {
     }
     return out.sort((a, b) => b.hol.length - a.hol.length || b.score - a.score || b.good - a.good);
   }
+  function quizCardHTML() {
+    const r = quizResult(st.quiz), done = st.quiz.filter(x => x).length;
+    if (r) return `<div class="qz-card"><span>興趣測驗結果 <b class="qz-code">${r.code.join('')}</b></span><button class="textbtn" type="button" data-act="quizOpen">看結果</button></div>`;
+    return `<div class="qz-card"><span>沒做過興趣量表？<small>48 題，約 5 分鐘，不用上網</small></span><button class="btn sm${done ? '' : ' primary'}" type="button" data-act="quizOpen">${done ? `繼續（${done}/48）` : '開始測驗'}</button></div>`;
+  }
+  /** The 興趣測驗 dialog: one activity at a time, then the profile and the 3-letter code. */
+  function renderQuiz() {
+    const body = $('#qBody'), a = st.quiz;
+    const r = quizResult(a);
+    if (r && !ui.qRedo) {
+      const name = k => HOL.find(h => h[0] === k)[1];
+      const max = 5;
+      const note = r.top < 2.6 ? '大部分活動你都不太喜歡：興趣可能還沒定型，或題目離你的生活太遠。可以多看幾個學群，或找輔導室做正式量表。'
+        : r.spread < 0.6 ? '幾種興趣分數差不多，沒有特別突出的一型：前三碼可以參考，但不用太在意順序。' : '';
+      body.innerHTML = `<p class="qz-lead">你的興趣代碼</p><p class="qz-big">${r.code.map(k => `<span><b>${k}</b>${name(k)}</span>`).join('')}</p>
+        <div class="qz-bars">${QK.slice().sort((x, y) => r.m[y] - r.m[x]).map(k => `<div class="qz-bar${r.code.includes(k) ? ' on' : ''}"><span class="qk"><b>${k}</b>${name(k)}</span><span class="qt"><i style="width:${((r.m[k] - 1) / (max - 1)) * 100}%"></i></span><span class="qn num">${r.m[k].toFixed(1)}</span></div>`).join('')}</div>
+        <p class="hint">每一型 8 題的平均（1＝很不喜歡，5＝很喜歡）。${HOL.map(([k, n, d]) => `${k} ${n}：${d}`).join('；')}。</p>
+        ${note ? `<p class="qz-note">${note}</p>` : ''}
+        <div class="qz-act"><button class="btn primary" type="button" data-act="quizApply">${icon('check', 'sm')}用 ${r.code.join('')} 排學群</button><button class="btn" type="button" data-act="quizRedo">重做</button></div>
+        <p class="src">題目：Armstrong, Allison & Rounds (2008) 公開的 RIASEC Markers（非商業使用），中文是本站翻譯，沒有台灣常模。結果只是探索的起點，不能取代學校的大考中心興趣量表。</p>`;
+      return;
+    }
+    const i = Math.max(0, Math.min(47, ui.qi ?? a.findIndex(x => !x)));
+    ui.qi = i;
+    const it = QITEMS[i];
+    body.innerHTML = `<div class="qz-prog" role="progressbar" aria-valuemin="0" aria-valuemax="48" aria-valuenow="${i + 1}"><i style="width:${((i + 1) / 48) * 100}%"></i></div>
+      <p class="qz-n num">${i + 1} / 48</p>
+      <p class="qz-lead">你喜不喜歡做這件事？</p><p class="qz-item">${esc(it.t)}</p>
+      <div class="qz-opts" role="group" aria-label="${esc(it.t)}">${QSCALE.map(([v, l]) => `<button type="button" class="qz-o" data-qans="${v}" aria-pressed="${a[i] === v}">${l}</button>`).join('')}</div>
+      <p class="hint">別管會不會做、薪水多少、要讀多少書，只想你喜不喜歡。</p>
+      <div class="qz-nav"><button class="textbtn" type="button" data-act="quizBack" ${i ? '' : 'disabled'}>${icon('chevR', 'sm')}上一題</button>${a[i] ? `<button class="textbtn" type="button" data-act="quizNext">下一題</button>` : ''}</div>`;
+  }
+  function openQuiz() {
+    ui.qRedo = false; ui.qi = undefined;
+    renderQuiz();
+    const dlg = $('#quiz');
+    if (!dlg.open) dlg.showModal();
+  }
   /** Your strongest subjects (by 115 rank) and the 學群 that fit them: for students not sure what to study. */
   function strengthHTML() {
     const c = cur();
@@ -827,7 +890,8 @@ loadAppData().then(D => {
     return `<section class="sec" id="strengthSec">${hIcon('compass', '還不確定讀什麼？')}<p class="sub">從強項看哪些學群最有機會。按一個學群，列出你${GOOD}的系，去年門檻高的在前。</p>
       <div class="str-rank" aria-label="各科在 115 考生的排名">${ranks.map(x => `<span class="sr-c ${cls(x.top)}"><b>${subj(x.k)}</b><small>${fmtTop(x.top)}</small></span>`).join('')}</div>
       <div class="hol"><span class="hol-l">興趣量表結果（可略過，選 1–3 個）</span><div class="hol-c" role="group" aria-label="興趣代碼">${HOL.map(([h, n, d]) => `<button type="button" class="chip" data-hol="${h}" aria-pressed="${st.hol.includes(h)}" title="${d}"><b>${h}</b>${n}</button>`).join('')}</div>
-        <p class="hint">高一做過大考中心興趣量表的話，選結果的前 1–3 碼。沒做過或忘了：<a href="${COLLEGO}" target="_blank" rel="noopener">到 ColleGo! 看興趣代碼和適合的學類</a>（要上網）。</p></div>
+        ${quizCardHTML()}
+        <p class="hint">高一做過大考中心興趣量表的話，直接選結果的前 1–3 碼。<a href="${COLLEGO}" target="_blank" rel="noopener">ColleGo! 有各興趣代碼適合的學類</a>（要上網）。</p></div>
       <ol class="gxs">${shown.map(row).join('')}</ol>
       ${gs.length > 6 ? `<button class="textbtn gx-more" type="button" data-act="gxAll">${ui.gxAll ? '收起' : `看全部 ${gs.length} 個學群`}</button>` : ''}
       <p class="hint">數字是${GOOD}的系／學群的系數，條越長比例越高。「看重」是這個學群一階最常篩的科目，亮的是你的強項。興趣和學群的對應只是大致參考。</p></section>`;
@@ -2198,6 +2262,11 @@ loadAppData().then(D => {
     showTiers: () => { st.f.tiers = TIERS.slice(); render(); },
     goStrength: () => { setTab('scores'); requestAnimationFrame(() => { const el = $('#strengthSec'); if (el) el.scrollIntoView({ block: 'start' }); }); },
     astReset: () => { st.ast = null; render(); },
+    quizOpen: () => openQuiz(),
+    quizBack: () => { ui.qi = Math.max(0, (ui.qi || 0) - 1); renderQuiz(); },
+    quizNext: () => { ui.qi = Math.min(47, (ui.qi || 0) + 1); renderQuiz(); },
+    quizRedo: () => { st.quiz = []; ui.qRedo = false; ui.qi = 0; save(); renderQuiz(); },
+    quizApply: () => { const r = quizResult(st.quiz); if (!r) return; st.hol = r.code.slice(); $('#quiz').close(); render(); toast(`用 ${r.code.join('')} 排學群`); requestAnimationFrame(() => { const el = $('#strengthSec'); if (el) el.scrollIntoView({ block: 'start' }); }); },
     gxAll: () => { ui.gxAll = !ui.gxAll; render(); },
     showUntaken: () => { st.f.untaken = true; render(); },
     mfNew: () => { ui.mf = newMockDraft(); if (ui.tab !== 'scores') setTab('scores'); else render(); requestAnimationFrame(() => { const f = $('#mockForm'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); },
@@ -2256,6 +2325,18 @@ loadAppData().then(D => {
       if (ds.st2) { toggle(f.st2, ds.st2); ui.shown = PAGE; render(); return; }
       if (ds.skip) { toggle(f.skip, ds.skip); ui.shown = PAGE; render(); return; }
       if (ds.src) { if (ds.src === st.src && !ui.mf) return; useSource(ds.src); return; }
+      if (ds.qans) {
+        const i = ui.qi || 0;
+        st.quiz = Array.from({ length: 48 }, (_, j) => st.quiz[j] || 0);
+        st.quiz[i] = +ds.qans;
+        save();
+        // the next unanswered item, or the result when all 48 are in
+        const next = st.quiz.findIndex((x, j) => j > i && !x);
+        ui.qi = next >= 0 ? next : st.quiz.findIndex(x => !x) >= 0 ? st.quiz.findIndex(x => !x) : 47;
+        setTimeout(renderQuiz, 120);
+        if (quizResult(st.quiz)) render();
+        return;
+      }
       if (ds.bscope) { st.bx.scope = ds.bscope; render(); return; }
       if (ds.astmode) {
         const [k, m] = ds.astmode.split(':'), plan = { ...astPlan() };
@@ -2316,6 +2397,7 @@ loadAppData().then(D => {
       if (ds.open) { ev.preventDefault(); openDetail(ds.open); return; }
       if (b.id === 'dClose') { $('#detail').close(); return; }
       if (b.id === 'sheetClose' || b.id === 'sheetDone') { $('#sheet').close(); return; }
+      if (b.id === 'qClose') { $('#quiz').close(); return; }
       if (b.id === 'sheetReset') { ACTIONS.resetFilters(); return; }
       if (b.id === 'openFilters') { openSheet(); return; }
       if (b.id === 'clearQ') { ACTIONS.clearQ(); $('#q').focus(); return; }
@@ -2417,6 +2499,7 @@ loadAppData().then(D => {
     dlg.addEventListener('click', ev => { if (ev.target === dlg) dlg.close(); });
     const sh = $('#sheet');
     sh.addEventListener('close', onSheetClosed);
+    $('#quiz').addEventListener('close', () => { if (ui.tab === 'scores') render(); });
     sh.addEventListener('click', ev => { if (ev.target === sh) sh.close(); });
     window.matchMedia('(max-width: 959px)').addEventListener('change', e => { if (!e.matches && sh.open) sh.close(); if (ui.tab === 'explore') renderExplore(); });
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderNav);
