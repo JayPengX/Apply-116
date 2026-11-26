@@ -69,13 +69,19 @@ window.ExamUI = function (ctx) {
     if (q.type !== 'single' && q.type !== 'multi') return null;
     const a = q.ans || '';
     if (/^[1-9]+$/.test(a)) return ['1', '2', '3', '4', '5'];
-    return d.subj === '英文' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+    // options only in a picture: up to the last answer letter, at least A–D (英文) or A–E; a 多選 picking stores A–F
+    let last = d.subj === '英文' && q.type === 'single' ? 'D' : q.type === 'multi' && !q.img ? 'F' : 'E';
+    for (const c of a) if (c > last && c <= 'L') last = c;
+    const out = [];
+    for (let c = 65; c <= last.charCodeAt(0); c++) out.push(String.fromCharCode(c));
+    return out;
   }
   const qKey = (d, q) => d.id + '#' + q.n;
 
   // ---------------------------------------------------------------- scoring (大考中心 rules)
   function score(q, a) {
     if (q.type === 'open') return a && a.ai != null ? Math.max(0, Math.min(q.pts, +a.ai)) : null;
+    if (q.ans === '＊') return q.pts; // 大考中心 voided this question: everyone got its points
     if (!q.ans || a == null || a === '' || (Array.isArray(a) && !a.some(x => x))) return 0;
     if (q.type === 'single') return a === q.ans ? q.pts : 0;
     if (q.type === 'multi') {
@@ -255,7 +261,7 @@ window.ExamUI = function (ctx) {
     const grid = ui.grid ? `<div class="xgrid">${s.qs.map((x, i) => { const kk = x.join('#'), [, qq] = qOf(x); const done = answered(s.a[kk]); const st = review || s.shown.includes(kk) ? (qq && qq.type !== 'open' ? (isRight(qq, s.a[kk]) ? ' ok' : ' bad') : '') : ''; return `<button type="button" data-xgo="${i}" class="${done ? 'done' : ''}${s.f.includes(kk) ? ' flag' : ''}${i === s.i ? ' cur' : ''}${st}">${qq ? esc(qq.n) : '?'}</button>`; }).join('')}</div>` : '';
     const sec = d.secs[q.sec];
     const tag = `<div class="xq-h"><span class="xq-n">${typeof q.n === 'number' ? q.n + '.' : esc(q.n)}</span><span class="xq-type">${TYPE[q.type] || ''}・${q.pts} 分</span>${q.topic && !(sec && sec.name.includes(q.topic)) ? `<span class="xq-cat">${esc(q.topic)}</span>` : sec ? `<span class="muted">${esc(sec.name.replace(/^[一二三四五六七八九十]+、/, ''))}</span>` : ''}${review ? '' : `<button type="button" class="xq-flag" data-xact="flag" aria-pressed="${flagged}">${icon('flag', 'sm')}${flagged ? '已標記' : '標記'}</button>`}</div>`;
-    const stem = q.img ? q.img.map(src => `<img class="crop" src="exams/${src}" alt="第 ${q.n} 題" loading="lazy">`).join('') : q.html ? fixSrc(q.html) : q.blank ? `<p class="muted">文章裡的第 ${q.n} 格</p>` : '';
+    const stem = q.img ? q.img.map(src => `<img class="crop" src="exams/${src}" alt="第 ${q.n} 題" loading="lazy">`).join('') : q.html ? fixSrc(q.html) : q.blank ? `<p class="muted">${q.type === 'open' || q.g != null && d.items[q.g].img ? `第 ${q.n} 題的題目在上面的題組裡` : `文章裡的第 ${q.n} 格`}</p>` : '';
     let ansArea = '';
     if (q.type === 'single' || q.type === 'multi') ansArea = optionsHTML(q, a, s.x[key], show);
     else if (q.type === 'fill') ansArea = fillHTML(q, a, show);
@@ -263,7 +269,7 @@ window.ExamUI = function (ctx) {
     let verdict = '';
     if (show && q.type !== 'open') {
       const ok = isRight(q, a), got = score(q, a);
-      verdict = `<p class="xv ${ok ? 'ok' : 'bad'}">${ok ? `${icon('check', 'sm')}答對` : `${icon('x', 'sm')}${answered(a) ? '答錯' : '沒作答'}${got > 0 ? `（得 ${got} 分）` : ''}`}・正確答案 <b>${q.type === 'fill' ? q.ans.map((v, i) => `${q.cells[i]}：${v}`).join('、') : esc(q.ans || '—')}</b></p>`;
+      verdict = q.ans === '＊' ? `<p class="xv ok">${icon('info', 'sm')}這題大考中心公布「無答案」，每個人都得分。</p>` : `<p class="xv ${ok ? 'ok' : 'bad'}">${ok ? `${icon('check', 'sm')}答對` : `${icon('x', 'sm')}${answered(a) ? '答錯' : '沒作答'}${got > 0 ? `（得 ${got} 分）` : ''}`}・正確答案 <b>${q.type === 'fill' ? q.ans.map((v, i) => `${q.cells[i]}：${v}`).join('、') : esc(q.ans || '—')}</b></p>`;
     }
     const last = s.i === s.qs.length - 1;
     const practiceCheck = s.mode === 'practice' && !review && !show && q.type !== 'open';

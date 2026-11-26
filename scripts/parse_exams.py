@@ -563,6 +563,9 @@ class Media:
             raise Complex('picture ' + ext)
         im = Image.open(io.BytesIO(data))
         im.load()
+        if ext in ('emf', 'wmf'):
+            # LibreOffice draws it on a whole page: keep only the drawing
+            im = trim_white(im)
         # shown no wider than it was on the page (EMU → px at 2× for sharp screens)
         maxw = 1100
         if width_emu:
@@ -634,8 +637,10 @@ def pdf_text(path, layout=True):
 def answers(path):
     """{'1': '2', '7': '3,4', '13-1': '9', '19': '／', '21': 'A'}"""
     t = pdf_text(path)
+    # a voided question (無答案, 送分): everyone gets its points; drop its footnote mark so it is not read as a number
+    t = re.sub(r'無答案\s*(?:※\s*\d+)?|送分\s*(?:※\s*\d+)?', '＊', t)
     out = {}
-    for m in re.finditer(r'(?<![\d-])(\d{1,2}(?:-\d{1,2})?)\s+([A-L0-9][A-L0-9,]*|／|/|-|±|－)(?=\s|$)', t):
+    for m in re.finditer(r'(?<![\d-])(\d{1,2}(?:-\d{1,2})?)[ \t]+([A-L0-9][A-L0-9,]*|／|/|-|±|－|＊)(?=\s|$)', t):
         out.setdefault(m.group(1), m.group(2).replace('/', '／').replace('－', '-'))
     return out
 
@@ -693,16 +698,19 @@ class Pdf:
 
     def body_bottom(self, pi):
         page = self.pdf.pages[pi]
-        foot = [w['top'] for w in self.words(pi) if w['top'] > page.height * 0.88]
-        return (min(foot) - 4) if foot else page.height - 36
+        # the footer is the page number line (第 n 頁, 共 n 頁, - n -), not a figure's labels near the bottom
+        foot = [w['top'] for w in self.words(pi) if w['top'] > page.height * 0.9 and re.search(r'第|頁|共|^-?\s*\d+\s*-?$|考科', w['text'])]
+        return (min(foot) - 4) if foot else page.height - 30
 
     def find_text(self, needle, after=None):
         """(page, top) of the first line containing needle (spaces ignored), after (page, top)."""
         nd = norm_text(needle)[:12]
         for pi, page in enumerate(self.pdf.pages):
+            # one line per baseline, within 3 pt (numbers sit a little lower than the text beside them)
             lines = {}
-            for w in self.words(pi):
-                lines.setdefault(round(w['top']), []).append(w)
+            for w in sorted(self.words(pi), key=lambda w: w['top']):
+                key = next((k for k in lines if abs(k - w['top']) <= 3), None)
+                lines.setdefault(w['top'] if key is None else key, []).append(w)
             for top in sorted(lines):
                 if after and (pi, top) <= after:
                     continue
@@ -736,6 +744,15 @@ class Pdf:
                             '-W', str(int(page.width * sc)), '-H', str(int((bottom - top) * sc)), '-gray', '-png', str(self.path), f'{d}/c'], check=True)
             f = next(Path(d).glob('c*.png'), None)
             return Image.open(f).convert('RGB') if f else None
+
+
+def trim_white(im):
+    rgba = im.convert('RGBA')
+    bg = Image.new('RGBA', rgba.size, (255, 255, 255, 255))
+    bg.alpha_composite(rgba)
+    g = bg.convert('L').point(lambda v: 255 if v < 245 else 0)
+    box = g.getbbox()
+    return bg.convert('RGB').crop((max(0, box[0] - 2), max(0, box[1] - 2), min(im.width, box[2] + 2), min(im.height, box[3] + 2))) if box else im
 
 
 def trim(im):
@@ -1041,6 +1058,10 @@ def paper(stem):
                     toks.append(('t', '\x03%d' % len(extra_html), ''))
                     extra_html.append(b['html'])
             stem_t, opts = split_options(toks)
+            a0 = ans.get(str(n))
+            if opts and a0 and a0 != '／' and re.fullmatch(r'[A-L,]+', a0) and not opts[0][0].isalpha():
+                # a numbered list of statements in the stem, the real options are lettered
+                stem_t, opts = split_options(toks, start='A')
             if not opts:
                 # options laid out in a table: (A) … in cells
                 for i, h in enumerate(extra_html):
@@ -1057,6 +1078,8 @@ def paper(stem):
                 return re.sub('\x03(\\d+)', lambda mm: extra_html[int(mm.group(1))], h)
             stem_h = fill_tables(tokens_html(stem_t))
             opts = [(lab, fill_tables(h)) for lab, h in opts]
+            if sum(1 for _, h in opts if not re.sub(r'\s', '', h)) >= 2:
+                raise Complex('options are pictures')  # the labels and the pictures did not line up: show the page
             text = tokens_text(stem_t)
             itype, ipts = None, None
             im = INLINE_TYPE.search(text)
@@ -1080,6 +1103,21 @@ def paper(stem):
             else:
                 qtype = 'multi' if sec['type'] == 'multi' else 'single'
             qi = {'k': 'q', 'n': n, 'type': qtype, 'html': stem_h, 'sec': it['sec']}
+            if not opts and qtype in ('single', 'multi'):
+                # options laid out as a table (a row per option) or as pictures: the buttons take their labels
+                plain = re.sub(r'<[^>]+>', ' ', stem_h)
+                rng = re.search(r'[(（]([A-L])[)）]\s*(?:to|至|～|~|-|—)\s*[(（]([A-L])[)）]', plain)
+                seq = []
+                for mm in re.finditer(r'[(（]([A-L])[)）]', plain):
+                    lab = mm.group(1)
+                    if not seq and lab == 'A' or seq and lab == chr(ord(seq[-1]) + 1):
+                        seq.append(lab)
+                if rng:
+                    qi['labels'] = [chr(c) for c in range(ord(rng.group(1)), ord(rng.group(2)) + 1)]
+                elif len(seq) >= 2:
+                    qi['labels'] = seq
+            if not re.sub(r'<[^>]+>|\s', '', stem_h) and opts:
+                qi['blank'] = True  # 綜合測驗: the question is a numbered blank in the passage
             if opts:
                 qi['opts'] = opts
             if qtype == 'fill':
@@ -1134,11 +1172,23 @@ def paper(stem):
     out_items = [x for x in out_items if not (x['k'] == 'g' and 'html' in x and not re.sub(r'<[^>]+>|\s', '', x['html']) and not x.get('opts'))]
     # numbers a section declares but that have no paragraph of their own: blanks in the passage, answered from its shared options
     have = {x['n'] for x in out_items if x['k'] == 'q'}
+    ranges = []
     for si, sc in enumerate(secs):
         mm = re.search(r'第\s*(\d+)\s*題至第\s*(\d+)\s*題', sc['note'])
-        if not mm:
-            continue
-        lo, hi = int(mm.group(1)), int(mm.group(2))
+        if mm:
+            ranges.append((si, int(mm.group(1)), int(mm.group(2))))
+    # a 題組 shown as a picture holds its own questions too (英文 混合題 47–50)
+    for x in out_items:
+        if x['k'] == 'g' and x.get('from') and x.get('to'):
+            ranges.append((x.get('sec'), x['from'], x['to']))
+    # and any number in the answer key still without a question, under the passage before it
+    keyed = sorted({int(k.split('-')[0]) for k in ans if k.split('-')[0].isdigit()})
+    have0 = {x['n'] for x in out_items if x['k'] == 'q'}
+    for n in keyed:
+        if n not in have0:
+            prev = [x for x in out_items if x['k'] == 'q' and isinstance(x['n'], int) and x['n'] < n]
+            ranges.append((prev[-1]['sec'] if prev else None, n, n))
+    for si, lo, hi in ranges:
         for n in range(lo, hi + 1):
             if n in have:
                 continue
@@ -1148,6 +1198,11 @@ def paper(stem):
             qi = {'k': 'q', 'n': n, 'type': 'open' if a in (None, '／') else ('multi' if ',' in a else 'single'), 'html': '', 'sec': si, 'blank': True}
             if a and a != '／':
                 qi['ans'] = a.replace(',', '')
+            cells = sorted([k for k in ans if k.startswith(f'{n}-')], key=lambda k: int(k.split('-')[1]))
+            if cells:
+                qi.update(type='fill', cells=cells, ans=[ans[k] for k in cells])
+            if qi['type'] == 'open':
+                qi['rubric'] = rub.get(str(n), '')
             if gi is not None and out_items[gi].get('opts'):
                 qi['shared'] = gi
             pos = (gi + 1) if gi is not None else len(out_items)
@@ -1214,7 +1269,8 @@ def locate(pdf, items, ref_text):
         p = None
         if it['k'] == 'q' and isinstance(it.get('n'), int) and not it.get('blank'):
             p = next(((m[0], m[1]) for m in marks if m[2] == it['n'] and (m[0], m[1]) > last), None)
-        for probe in ([it.get('head'), re.sub(r'<[^>]+>', '', it.get('html', '')), it.get('text', '')] if p is None else []):
+        body = norm_text(it.get('text', '') or re.sub(r'<[^>]+>', '', it.get('html', '')))
+        for probe in ([it.get('head'), body[:14], body[6:20], body[20:34]] if p is None else []):
             probe = norm_text(probe or '')[:14]
             p = pdf.find_text(probe, last) if len(probe) >= 4 else None
             if p:

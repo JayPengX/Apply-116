@@ -31,13 +31,13 @@ def main():
             if q.get('type') in ('single', 'multi'):
                 opts = q.get('opts') or (items[q['shared']].get('opts') if q.get('shared') is not None else None)
                 labels = [o[0] for o in opts] if opts else q.get('labels') or []
-                if q.get('ans') and labels and any(a not in labels for a in q['ans']):
+                if q.get('ans') and q['ans'] != '＊' and labels and any(a not in labels for a in q['ans']):
                     probs.append(f"{q['n']}: answer {q['ans']} not in options {''.join(labels)}")
                 if not q.get('ans'):
                     probs.append(f"{q['n']}: no answer")
                 if opts and len(opts) < 3:
                     probs.append(f"{q['n']}: only {len(opts)} options")
-                if not opts and not q.get('img') and not q.get('blank'):
+                if not opts and not q.get('img') and not q.get('blank') and not q.get('labels') and not (q['type'] == 'multi' and q.get('shared') is None and q.get('sec') is not None and '題組' in json.dumps(items[max(0, i - 6):i], ensure_ascii=False)):
                     probs.append(f"{q['n']}: text question without options")
             if q.get('type') == 'fill' and len(q.get('cells', [])) != len(q.get('ans', [])):
                 probs.append(f"{q['n']}: cells/answers differ")
