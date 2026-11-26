@@ -189,12 +189,10 @@ loadAppData().then(D => {
     scores: { 國: '', 英: '', 數A: '', 數B: '', 社: '', 自: '', 聽: '', 識: '', 實: '' },
     stdYear: '115',
     stdCustom: copyStd(D.std['115']),
-    f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', skip: [], combos: [], untaken: false, sort: 'chance', path: 'both' },
+    f: { q: '', groups: [], regions: [], own: 'all', tiers: DEFAULT_TIERS.slice(), cats: DEFAULT_CATS.slice(), st2: [], sat: 'all', skip: [], combos: [], untaken: false, sort: 'chance', path: 'both', list: 'all' },
     fav: [], plan: [], mocks: [], mockV: 3, theme: '',
     // which scores every 落點 is judged on: 'test' = 學測級分 you typed (or a target), else a saved 模考's id
     src: 'test',
-    // 怎麼進步 has its own scope (it never borrows 找校系's filters): all 校系 (optionally one 學群), 收藏, or 志願
-    bx: { scope: 'all', group: '' },
     // 興趣量表 (Holland) codes the student picked, at most 3: only used to order 學群 in 探索
     hol: [],
     // 興趣測驗 answers (48 × 1–5, 0 = not yet)
@@ -290,6 +288,7 @@ loadAppData().then(D => {
     if (!['all', 'pub', 'pri'].includes(f.own)) f.own = 'all';
     if (!SORTS.includes(f.sort)) f.sort = 'chance';
     if (!['both', 'app', 'uac'].includes(f.path)) f.path = 'both';
+    if (!['all', 'fav', 'plan'].includes(f.list)) f.list = 'all';
     out.fav = [...new Set(arr(s.fav, c => BY_CODE[c]))];
     out.mocks = arr(s.mocks, m => m && typeof m === 'object').map(m => ({
       id: typeof m.id === 'string' ? m.id.slice(0, 20) : Math.random().toString(36).slice(2, 10),
@@ -308,8 +307,6 @@ loadAppData().then(D => {
     out.mockV = 3;
     out.plan = [...new Set(arr(s.plan, c => BY_CODE[c]))].slice(0, 6);
     out.src = out.mocks.some(m => m.id === s.src) ? s.src : 'test';
-    const bx = s.bx && typeof s.bx === 'object' ? s.bx : {};
-    out.bx = { scope: ['all', 'fav', 'plan'].includes(bx.scope) ? bx.scope : 'all', group: GROUPS.includes(bx.group) ? bx.group : '' };
     out.hol = [...new Set(arr(s.hol, x => HOL.some(h => h[0] === x)))].slice(0, 3);
     out.quiz = Array.isArray(s.quiz) ? s.quiz.slice(0, 48).map(x => (Number.isInteger(x) && x >= 0 && x <= 5 ? x : 0)) : [];
     if (s.ast && typeof s.ast === 'object') {
@@ -516,14 +513,23 @@ loadAppData().then(D => {
     if (skip !== 'skip' && L.stage1Uses(d, f.skip)) return false;
     if (skip !== 'combos' && f.combos.length && !f.combos.includes(COMBO_OF[d.c])) return false;
     if (skip !== 'untaken' && !f.untaken && usesUntaken(d)) return false;
+    if (skip !== 'list' && f.list !== 'all' && !listCodes().includes(d.c)) return false;
     if (qTerms.length) { const h = hay(d); if (!qTerms.every(t => h.includes(t))) return false; }
     return true;
   }
-  const baseFiltered = skip => D.depts.filter(d => passes(d, skip));
+  /** 收藏 or 志願 when the filters are narrowed to one of them. */
+  const listCodes = () => (st.f.list === 'plan' ? st.plan : st.fav);
+  const setQ = q => { const x = q.trim().toLowerCase(); qTerms = x ? x.split(/[\s,，、]+/).filter(Boolean) : []; };
+  // One set of filters for the whole app (找校系, 我的成績, 怎麼進步): each list is worked out once per change.
+  const BF = new Map();
+  function baseFiltered(skip) {
+    const k = (skip || '') + JSON.stringify(st.f) + qTerms.join(' ') + evSig + st.fav.join() + '|' + st.plan.join();
+    if (!BF.has(k)) { if (BF.size > 40) BF.clear(); BF.set(k, D.depts.filter(d => passes(d, skip))); }
+    return BF.get(k);
+  }
   /** 一般 departments: the default 組別 (no 青儲、扶弱 or 術科 groups), as 找校系 shows them before any filter. */
   const catOk = (d, cats) => catOf(d).some(c => cats.includes(c)) && !(d.cats.includes('青儲') && !cats.includes('青儲')) && !(d.cats.includes('扶弱') && !cats.includes('扶弱'));
-  const CAT_SCOPE = D.depts.filter(d => catOk(d, DEFAULT_CATS));
-  const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + (st.f.sat !== 'all' ? 1 : 0) + st.f.st2.length + st.f.skip.length + st.f.combos.length + (st.f.untaken ? 1 : 0) + (catsChanged() ? 1 : 0);
+  const filterCount = () => st.f.groups.length + st.f.regions.length + (st.f.own !== 'all' ? 1 : 0) + (st.f.sat !== 'all' ? 1 : 0) + st.f.st2.length + st.f.skip.length + st.f.combos.length + (st.f.untaken ? 1 : 0) + (catsChanged() ? 1 : 0) + (st.f.list !== 'all' ? 1 : 0);
   const skipName = k => SKIP_SUBJ.find(x => x[0] === k)[1];
   const comboParts = k => k.split('+');
   const comboName = k => { const ps = comboParts(k); return ps.length === 1 ? subj(ps[0]) : ps.map(p => ABBR[p] || p).join(''); };
@@ -543,8 +549,10 @@ loadAppData().then(D => {
     const restOn = rest.some(x => f.combos.includes(x.k));
     return `<div class="chips" role="group" aria-labelledby="comboLab">${head.map(chipC).join('')}</div>${rest.length ? `<details class="combomore" id="comboMore" ${ui.comboOpen || restOn ? 'open' : ''}><summary>${icon('chevR', 'sm')}其他 ${rest.length} 種組合</summary><div class="chips">${rest.map(chipC).join('')}</div></details>` : ''}`;
   }
-  function scopeLabel() {
-    const f = st.f, p = [];
+  const LIST_NAME = { fav: '只看收藏', plan: '只看志願' };
+  function scopeLabel(f = st.f) {
+    const p = [];
+    if (f.list !== 'all') p.push(LIST_NAME[f.list]);
     if (f.groups.length) p.push(f.groups.join('、'));
     if (f.regions.length) p.push(f.regions.map(regionLabel).join('、'));
     if (f.own !== 'all') p.push(f.own === 'pub' ? '公立' : '私立');
@@ -594,7 +602,7 @@ loadAppData().then(D => {
   const noteHTML = (kind, html) => `<div class="note ${kind}">${icon(kind === 'warn' ? 'alert' : 'info')}<div>${html}</div></div>`;
   function focusKey(el) {
     if (!el || !el.dataset) return null;
-    for (const a of ['slider', 'try', 'focus', 'src', 'bscope', 'gsel', 'gx', 'hol', 'astmode', 'astv', 'path', 'qans', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
+    for (const a of ['slider', 'try', 'focus', 'src', 'list', 'gsel', 'gx', 'hol', 'astmode', 'astv', 'path', 'qans', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
       if (el.dataset[a] != null) return `[data-${a}="${CSS.escape(el.dataset[a])}"]`;
     }
     return el.id ? '#' + CSS.escape(el.id) : null;
@@ -817,19 +825,21 @@ loadAppData().then(D => {
     const c = cur();
     if (!hasScores(c.S)) return '';
     ensureUac();
-    const scope = scopeDepts(), n = {}, us = U ? uScope() : [], m = {};
+    const P = U ? st.f.path : 'app', showA = P !== 'uac', showU = U && P !== 'app';
+    const scope = scopeDepts(), n = {}, us = showU ? uScope() : [], m = {};
     scope.forEach(d => { const t = tierOf(d); n[t] = (n[t] || 0) + 1; });
     us.forEach(u => { const t = uTier(u); m[t] = (m[t] || 0) + 1; });
-    const p = U ? pathCompare(scope, us) : null, [verdict, cls] = p ? pathVerdict(p) : [];
+    const p = U ? pathCompare(scope, us) : null, [verdict, cls] = p && P === 'both' ? pathVerdict(p) : [];
     const nm = x => `${esc(schShort(x))} ${esc(x.n)}`;
     const lane = (t, sub, cnt, total, good, best) => `<div class="rc-lane"><div class="rc-h"><b>${t}</b><small>${sub}</small><span class="rc-g">${GOOD} <b class="num">${fmtN(good)}</b></span></div>
       ${total ? tierBarHTML(cnt, total, { label: t }) : ''}${best && best.length ? `<p class="rc-best">最搶手：${best.map(nm).join('、')}</p>` : ''}</div>`;
-    const empty = `<p class="hint">${st.bx.scope === 'fav' ? '還沒有收藏的校系。' : '還沒有排志願。'}</p>`;
-    return `<section class="sec result-card">${hIcon('target', '落點分布')}<p class="sub">用「${esc(c.name)}」看兩條路：申請看一階，分發看學測＋分科總分。</p>
-      ${scopeBarHTML(scope.length)}
-      ${scope.length ? lane('申請入學', `一階・${fmtN(scope.length)} 個系`, n, scope.length, p ? p.app.length : scope.filter(d => isGood(tierOf(d))).length, p && p.aBest) : empty}
-      ${U ? (hasAst() ? lane('分發入學', `學測＋分科・${fmtN(us.length)} 個系組`, m, us.length, p.uac.length, p.uBest) : `<div class="rc-lane"><div class="rc-h"><b>分發入學</b><small>學測＋分科</small></div><p class="hint">還沒選要考的分科（上面「分科成績」）。</p></div>`) : ''}
-      ${p ? `<p class="pc-verdict ${cls}">${esc(verdict)}</p>${hasAst() ? `<p class="rc-cross">只有申請有機會 <b>${p.aOnly.length}</b> 個系・只有分發有機會 <b>${p.uOnly.length}</b> 個</p>` : ''}
+    const empty = `<p class="hint">${emptyScopeHTML()}</p>`;
+    return `<section class="sec result-card">${hIcon('target', '落點分布')}<p class="sub">用「${esc(c.name)}」看${P === 'both' ? '兩條路：申請看一階，分發看學測＋分科總分' : P === 'app' ? '申請入學一階' : '分發：學測＋分科總分'}。</p>
+      ${U ? `<div class="pathbar">${pathSegHTML()}</div>` : ''}
+      ${scopeBarHTML(P === 'uac' ? us.length : scope.length)}
+      ${!showA ? '' : scope.length ? lane('申請入學', `一階・${fmtN(scope.length)} 個系`, n, scope.length, p ? p.app.length : scope.filter(d => isGood(tierOf(d))).length, p && p.aBest) : empty}
+      ${showU ? (hasAst() ? lane('分發入學', `學測＋分科・${fmtN(us.length)} 個系組`, m, us.length, p.uac.length, p.uBest) : `<div class="rc-lane"><div class="rc-h"><b>分發入學</b><small>學測＋分科</small></div><p class="hint">還沒選要考的分科（上面「分科成績」）。</p></div>`) : ''}
+      ${verdict ? `<p class="pc-verdict ${cls}">${esc(verdict)}</p>${hasAst() ? `<p class="rc-cross">只有申請有機會 <b>${p.aOnly.length}</b> 個系・只有分發有機會 <b>${p.uOnly.length}</b> 個</p>` : ''}
       <details class="rc-why"><summary>${icon('info', 'sm')}兩條路怎麼選、你在考生裡排哪</summary><ul class="pc-why">
         <li><b>申請</b>：這裡只算一階。過了還有二階（審查資料、面試），看總成績；3 月就知道。</li>
         <li><b>分發</b>：只看分數（學測＋分科加權），沒有面試；分科 7/10 考、8/13 放榜，要多準備半年。</li>
@@ -840,11 +850,16 @@ loadAppData().then(D => {
   /** Each 學群: how many of its 系 you would likely pass (穩過＋應該過), the subjects its 一階 screens on, the most sought-after one you reach. */
   function groupFit() {
     const out = [];
+    // the shared filters (地區, 公私立, …) apply; 學群 and 收藏／志願 do not, since this compares every 學群
+    const f0 = st.f;
+    st.f = { ...f0, groups: [], list: 'all' };
+    const pool = baseFiltered();
+    st.f = f0;
     for (const g of GROUPS) {
       if (g === '其他') continue;
-      const ds = CAT_SCOPE.filter(d => d.g.includes(g) && !usesUntaken(d));
+      const ds = pool.filter(d => d.g.includes(g));
       if (ds.length < 5) continue;
-      const good = ds.filter(d => { const t = tierOf(d); return t === '穩' || t === '適中'; });
+      const good = ds.filter(d => isGood(tierOf(d)));
       const use = {};
       ds.forEach(d => L.screenSubjects(d).forEach(k => { use[k] = (use[k] || 0) + 1; }));
       const subjects = Object.entries(use).filter(([, n]) => n >= ds.length * 0.35).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k);
@@ -909,7 +924,7 @@ loadAppData().then(D => {
         <span class="gx-bar"><i style="width:${((x.share / maxShare) * 100).toFixed(1)}%"></i></span>
         <span class="gx-m">${x.subjects.length ? `<span class="gx-s">看重 ${x.subjects.map(k => `<i class="${strong.has(k) ? 'on' : ''}">${ABBR[k]}</i>`).join('')}</span>` : ''}${x.best.length ? `<span class="gx-b">最搶手：${x.best.map(d => esc(schShort(d) + ' ' + d.n)).join('、')}</span>` : ''}</span>
       </button></li>`;
-    return `<section class="sec" id="strengthSec">${hIcon('compass', '還不確定讀什麼？')}<p class="sub">從強項看哪些學群最有機會。按一個學群，列出你${GOOD}的系，去年門檻高的在前。</p>
+    return `<section class="sec" id="strengthSec">${hIcon('compass', '還不確定讀什麼？')}<p class="sub">從強項看哪些學群最有機會。按一個學群，列出你${GOOD}的系，去年門檻高的在前。${(l => (l ? `照你的篩選：${esc(l)}。` : ''))(scopeLabel({ ...st.f, groups: [], list: 'all' }))}</p>
       <div class="str-rank" aria-label="各科在 115 考生的排名">${ranks.map(x => `<span class="sr-c ${cls(x.top)}"><b>${subj(x.k)}</b><small>${fmtTop(x.top)}</small></span>`).join('')}</div>
       <div class="hol"><span class="hol-l">興趣量表結果（可略過，選 1–3 個）</span><div class="hol-c" role="group" aria-label="興趣代碼">${HOL.map(([h, n, d]) => `<button type="button" class="chip" data-hol="${h}" aria-pressed="${st.hol.includes(h)}" title="${d}"><b>${h}</b>${n}</button>`).join('')}</div>
         ${quizCardHTML()}
@@ -983,6 +998,8 @@ loadAppData().then(D => {
     const nUntaken = hasScores() ? baseFiltered('untaken').filter(usesUntaken).length : 0;
     const n = filterCount();
     const h = `<div class="filter-h"><h2>篩選校系</h2><button class="textbtn" type="button" data-act="resetFilters" ${n ? '' : 'hidden'}>${icon('reset', 'sm')}重設</button></div>
+      <p class="hint fnote">找校系、我的成績、怎麼進步都用這組篩選。</p>
+      <div class="fsec"><h3>範圍</h3>${listSegHTML()}</div>
       <div class="fsec"><h3>學群${f.groups.length ? '<button class="textbtn" type="button" data-act="groupsAll">全部學群</button>' : ''}</h3><div class="chips">${GROUPS.map(g => chip(g, f.groups.includes(g), `data-group="${g}"`, gc[g] || 0)).join('')}</div></div>
       <div class="fsec"><h3>學校</h3><div class="chips" role="group" aria-label="地區">${REGIONS.map(r => chip(regionLabel(r), f.regions.includes(r), `data-region="${r}"`, rc[r] || 0)).join('')}</div>
         <div class="segctl fseg" role="group" aria-label="公私立">${[['all', '公私立都要'], ['pub', '公立'], ['pri', '私立']].map(([k, l]) => `<button type="button" data-own="${k}" aria-pressed="${f.own === k}">${l}${k !== 'all' ? `<span class="muted num"> ${oc[k] || 0}</span>` : ''}</button>`).join('')}</div></div>
@@ -996,7 +1013,7 @@ loadAppData().then(D => {
         <p class="fsub" id="satLab">學測佔二階總成績</p><div class="chips" role="group" aria-labelledby="satLab">${SAT.map(([k, l]) => chip(l, f.sat === k, `data-sat="${k}"`, sc[k] || 0)).join('')}</div>
         <p class="fsub" id="ivLab">甄試方式</p><div class="chips" role="group" aria-labelledby="ivLab">${ST2.map(([k, l]) => chip(l, f.st2.includes(k), `data-st2="${k}"`, xc[k] || 0)).join('')}</div></div>
       <div class="fsec"><details id="catsBox" ${ui.catsOpen || catsChanged() ? 'open' : ''}><summary>${icon('chevR', 'sm')}特殊組別${catsChanged() ? '（已變更）' : ''}</summary><div class="chips">${CATS.map(([k, l]) => chip(l, f.cats.includes(k), `data-cat="${k}"`)).join('')}</div><p class="hint">限特定身分或要考術科的組別，預設隱藏。</p></details></div>
-      <p class="hint fnote">篩選只影響「找校系」。「怎麼進步」有自己的範圍。</p>`;
+`;
     keepFocus(el, () => { el.innerHTML = h; });
     const fc = $('#filterCount');
     fc.textContent = n ? String(n) : '';
@@ -1014,6 +1031,7 @@ loadAppData().then(D => {
     f.combos.forEach(k => out.push(af('一階篩 ' + comboName(k), `data-combo="${esc(k)}"`)));
     if (f.untaken && hasScores()) out.push(af('含用到沒考科目', 'data-act="hideUntaken"'));
     if (catsChanged()) out.push(af('特殊組別已變更', 'data-act="resetCats"'));
+    if (f.list !== 'all') out.unshift(af(LIST_NAME[f.list], 'data-list="all"'));
     if (out.length > 1) out.push('<button class="textbtn" type="button" data-act="resetAll">全部清除</button>');
     $('#activeFilters').innerHTML = out.join('');
   }
@@ -1034,13 +1052,14 @@ loadAppData().then(D => {
       <li><b>找校系</b><span>每個系標出落點（穩過、應該過、邊緣、機會低），按 ☆ 收藏。</span></li>
       <li><b>排志願</b><span>最多 6 個，檢查穩衝搭配、甄試撞期和要交的資料。</span></li></ol>
     <button class="btn primary" type="button" data-tab="scores">${icon('edit', 'sm')}先輸入成績</button><span class="hint">不輸入也可以先看各系的條件。</span></div>`;
+  const pathSegHTML = () => `<div class="segctl" role="group" aria-label="看哪條路">${[['both', '申請＋分發'], ['app', '只看申請'], ['uac', '只看分發']].map(([k, l]) => `<button type="button" data-path="${k}" aria-pressed="${st.f.path === k}">${l}</button>`).join('')}</div>`;
   function renderOverview(base) {
     const el = $('#overview');
     const scope = scopeLabel();
     const p = U ? st.f.path : 'app';
     const outCats = p === 'uac' ? 0 : baseFiltered('cats').length - baseFiltered().length;
     const nU = base.filter(d => d.isU).length;
-    const path = U ? `<div class="pathbar"><div class="segctl" role="group" aria-label="看哪條路">${[['both', '申請＋分發'], ['app', '只看申請'], ['uac', '只看分發']].map(([k, l]) => `<button type="button" data-path="${k}" aria-pressed="${p === k}">${l}</button>`).join('')}</div>
+    const path = U ? `<div class="pathbar">${pathSegHTML()}
       <p class="hint">${p === 'both' ? `同一個系看申請一階和分發（學測＋分科）兩條路，標籤用比較有機會的那條${nU ? `；另有 ${fmtN(nU)} 個只有分發的系組` : ''}。` : p === 'uac' ? '分發只看學測＋分科加權總分，跟 115 最低錄取分數比。一階、二階的篩選只適用申請。' : '只看申請入學一階。'}${p !== 'app' && hasScores() && !hasAst() ? ' <button class="textbtn" type="button" data-tab="scores">還沒選分科，到我的成績選</button>' : ''}</p></div>` : '';
     const head = `${path}<div class="ov-t"><h2><b class="num">${fmtN(base.length)}</b> 個${p === 'uac' ? '分發系組' : '校系'}${scope ? ' · ' + esc(scope) : ''}</h2>${outCats > 0 ? `<button class="textbtn ov-note" type="button" data-act="showCats">另有 ${fmtN(outCats)} 個特殊組別沒列出</button>` : ''}</div>`;
     if (!hasScores()) {
@@ -1203,8 +1222,6 @@ loadAppData().then(D => {
     if (ui.sheet) $('#sheetDone').textContent = `看 ${fmtN(s.length)} 個結果`;
   }
   function renderExplore() {
-    const q = st.f.q.trim().toLowerCase();
-    qTerms = q ? q.split(/[\s,，、]+/).filter(Boolean) : [];
     if ($('#q').value !== st.f.q && document.activeElement !== $('#q')) $('#q').value = st.f.q;
     $('#clearQ').hidden = !st.f.q;
     $('#sort').value = st.f.sort;
@@ -1684,24 +1701,25 @@ loadAppData().then(D => {
     boostCache = { sig, data };
     return data;
   }
-  /**
-   * Which 校系 the counts on 我的成績 and 怎麼進步 cover (one setting for both): all 一般 校系 (or one 學群),
-   * your 收藏, or your 志願. Never 找校系's filters.
-   */
-  function scopeDepts(untakenToo) {
-    const bx = st.bx;
-    if (bx.scope === 'fav') return st.fav.map(c => BY_CODE[c]).filter(Boolean);
-    if (bx.scope === 'plan') return planDepts();
-    return CAT_SCOPE.filter(d => (!bx.group || d.g.includes(bx.group)) && (untakenToo || !usesUntaken(d)));
-  }
-  const boostScope = () => scopeDepts(ui.boostAll);
-  const scopeName = () => (st.bx.scope === 'fav' ? '你的收藏' : st.bx.scope === 'plan' ? '你的志願' : st.bx.group ? `${st.bx.group}學群` : '全部一般校系');
+  /** The 申請 校系 the counts on 我的成績 and 怎麼進步 cover: 找校系's list under the same filters (落點 labels aside). */
+  const scopeDepts = () => baseFiltered();
+  const boostScope = scopeDepts;
+  const scopeName = () => scopeLabel() || '全部一般校系';
+  /** 全部／收藏／志願: part of the shared filters; each count is what the other filters leave of it. */
+  const listSegHTML = () => {
+    const lc = new Set(baseFiltered('list').map(d => d.c));
+    const n = k => (k === 'all' ? lc.size : (k === 'plan' ? st.plan : st.fav).filter(c => lc.has(c)).length);
+    return `<div class="segctl" role="group" aria-label="範圍">${[['all', '全部校系'], ['fav', '收藏'], ['plan', '志願']].map(([k, l]) => { const c = n(k); return `<button type="button" data-list="${k}" aria-pressed="${st.f.list === k}">${l}${c != null ? `<span class="muted num"> ${c}</span>` : ''}</button>`; }).join('')}</div>`;
+  };
+  /** On 我的成績 and 怎麼進步: which 校系 are counted, with 找校系's filters (one set for the whole app). */
   function scopeBarHTML(n) {
-    const bx = st.bx;
-    const seg = [['all', '全部校系'], ['fav', `收藏 ${st.fav.length}`], ['plan', `志願 ${st.plan.length}`]].map(([k, l]) => `<button type="button" data-bscope="${k}" aria-pressed="${bx.scope === k}">${l}</button>`).join('');
-    const grp = bx.scope === 'all' ? `<span class="selectbox"><select id="bGroup" aria-label="學群"><option value="">所有學群</option>${GROUPS.map(g => `<option ${bx.group === g ? 'selected' : ''}>${g}</option>`).join('')}</select>${icon('chevD', 'sm')}</span>` : '';
-    return `<div class="scopebar"><span class="ctx-lab">算哪些校系</span><div class="segctl" role="group" aria-label="算哪些校系">${seg}</div>${grp}<span class="muted num">共 ${fmtN(n)} 個</span></div>`;
+    const fc = filterCount(), lab = scopeLabel();
+    const nU = hasScores() && !st.f.untaken ? baseFiltered('untaken').filter(usesUntaken).length : 0;
+    return `<div class="scopebar"><span class="ctx-lab">算哪些校系</span>${listSegHTML()}
+      <button class="btn sm" type="button" data-act="openFilters">${icon('sliders', 'sm')}篩選${fc ? `<span class="count">${fc}</span>` : ''}</button><span class="muted num">共 ${fmtN(n)} 個</span>
+      <p class="sb-f">${lab ? `${esc(lab)} <button class="textbtn" type="button" data-act="resetFilters">清除篩選</button>` : '全部一般校系'}${nU ? ` <button class="textbtn" type="button" data-act="showUntaken">＋${fmtN(nU)} 個用到沒考科目</button>` : ''}<small>跟「找校系」同一組篩選</small></p></div>`;
   }
+  const emptyScopeHTML = () => (st.f.list === 'fav' && !st.fav.length ? '還沒有收藏的校系。到「找校系」按 ☆ 收藏。' : st.f.list === 'plan' && !st.plan.length ? '還沒有排志願。' : '篩選後沒有校系，放寬篩選看看。');
   // ------------------------------------------------------------------ 模考趨勢
   function mockRefHTML() {
     return `<details class="mockref" id="mockRef" ${ui.mockRefOpen ? 'open' : ''}><summary>${icon('chevR', 'sm')}翰林各次模考的時程、範圍和五標來源</summary>
@@ -1801,7 +1819,7 @@ loadAppData().then(D => {
     renderBoost.t = setTimeout(() => {
       if (ui.tab !== 'boost') return;
       if (!scope.length) {
-        el.innerHTML = head + ctxBarHTML() + scopeBarHTML(0) + `<div class="cta">${icon('info')}<div>${st.bx.scope === 'fav' ? '還沒有收藏的校系。' : '還沒有排志願。'}到「找校系」按 ☆ 收藏，或換成「全部校系」。</div></div>`;
+        el.innerHTML = head + ctxBarHTML() + scopeBarHTML(0) + `<div class="cta">${icon('info')}<div>${emptyScopeHTML()}</div></div>`;
         return;
       }
       const { rows: allRows, blockers: allBlockers } = boostData(scope);
@@ -1809,10 +1827,10 @@ loadAppData().then(D => {
       // subjects you have not taken (no score, no 模考) only matter if you are thinking of adding one
       const taken = k => L.val(c.S, k) != null || (!skipped().includes(k) && !!series.out[k]);
       const untaken = SCORE_KEYS.filter(k => !taken(k));
-      const rows = ui.boostAll ? allRows : allRows.filter(r => taken(r.k));
+      const rows = st.f.untaken ? allRows : allRows.filter(r => taken(r.k));
       const NAME_RE = { 國: /國文/, 英: /英文/, 數A: /數學A|數A/, 數B: /數學B|數B/, 社: /社會/, 自: /自然/ };
-      const blockers = ui.boostAll ? allBlockers : allBlockers.filter(([lab]) => { const ks = SCORE_KEYS.filter(k => NAME_RE[k].test(lab)); return !ks.length || ks.some(taken); });
-      const allToggle = untaken.length ? `<label class="fcheck boost-all"><input type="checkbox" id="boostAll" ${ui.boostAll ? 'checked' : ''}> 也算沒考的科目（${untaken.map(k => ABBR[k]).join('、')}），想加考的話</label>` : '';
+      const blockers = st.f.untaken ? allBlockers : allBlockers.filter(([lab]) => { const ks = SCORE_KEYS.filter(k => NAME_RE[k].test(lab)); return !ks.length || ks.some(taken); });
+      const allToggle = untaken.length ? `<label class="fcheck boost-all"><input type="checkbox" id="boostAll" ${st.f.untaken ? 'checked' : ''}> 也算沒考的科目（${untaken.map(k => ABBR[k]).join('、')}）和用到它們的系，想加考的話</label>` : '';
       const all = rows.flatMap(r => r.cells.filter(Boolean));
       const maxUp = Math.max(1, ...all.map(x => x.up));
       const bestOf = r => r.cells.filter(Boolean).reduce((a, x) => (x.up > (a ? a.up : 0) ? x : a), null);
@@ -1869,7 +1887,7 @@ loadAppData().then(D => {
       const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="n">${n} 個系</span><span class="t" style="width:${Math.max(2, (n / maxB) * 100).toFixed(1)}%"></span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${esc(c.stdName)}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
       if (!ui.tryS || ui.trySig !== c.sig) { ui.tryS = { ...c.thS }; ui.trySig = c.sig; }
       const sc = tryScale();
-      const tryGrid = SCORE_KEYS.filter(k => ui.boostAll || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15, sc)).join('');
+      const tryGrid = SCORE_KEYS.filter(k => st.f.untaken || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15, sc)).join('');
       el.innerHTML = head + ctxBarHTML() + scopeBarHTML(scope.length) + allToggle + hero +
         `<section class="sec">${hIcon('boost', '每一科多考幾級分，有幾個系變好？')}<p class="sub">柱子上是落點變好的系數，下面是考到幾級分${c.mock ? `（${esc(c.name)}的級分和五標）` : ''}。按一根柱子看那個分數的變化。</p><p class="gains-base">現在${esc(GOOD)} <b>${fmtN(good0)}</b> 個・過不了 <b>${fmtN(scope.filter(d => tierOf(d) === '不符').length)}</b> 個・共 ${fmtN(scope.length)} 個系</p>${grid}</section>
         <section class="sec">${hIcon('alert', '擋住你的檢定')}<p class="sub">因此進不了一階的校系數</p>${blockHTML}</section>
@@ -1931,11 +1949,12 @@ loadAppData().then(D => {
   const uTier = d => { const e = UEV.get(d.c); return e ? e.tier : null; };
   const isGood = t => t === '穩' || t === '適中';
   const uSch = d => SCHOOL[d.sid].n;
-  /** The 分發 系組 in the 我的成績／怎麼進步 scope: the same 學群, or the 分發 groups of your 收藏／志願. */
+  /** The 分發 系組 under the shared filters: the 分發 groups of the 申請 系 in scope, plus 分發-only ones (as 找校系 lists them). */
   function uScope() {
-    const bx = st.bx;
-    if (bx.scope !== 'all') return scopeDepts().flatMap(d => UTWIN[d.c] || []);
-    return bx.group ? U.depts.filter(u => u.g.includes(bx.group)) : U.depts;
+    if (st.f.path === 'uac') return U.depts.filter(u => uPasses(u, true));
+    const us = new Set(scopeDepts().flatMap(d => UTWIN[d.c] || []));
+    for (const u of U.depts) if (!u.twin && uPasses(u, false)) us.add(u);
+    return [...us];
   }
   /** 申請 vs 分發 on one yardstick: a 分發 系 is placed by the 115 申請 一階 門檻 of the same 系 (its twin). */
   function pathCompare(scope, us) {
@@ -1979,6 +1998,7 @@ loadAppData().then(D => {
     const f = st.f;
     if (!onlyUac && (f.st2.length || f.sat !== 'all' || f.skip.length || f.combos.length)) return false;
     if (!f.cats.includes('一般')) return false;
+    if (f.list !== 'all' && !(u.twin && listCodes().includes(u.twin))) return false;
     if (f.groups.length && !u.g.some(g => f.groups.includes(g))) return false;
     if (f.regions.length && !f.regions.includes(CITY_REGION[u.city])) return false;
     if (f.own !== 'all' && (SCHOOL[u.sid].pub ? 'pub' : 'pri') !== f.own) return false;
@@ -2160,6 +2180,7 @@ loadAppData().then(D => {
     $('#themeBtn').innerHTML = icon(dark ? 'sun' : 'moon');
   }
   function render() {
+    setQ(st.f.q);
     ensureEval();
     ensureUac();
     renderNav();
@@ -2168,6 +2189,8 @@ loadAppData().then(D => {
     else if (ui.tab === 'boost') renderBoost();
     else if (ui.tab === 'scores') renderScores();
     else renderGuide();
+    // the filter sheet can be opened from 我的成績 and 怎麼進步 too
+    if (ui.sheet && ui.tab !== 'explore') { renderFilterPanel(); $('#sheetDone').textContent = '完成'; }
     save();
   }
   function setTab(name, fromRoute) {
@@ -2192,7 +2215,7 @@ loadAppData().then(D => {
     const dlg = $('#sheet');
     $('#sheetBody').appendChild($('#filterPanel'));
     ui.sheet = true;
-    renderExplore();
+    render();
     dlg.showModal();
   }
   function onSheetClosed() {
@@ -2283,6 +2306,7 @@ loadAppData().then(D => {
     resetFilters: () => { st.f = { ...DEFAULT().f, sort: st.f.sort, q: st.f.q, tiers: st.f.tiers, path: st.f.path }; ui.shown = PAGE; render(); },
     resetAll: () => { st.f = { ...DEFAULT().f, sort: st.f.sort, path: st.f.path }; $('#q').value = ''; ui.shown = PAGE; render(); },
     resetCats: () => { st.f.cats = DEFAULT_CATS.slice(); ui.shown = PAGE; render(); },
+    openFilters: () => openSheet(),
     showTiers: () => { st.f.tiers = TIERS.slice(); render(); },
     goStrength: () => { setTab('scores'); requestAnimationFrame(() => { const el = $('#strengthSec'); if (el) el.scrollIntoView({ block: 'start' }); }); },
     astReset: () => { st.ast = null; render(); },
@@ -2361,7 +2385,7 @@ loadAppData().then(D => {
         if (quizResult(st.quiz)) render();
         return;
       }
-      if (ds.bscope) { st.bx.scope = ds.bscope; render(); return; }
+      if (ds.list) { st.f.list = ds.list; ui.shown = PAGE; render(); return; }
       if (ds.astmode) {
         const [k, m] = ds.astmode.split(':'), plan = { ...astPlan() };
         if (m === '') delete plan[k];
@@ -2372,8 +2396,8 @@ loadAppData().then(D => {
       if (ds.path) { st.f.path = ds.path; ui.shown = PAGE; render(); return; }
       if (ds.gx) {
         // the best 系 you would likely pass in that 學群: a clean 找校系 so the list means exactly that
-        st.f = { ...DEFAULT().f, groups: [ds.gx], tiers: ['穩', '適中'], sort: 'select' };
-        $('#q').value = ''; qTerms = []; ui.shown = PAGE;
+        st.f = { ...st.f, groups: [ds.gx], list: 'all', tiers: ['穩', '適中'], sort: 'select' };
+        ui.shown = PAGE;
         setTab('explore');
         toast(`${ds.gx}學群裡${GOOD}的系，去年門檻高的在前`);
         return;
@@ -2448,7 +2472,6 @@ loadAppData().then(D => {
       if (t.dataset.mf === '聽' && ui.mf) { ui.mf.聽 = t.value; return; }
       if (t.id === 'stdYear') { st.stdYear = t.value; render(); return; }
       if (t.dataset.srcsel != null) { useSource(t.value); return; }
-      if (t.id === 'bGroup') { st.bx.group = t.value; render(); return; }
       if (t.dataset.astv) {
         const n = Math.round(Number(t.value));
         if (t.value !== '' && Number.isFinite(n) && n >= 0 && n <= 60) { st.ast = { ...astPlan(), [t.dataset.astv]: String(n) }; render(); } else toast('分科級分是 0–60');
@@ -2461,7 +2484,7 @@ loadAppData().then(D => {
         render();
         return;
       }
-      if (t.id === 'boostAll') { ui.boostAll = t.checked; render(); return; }
+      if (t.id === 'boostAll') { st.f.untaken = t.checked; ui.shown = PAGE; render(); return; }
       if (t.id === 'untakenBox') { st.f.untaken = t.checked; ui.shown = PAGE; render(); return; }
       if (t.id === 'sort') { st.f.sort = t.value; ui.shown = PAGE; render(); return; }
       if (t.id === 'importState') {

@@ -205,31 +205,43 @@ try {
     await page.waitForSelector('.row');
     ok((await scores(page)).英 === '15' && /英\s*15/.test(await page.locator('#ctxExplore').innerText()), 'scores survive reload');
 
-    // boost tab: its own scope, not 找校系's filters (法政 is still on there)
+    // boost tab: the same filters as 找校系 (法政 is still on there)
     ok((await page.evaluate(() => window.__app.st().f.groups)).includes('法政'), '找校系 still filtered to 法政');
     await page.click('#tabs [data-tab="boost"]');
     await page.waitForSelector('#boost .gains');
     const btxt = await page.locator('#boost').innerText();
     ok(btxt.includes('擋住') && btxt.includes('數學B'), 'boost tab names the 數B blocker');
-    const nAll = Number((/共 ([\d,]+) 個/.exec(await page.locator('#boost .scopebar').innerText()) || [])[1].replace(/,/g, ''));
-    ok(nAll > 1000, `怎麼進步 counts all 校系, not 找校系's 法政 filter (${nAll})`);
+    const nOf = async () => Number((/共 ([\d,]+) 個/.exec(await page.locator('#boost .scopebar').innerText()) || [])[1].replace(/,/g, ''));
+    const nLaw = await nOf();
+    const nLawExplore = await page.evaluate(() => { const a = window.__app; return a.D.depts.filter(d => d.g.includes('法政')).length; });
+    ok(nLaw > 0 && nLaw <= nLawExplore && (await page.locator('#boost .scopebar').innerText()).includes('法政'), `怎麼進步 uses 找校系's 法政 filter (${nLaw})`);
+    await page.click('#boost .scopebar [data-act="resetFilters"]');
+    await page.waitForSelector('#boost .gains');
+    const nAll = await nOf();
+    ok(nAll > 1000 && !(await page.evaluate(() => window.__app.st().f.groups.length)), `clearing it there clears it everywhere (${nAll})`);
     // each bar is a button: picking one shows what reaching that 級分 does
     const card = page.locator('#boost .gi').first();
     const bar = card.locator('button.gb').first();
     const to = (await bar.getAttribute('data-gsel')).split(':')[1];
     await bar.click();
     ok((await bar.getAttribute('aria-pressed')) === 'true' && (await card.locator('.gi-at').innerText()).includes(`考到 ${to} 級分`), `tapping a bar shows that 級分 (${to})`);
-    await page.click('#boost [data-bscope="plan"]');
+    await page.click('#boost [data-list="plan"]');
     await page.waitForSelector('#boost .gains');
-    ok(/共 6 個/.test(await page.locator('#boost .scopebar').innerText()), '怎麼進步 can be scoped to the 6 志願');
-    await page.selectOption('#bGroup', '資訊').catch(() => {});
-    await page.click('#boost [data-bscope="all"]');
-    await page.waitForSelector('#boost #bGroup');
-    await page.selectOption('#bGroup', '資訊');
+    const nPlan = await nOf();
+    ok(nPlan > 0 && nPlan <= 6 && (await page.evaluate(() => window.__app.st().f.list)) === 'plan', `怎麼進步 can be narrowed to the 志願 (${nPlan})`);
+    await page.click('#boost [data-list="all"]');
     await page.waitForSelector('#boost .gains');
-    const nInfo = Number((/共 ([\d,]+) 個/.exec(await page.locator('#boost .scopebar').innerText()) || [])[1].replace(/,/g, ''));
-    ok(nInfo > 0 && nInfo < nAll, `and to one 學群 (資訊 ${nInfo})`);
-    await page.selectOption('#bGroup', '');
+    // the filter sheet opens from here and filters 找校系 too
+    await page.click('#boost .scopebar [data-act="openFilters"]');
+    await page.waitForSelector('#sheet[open] #sheetBody [data-group="資訊"]');
+    await page.click('#sheetBody [data-group="資訊"]');
+    await page.waitForFunction(() => document.querySelector('#sheetBody [data-group="資訊"]').getAttribute('aria-pressed') === 'true');
+    await page.click('#sheetDone');
+    await page.waitForSelector('#boost .gains');
+    const nInfo = await nOf();
+    ok(nInfo > 0 && nInfo < nAll && (await page.evaluate(() => window.__app.st().f.groups)).join() === '資訊', `a 學群 picked from 怎麼進步 is 找校系's filter too (資訊 ${nInfo})`);
+    ok(await page.evaluate(() => document.querySelector('#rail #filterPanel') != null), 'filter panel goes back to 找校系 after the sheet closes');
+    await page.click('#boost .scopebar [data-act="resetFilters"]');
     await page.waitForSelector('#boost .gains');
     await setSlider(page, '#boost [data-try="數B"]', 6);
     await page.waitForTimeout(300);
@@ -301,11 +313,13 @@ try {
     await page.click('#tabs [data-tab="explore"]');
     await page.waitForSelector('#list .row');
     ok((await page.locator('#list .r-uac').count()) > 0, '找校系 rows show the same 系 in 分發');
-    await page.click('[data-path="uac"]');
+    await page.click('#overview [data-path="uac"]');
     await page.waitForSelector('#list .urow');
     ok((await page.locator('#list .row:not(.urow)').count()) === 0 && /分發系組/.test(await page.locator('#overview').innerText()), '只看分發 lists 分發 系組 only');
-    await page.click('[data-path="both"]');
     await page.click('#tabs [data-tab="scores"]');
+    ok((await page.locator('.result-card .rc-lane').count()) === 1 && /分發入學/.test(await page.locator('.result-card').innerText()), '只看分發 is shared: 我的成績 shows only the 分發 lane');
+    await page.click('.result-card [data-path="both"]');
+    await page.waitForSelector('.result-card .pc-verdict');
     await page.click('[data-astmode="歷:"]');
     ok((await page.evaluate(() => window.__app.evaluateUac('0001').tier)) === '不符', 'not taking 歷史 → 臺大中文 (uses 歷史) is 過不了');
     await page.click('[data-act="astReset"]');
