@@ -309,6 +309,13 @@ try {
     await page.click('[data-astmode="歷:"]');
     ok((await page.evaluate(() => window.__app.evaluateUac('0001').tier)) === '不符', 'not taking 歷史 → 臺大中文 (uses 歷史) is 過不了');
     await page.click('[data-act="astReset"]');
+    // with a 模考 in use, 試算 is on that 模考's own 級分 and 五標: unchanged, it gives exactly the current 落點
+    await page.click('#tabs [data-tab="boost"]');
+    await page.waitForSelector('#tryOut table');
+    const rowsTry = await page.locator('#tryOut table tbody tr').allInnerTexts();
+    ok(rowsTry.length === 2 && rowsTry[0].replace('現在', '') === rowsTry[1].replace('試算', ''), '試算 on the 模考 scale starts equal to the current 落點');
+    ok(/這次/.test(await page.locator('#trySec .srow-v').first().innerText()), '試算 sliders show the 模考\'s own 標');
+    await page.click('#tabs [data-tab="scores"]');
     await page.click('#tabs [data-tab="scores"]');
 
     // 看落點 with a 模考 judges 檢定 on that 模考's own 五標: 翰林第三次 英文均標 is 6 (115 學測 均標 is 8)

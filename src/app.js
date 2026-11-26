@@ -356,18 +356,19 @@ loadAppData().then(D => {
   }
   const optsFor = c => ({ std: c.std, thS: c.thS, stdByYear: D.std, stdYear: c.stdYear, pct: D.pct });
   const hasScores = S => SCORE_KEYS.some(k => L.val(S || cur().S, k) != null);
-  /** Scores S2 on the 學測 scale, with the 檢定 scores moved by the same 級分 (so a what-if on a 模考 stays on that 模考's 五標). */
-  function shifted(c, S2) {
-    if (c.thS === c.S) return { S: S2, thS: S2 };
-    const thS = { ...c.thS, 聽: S2.聽, 識: S2.識, 實: S2.實 };
-    for (const k of SCORE_KEYS) {
-      const a = L.val(c.S, k), b = L.val(S2, k);
-      if (a === b) continue;
-      thS[k] = b == null ? '' : a == null ? String(b) : String(clamp((L.val(c.thS, k) || a) + b - a, 1, 15));
-    }
-    return { S: S2, thS };
+  /**
+   * What-ifs (試算, 怎麼進步) are typed on the scale you see: with a 模考 in use, that 模考's own 級分 against its own
+   * 五標 (檢定), converted by rank to 學測 級分 only for 倍率篩選, exactly as the 模考 itself is judged.
+   */
+  function atRaw(c, R) {
+    if (!c.mock) return { S: R, thS: R };
+    const S = { ...R };
+    for (const k of SCORE_KEYS) { const e = L.mockToTest(c.mock.std, k, L.val(R, k), D.pct); if (e) S[k] = String(e.g); }
+    return { S, thS: R };
   }
-  const evalAt = (d, c, S2) => { const x = shifted(c, S2); return L.evaluate(d, x.S, { ...optsFor(c), thS: x.thS }); };
+  const evalAt = (d, c, R) => { const x = atRaw(c, R); return L.evaluate(d, x.S, { ...optsFor(c), thS: x.thS }); };
+  /** The 五標 the sliders mark, and what a 級分 reads as: the 模考's own with a 模考, else the 學測 五標. */
+  const tryScale = () => { const c = cur(); return c.mock ? { std: c.std, mock: c.mock } : null; };
   function ensureEval() {
     const c = cur();
     if (c.sig === evSig) return;
@@ -599,45 +600,49 @@ loadAppData().then(D => {
   }
 
   // ------------------------------------------------------------------ score sheet
-  function valueHTML(k, v, max) {
+  function valueHTML(k, v, max, sc) {
     if (!v) return '<span class="none">沒考</span>';
     if (max !== 15) return `<b>${v}</b><span>級</span>`;
+    if (sc) {
+      const lv = levelIn(sc.std, k, v), e = L.mockToTest(sc.mock.std, k, v, D.pct);
+      return `<b>${v}</b><span>級分</span>${lv ? `<span class="lv">這次${lv}</span>` : ''}${e ? `<span>≈學測 ${e.g}</span>` : ''}`;
+    }
     const lv = levelOf(k, v);
     const p = L.topPercent(D.pct, [k], v);
     return `<b>${v}</b><span>級分</span>${lv ? `<span class="lv">${lv}</span>` : ''}${p != null ? `<span>115 ${fmtTop(p)}</span>` : ''}`;
   }
-  const valueText = (k, v, max) => (!v ? '沒考' : max === 15 ? `${v} 級分${levelOf(k, v) ? '，' + levelOf(k, v) : ''}` : `${v} 級`);
-  function marksHTML(k, max, v) {
-    const std = max === 15 && STD() ? STD()[k] : null;
+  const valueText = (k, v, max, sc) => { const lv = sc ? levelIn(sc.std, k, v) : levelOf(k, v); return !v ? '沒考' : max === 15 ? `${v} 級分${lv ? '，' + lv : ''}` : `${v} 級`; };
+  function marksHTML(k, max, v, sc) {
+    const std = max !== 15 ? null : sc ? sc.std[k] : STD() ? STD()[k] : null;
     if (!std) return '';
-    const lv = v ? levelOf(k, v) : '';
+    const lv = v ? (sc ? levelIn(sc.std, k, v) : levelOf(k, v)) : '';
     const byV = new Map();
     for (const l of L.LEVELS) { if (!byV.has(std[l])) byV.set(std[l], []); byV.get(std[l]).push(l); }
     return `<div class="marks" aria-hidden="true">${[...byV].map(([x, ls]) => `<span class="${ls.includes(lv) ? 'hit' : ''}" style="left:${(((x - 0.5) / max) * 100).toFixed(2)}%">${ls.map(l => LV_SHORT[l]).join('')}</span>`).join('')}</div>`;
   }
-  function sliderHTML(kind, k, label, v, max) {
+  function sliderHTML(kind, k, label, v, max, sc) {
     const id = `lab-${kind}-${k}`;
     let cells = '';
     for (let i = 1; i <= max; i++) cells += `<span class="c${i <= v ? ' on' : ''}" style="--i:${i}"></span>`;
     return `<div class="srow">
-      <div class="srow-h"><span class="srow-l" id="${id}">${esc(label)}</span><span class="srow-v">${valueHTML(k, v, max)}</span><button class="textbtn srow-x" type="button" data-clear="${kind}:${k}" aria-label="${esc(label)}設為沒考" ${v ? '' : 'hidden'}>設為沒考</button></div>
-      <div class="track" role="slider" tabindex="0" data-${kind}="${k}" data-max="${max}" data-v="${v}" aria-labelledby="${id}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${v}" aria-valuetext="${esc(valueText(k, v, max))}" style="--n:${max}">${cells}</div>
-      ${marksHTML(k, max, v)}
+      <div class="srow-h"><span class="srow-l" id="${id}">${esc(label)}</span><span class="srow-v">${valueHTML(k, v, max, sc)}</span><button class="textbtn srow-x" type="button" data-clear="${kind}:${k}" aria-label="${esc(label)}設為沒考" ${v ? '' : 'hidden'}>設為沒考</button></div>
+      <div class="track" role="slider" tabindex="0" data-${kind}="${k}" data-max="${max}" data-v="${v}" aria-labelledby="${id}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${v}" aria-valuetext="${esc(valueText(k, v, max, sc))}" style="--n:${max}">${cells}</div>
+      ${marksHTML(k, max, v, sc)}
     </div>`;
   }
   function paintSlider(t, v) {
     const k = t.dataset.slider || t.dataset.try;
-    const max = +t.dataset.max;
+    const max = +t.dataset.max, sc = t.dataset.try ? tryScale() : null;
     t.dataset.v = v;
     $$('.c', t).forEach((c, i) => c.classList.toggle('on', i < v));
     t.setAttribute('aria-valuenow', v);
-    t.setAttribute('aria-valuetext', valueText(k, v, max));
+    t.setAttribute('aria-valuetext', valueText(k, v, max, sc));
     const row = t.closest('.srow');
-    row.querySelector('.srow-v').innerHTML = valueHTML(k, v, max);
+    row.querySelector('.srow-v').innerHTML = valueHTML(k, v, max, sc);
     const x = row.querySelector('.srow-x');
     if (x) x.hidden = !v;
     const m = row.querySelector('.marks');
-    if (m) m.outerHTML = marksHTML(k, max, v);
+    if (m) m.outerHTML = marksHTML(k, max, v, sc);
   }
   function listenHTML(v, kind) {
     return `<div class="segctl" role="group" aria-labelledby="lab-listen">${[['', '沒考'], ['A', 'A'], ['B', 'B'], ['C', 'C'], ['F', 'F']].map(([x, l]) => `<button type="button" data-listen="${x || 'none'}" aria-pressed="${(v || '') === x}">${l}</button>`).join('')}</div>`;
@@ -1635,11 +1640,11 @@ loadAppData().then(D => {
     const sig = c.sig + '#' + scope.map(d => d.c).join('');
     if (boostCache.sig === sig) return boostCache.data;
     const rows = SCORE_KEYS.map(k => {
-      const now = L.val(c.S, k) || 0;
+      const now = L.val(c.thS, k) || 0;
       const cells = [1, 2, 3, 4, 5].map(inc => {
         const to = now + inc;
         if (to > 15) return null;
-        const S2 = { ...c.S, [k]: String(to) };
+        const S2 = { ...c.thS, [k]: String(to) };
         let up = 0, unlock = 0, good = 0;
         for (const d of scope) {
           const t0 = tierOf(d), t1 = evalAt(d, c, S2).tier;
@@ -1795,14 +1800,14 @@ loadAppData().then(D => {
       const maxUp = Math.max(1, ...all.map(x => x.up));
       const bestOf = r => r.cells.filter(Boolean).reduce((a, x) => (x.up > (a ? a.up : 0) ? x : a), null);
       const ranked = rows.map(r => ({ r, b: bestOf(r) })).filter(x => x.b && x.b.up > 0).sort((a, b) => b.b.up - a.b.up || (a.b.to - a.r.cur) - (b.b.to - b.r.cur));
-      const scale = c.mock ? '（換算的學測級分）' : '';
+      const scale = c.mock ? `（${c.name}的級分）` : '';
       let hero;
       if (ranked.length) {
         const { r, b } = ranked[0];
-        const lv = levelOf(r.k, b.to);
+        const lv = c.mock ? levelIn(c.std, r.k, b.to) : levelOf(r.k, b.to);
         const tw = trendWord(series.out[r.k]);
         hero = `<section class="hero"><span class="eyebrow">${icon('target', 'sm')}最值得補強</span><h2>${subj(r.k)} 從 ${r.cur || '沒考'} 考到 ${b.to} 級分</h2>
-          <p>${scale ? `${scale.replace(/[（）]/g, '')}。` : ''}<b>${b.up}</b> 個校系落點變好${b.unlock ? `（${b.unlock} 個從過不了變成可以報）` : ''}。${lv && lv !== '未達底標' ? `${b.to} 級分達學測${lv}。` : ''}${tw ? `${esc(tw)}。` : ''}</p>
+          <p>${scale ? `${scale.replace(/[（）]/g, '')}。` : ''}<b>${b.up}</b> 個校系落點變好${b.unlock ? `（${b.unlock} 個從過不了變成可以報）` : ''}。${lv && lv !== '未達底標' ? `${b.to} 級分達${c.mock ? '這次模考的' : '學測'}${lv}。` : ''}${tw ? `${esc(tw)}。` : ''}</p>
           ${ranked.length > 1 ? `<div class="alts">${ranked.slice(1, 4).map(x => `<span>${subj(x.r.k)} ${x.r.cur || '沒考'} → ${x.b.to}：${x.b.up} 個</span>`).join('')}</div>` : ''}</section>`;
       } else hero = `<section class="hero"><span class="eyebrow">${icon('target', 'sm')}最值得補強</span><h2>這些校系裡，每科多考 1–5 級分都不會改變落點</h2><p>換一個範圍看看（上面的「算哪些校系」）。</p></section>`;
       // one table: each subject now (with its 模考 trend), then what 1–5 more 級分 would do
@@ -1829,7 +1834,7 @@ loadAppData().then(D => {
         return parts.join('；') + '。';
       };
       const grid = `<ol class="gains">${cards.map(x => {
-        const lv = x.r.cur ? levelOf(x.r.k, x.r.cur) : '';
+        const lv = x.r.cur ? (c.mock ? levelIn(c.std, x.r.k, x.r.cur) : levelOf(x.r.k, x.r.cur)) : '';
         // the bar you picked (default: the one with the most 系變好); every bar is a button
         const picked = x.valid.find(cl => cl.to === (ui.gsel || {})[x.r.k]) || x.best;
         const bars = [0, 1, 2, 3, 4].map(i => {
@@ -1845,12 +1850,13 @@ loadAppData().then(D => {
       }).join('')}</ol>`;
       const maxB = Math.max(1, ...blockers.map(b => b[1]));
       const blockHTML = blockers.length ? `<div class="hbars">${blockers.map(([k, n]) => `<div class="hb"><span class="l">${esc(k)}</span><span class="n">${n} 個系</span><span class="t" style="width:${Math.max(2, (n / maxB) * 100).toFixed(1)}%"></span></div>`).join('')}</div><p class="hint" style="margin-top:14px">用${esc(c.stdName)}算。</p>` : '<p class="hint" style="margin-top:12px">沒有被檢定擋住的校系。</p>';
-      if (!ui.tryS || ui.trySig !== c.sig) { ui.tryS = { ...c.S }; ui.trySig = c.sig; }
-      const tryGrid = SCORE_KEYS.filter(k => ui.boostAll || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15)).join('');
+      if (!ui.tryS || ui.trySig !== c.sig) { ui.tryS = { ...c.thS }; ui.trySig = c.sig; }
+      const sc = tryScale();
+      const tryGrid = SCORE_KEYS.filter(k => ui.boostAll || taken(k) || L.val(ui.tryS, k) != null).map(k => sliderHTML('try', k, subj(k), L.val(ui.tryS, k) || 0, 15, sc)).join('');
       el.innerHTML = head + ctxBarHTML() + scopeBarHTML(scope.length) + allToggle + hero +
-        `<section class="sec">${hIcon('boost', '每一科多考幾級分，有幾個系變好？')}<p class="sub">柱子上是落點變好的系數，下面是考到幾級分${c.mock ? '（從這次模考換算的學測級分往上加）' : ''}。按一根柱子看那個分數的變化。</p><p class="gains-base">現在${esc(GOOD)} <b>${fmtN(good0)}</b> 個・過不了 <b>${fmtN(scope.filter(d => tierOf(d) === '不符').length)}</b> 個・共 ${fmtN(scope.length)} 個系</p>${grid}</section>
+        `<section class="sec">${hIcon('boost', '每一科多考幾級分，有幾個系變好？')}<p class="sub">柱子上是落點變好的系數，下面是考到幾級分${c.mock ? `（${esc(c.name)}的級分和五標）` : ''}。按一根柱子看那個分數的變化。</p><p class="gains-base">現在${esc(GOOD)} <b>${fmtN(good0)}</b> 個・過不了 <b>${fmtN(scope.filter(d => tierOf(d) === '不符').length)}</b> 個・共 ${fmtN(scope.length)} 個系</p>${grid}</section>
         <section class="sec">${hIcon('alert', '擋住你的檢定')}<p class="sub">因此進不了一階的校系數</p>${blockHTML}</section>
-        <section class="sec" id="trySec">${hIcon('sliders', '試算')}<p class="sub">暫時改級分看落點怎麼變，不會改掉你存的成績。${c.mock ? '這裡是換算的學測級分，檢定照這次模考的五標同步加減。' : ''}</p><div class="try-act"><button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回「${esc(c.name)}」</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
+        <section class="sec" id="trySec">${hIcon('sliders', '試算')}<p class="sub">暫時改級分看落點怎麼變，不會改掉你存的成績。${c.mock ? `用${esc(c.name)}的級分和五標試算，跟上面「落點依據」一樣（篩選會照排名換算成學測級分）。` : ''}</p><div class="try-act"><button class="btn sm" type="button" data-act="tryReset">${icon('reset', 'sm')}改回「${esc(c.name)}」</button></div><div class="try-grid">${tryGrid}</div><div id="tryOut"></div></section>`;
       renderTry();
     }, 30);
   }
@@ -1858,6 +1864,7 @@ loadAppData().then(D => {
     const out = $('#tryOut');
     if (!out || !ui.tryS) return;
     const c = cur(), S2 = ui.tryS, scope = boostScope();
+    // compare on the scale the sliders use
     const c0 = {}, c1 = {}, better = [], worse = [];
     const has2 = hasScores(S2);
     for (const d of scope) {
@@ -1869,7 +1876,7 @@ loadAppData().then(D => {
     }
     better.sort((a, b) => (L.selectivity(b[0]) || 0) - (L.selectivity(a[0]) || 0));
     const W = out.clientWidth || 600;
-    const same = JSON.stringify(SCORE_KEYS.map(k => L.val(S2, k))) === JSON.stringify(SCORE_KEYS.map(k => L.val(c.S, k)));
+    const same = JSON.stringify(SCORE_KEYS.map(k => L.val(S2, k))) === JSON.stringify(SCORE_KEYS.map(k => L.val(c.thS, k)));
     out.innerHTML = `<div class="cmpbars"><span>現在</span>${tierBarHTML(c0, scope.length, { small: true, width: W, label: '現在' })}<span>試算</span>${has2 ? tierBarHTML(c1, scope.length, { small: true, width: W, label: '試算' }) : '<span class="hint">試算成績都是沒考</span>'}</div>
       <div style="overflow-x:auto"><table class="cmptable"><thead><tr><th scope="col"><span class="sr">成績</span></th>${TIERS.map(t => `<th>${TL[t]}</th>`).join('')}</tr></thead><tbody><tr><td>現在</td>${TIERS.map(t => `<td>${c0[t] || 0}</td>`).join('')}</tr><tr><td>試算</td>${TIERS.map(t => { const a = c0[t] || 0, b = c1[t] || 0; const good = t === '穩' || t === '適中'; return `<td class="${b !== a ? ((b > a) === good ? 'up' : 'dn') : ''}">${has2 ? b : '—'}</td>`; }).join('')}</tr></tbody></table></div>
       ${same ? '<p class="hint" style="margin-top:12px">拖曳上面的格子改級分，這裡會比較落點變化。</p>' : better.length ? `<h3 style="font-size:14.5px;margin-top:18px">變好的校系（${better.length}）</h3><ul class="better">${better.slice(0, 40).map(([d, a, b]) => `<li>${pillHTML(a)}<span class="arr">→</span>${pillHTML(b)}<a href="#d=${d.c}" data-open="${d.c}">${esc(sch(d))} ${nameHTML(d.n)}</a></li>`).join('')}</ul>${better.length > 40 ? '<p class="hint">只列前 40 個（依 115 門檻高到低）。</p>' : ''}` : `<p class="hint" style="margin-top:12px">沒有校系的落點變好${worse.length ? `，有 ${worse.length} 個變差` : ''}。</p>`}`;
@@ -2286,7 +2293,7 @@ loadAppData().then(D => {
     csvPlan: () => download('apply116-plan.csv', csv(), 'text/csv;charset=utf-8'),
     printPlan: () => { if (ui.tab !== 'plan') setTab('plan'); setTimeout(() => window.print(), 60); },
     exportState: () => download('apply116-backup.json', JSON.stringify(st, null, 1), 'application/json'),
-    tryReset: () => { ui.tryS = { ...cur().S }; $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
+    tryReset: () => { ui.tryS = { ...cur().thS }; $$('#trySec .track').forEach(t => paintSlider(t, L.val(ui.tryS, t.dataset.try) || 0)); renderTry(); },
   };
   /** Chart tooltips: any element with data-tip, on hover, keyboard focus or tap. */
   function bindTips() {
