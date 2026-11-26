@@ -1,4 +1,4 @@
-/* 116 申請入學選系: interface. Depends on window.Logic (src/logic.js, the pure scoring rules) and the embedded #app-data (gzipped JSON, base64). */
+/* 116 大學選系 (申請＋分發): interface. Depends on window.Logic (src/logic.js, the pure scoring rules) and the embedded #app-data (gzipped JSON, base64). */
 /** The embedded data: base64 → gzip → JSON. DecompressionStream where there is one, tiny-inflate otherwise. */
 async function loadAppData() {
   const b64 = document.getElementById('app-data').textContent.trim();

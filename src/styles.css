@@ -1,4 +1,4 @@
-/* 116 申請入學選系
+/* 116 大學選系
    Layout: slim app bar; 我的成績 is its own page (pick 學測級分 or a 模考, edit it, see the result). On wide screens
    找校系 has a sticky left rail of filters beside one result column, every page that shows 落點 starts with the
    same 落點依據 bar, and a department opens as a right-hand drawer. Phones get a single column, a bottom tab bar,

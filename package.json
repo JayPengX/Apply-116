@@ -2,7 +2,7 @@
   "name": "apply-116",
   "version": "1.0.0",
   "private": true,
-  "description": "116 學年度大學申請入學選系工具（離線單檔網頁）",
+  "description": "116 學年度大學選系工具：個人申請＋分發入學（離線單檔網頁）",
   "scripts": {
     "data": "python3 scripts/parse_official.py && python3 scripts/parse_uac.py && python3 scripts/build_data.py",
     "build": "python3 scripts/build_data.py && node scripts/build.mjs",

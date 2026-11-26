@@ -1,4 +1,4 @@
-/* 116 申請入學選系 pure scoring logic (no DOM). Works in the browser (window.Logic) and in Node (require). */
+/* 116 大學選系 pure scoring logic (no DOM). Works in the browser (window.Logic) and in Node (require). */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.Logic = factory();
