@@ -269,6 +269,24 @@ try {
     await page.selectOption('#sort', 'selectLow');
     ok((await page.locator('#listbar').innerText()).includes('門檻低'), 'sort: 最好進的在前');
     await page.evaluate(() => { const st = window.__app.st(); st.f = { ...st.f, groups: [], tiers: ['穩', '適中', '衝', '難', '無資料'], sort: 'chance' }; window.__app.render(); });
+    // 分科與分發: the two paths compared, 分科 estimated from 學測, the 分發 list judged on 115 最低錄取分數
+    await page.click('#tabs [data-tab="uac"]');
+    await page.waitForSelector('#pathSec');
+    ok(/走申請，還是考分科/.test(await page.locator('#pathSec').innerText()) && (await page.locator('#pathSec .pc-side').count()) === 2, '分科 tab compares 申請 and 分發');
+    // this 模考 has only 國、英: no 分科 can be estimated, so the page asks for them
+    ok((await page.locator('#uacSec').innerText()).includes('還沒有分科成績'), 'without 分科 the 分發 list says what to do');
+    const typeAst = async (k, v) => { if (!(await page.locator(`[data-astv="${k}"]`).count())) await page.click(`[data-astmode="${k}:n"]`); await page.fill(`[data-astv="${k}"]`, v); await page.locator(`[data-astv="${k}"]`).blur(); await page.waitForTimeout(150); };
+    await typeAst('歷', '45');
+    await typeAst('地', '45');
+    await page.waitForSelector('#uacSec .urow');
+    const ntu = await page.evaluate(() => window.__app.evaluateUac('0001'));
+    ok(ntu && ntu.cut === 265.5 && ntu.total > 0, `臺大中文 judged against its 115 最低錄取 265.5 (you ${ntu && ntu.total})`);
+    await typeAst('歷', '60');
+    const after = await page.evaluate(() => window.__app.evaluateUac('0001').total);
+    ok((await page.evaluate(() => window.__app.st().ast.歷)) === '60' && Math.abs(after - ntu.total - 15 * 1.25) < 1e-6, `typing 歷史 60 adds 15 × 1.25 to 臺大中文 (${ntu.total} → ${after})`);
+    await page.click('[data-astmode="歷:"]');
+    ok((await page.evaluate(() => window.__app.evaluateUac('0001').tier)) === '不符', 'not taking 歷史 → 臺大中文 (uses 歷史) is 過不了');
+    await page.click('[data-act="astReset"]');
     await page.click('#tabs [data-tab="scores"]');
 
     // 看落點 with a 模考 judges 檢定 on that 模考's own 五標: 翰林第三次 英文均標 is 6 (115 學測 均標 is 8)

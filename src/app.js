@@ -86,9 +86,9 @@
   const LS = 'apply116-v1';
   const PAGE = 50;
   // The order is the order you use it in: scores → departments → 志願; then how to improve, and the calendar.
-  const NAV = [['scores', '我的成績', '成績', 'mock'], ['explore', '找校系', '找校系', 'search'], ['plan', '我的志願', '志願', 'plan'], ['boost', '怎麼進步', '進步', 'boost'], ['guide', '時程與規則', '時程', 'guide']];
+  const NAV = [['scores', '我的成績', '成績', 'mock'], ['explore', '找校系', '找校系', 'search'], ['plan', '我的志願', '志願', 'plan'], ['uac', '分科與分發', '分科', 'fork'], ['boost', '怎麼進步', '進步', 'boost'], ['guide', '時程與規則', '時程', 'guide']];
   const TABS = NAV.map(x => x[0]);
-  const HASH_TAB = { '#scores': 'scores', '#mock': 'scores', '#plan': 'plan', '#boost': 'boost', '#guide': 'guide' };
+  const HASH_TAB = { '#scores': 'scores', '#mock': 'scores', '#plan': 'plan', '#uac': 'uac', '#boost': 'boost', '#guide': 'guide' };
 
   const ICON = {
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
@@ -125,6 +125,7 @@
     flag: '<path d="M5.5 21V4M5.5 4h11l-2.2 4 2.2 4h-11"/>',
     history: '<path d="M4 12a8 8 0 1 0 2.3-5.6L4 8.7"/><path d="M4 4v4.7h4.7M12 8v4.5l3 2"/>',
     sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+    fork: '<path d="M12 21v-6.5M12 14.5 6 8.5M12 14.5l6-6"/><path d="M5 4h4v4M19 4h-4v4"/>',
     compass: '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
     book: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"/>',
     shield: '<path d="M12 3.5 19 6v5.5c0 4.3-3 7.7-7 9-4-1.3-7-4.7-7-9V6z"/>',
@@ -147,6 +148,10 @@
     bx: { scope: 'all', group: '' },
     // 興趣量表 (Holland) codes the student picked, at most 3: only used to order 學群 in 探索
     hol: [],
+    // 分科: which subjects you will take and how to score them ({數甲: 'e' (estimate) | '0'–'60'}); null = follow 學測
+    ast: null,
+    // 分發 list: its own search, 學群, tiers and order
+    ux: { q: '', group: '', tiers: DEFAULT_TIERS.slice(), sort: 'chance' },
   });
   /** 五標 tables: {國: {頂標: 13, …}, …}. A custom one (e.g. a 模考's) must have every level as 1–15 級分. */
   function copyStd(x) { return JSON.parse(JSON.stringify(x)); }
@@ -256,6 +261,12 @@
     const bx = s.bx && typeof s.bx === 'object' ? s.bx : {};
     out.bx = { scope: ['all', 'fav', 'plan'].includes(bx.scope) ? bx.scope : 'all', group: GROUPS.includes(bx.group) ? bx.group : '' };
     out.hol = [...new Set(arr(s.hol, x => HOL.some(h => h[0] === x)))].slice(0, 3);
+    if (s.ast && typeof s.ast === 'object') {
+      out.ast = {};
+      for (const k of L.AST) { const v = s.ast[k]; if (v === 'e' || (/^\d{1,2}$/.test(v) && +v <= 60)) out.ast[k] = v; }
+    }
+    const ux = s.ux && typeof s.ux === 'object' ? s.ux : {};
+    out.ux = { q: typeof ux.q === 'string' ? ux.q.slice(0, 40) : '', group: GROUPS.includes(ux.group) ? ux.group : '', tiers: Array.isArray(ux.tiers) ? ux.tiers.filter(t => TIERS.includes(t)) : DEFAULT_TIERS.slice(), sort: ['chance', 'select', 'selectLow'].includes(ux.sort) ? ux.sort : 'chance' };
     return out;
   }
   function load() {
@@ -530,7 +541,7 @@
   const noteHTML = (kind, html) => `<div class="note ${kind}">${icon(kind === 'warn' ? 'alert' : 'info')}<div>${html}</div></div>`;
   function focusKey(el) {
     if (!el || !el.dataset) return null;
-    for (const a of ['slider', 'try', 'focus', 'src', 'bscope', 'gsel', 'gx', 'hol', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
+    for (const a of ['slider', 'try', 'focus', 'src', 'bscope', 'gsel', 'gx', 'hol', 'astmode', 'astv', 'utier', 'srcsel', 'tier', 'group', 'region', 'own', 'cat', 'sat', 'st2', 'listen', 'fav', 'plan', 'up', 'down', 'act', 'open']) {
       if (el.dataset[a] != null) return `[data-${a}="${CSS.escape(el.dataset[a])}"]`;
     }
     return el.id ? '#' + CSS.escape(el.id) : null;
@@ -1275,6 +1286,7 @@
     h += stage1HTML(d, e) + stage2HTML(d);
     const et = entranceText(d.r115);
     if (et) h += `<section class="d-sec">${hIcon('history', '115 錄取後統一分發', 'h3', '<small>參考</small>')}<p style="font-size:14.5px">${esc(et)}。</p><p class="hint" style="margin-top:6px">遞補越深，代表越多錄取的人最後選了別的系，備取比較有機會。</p></section>`;
+    h += uacTwinHTML(d);
     const ex = Object.entries(d.extra || {}).map(([k, v]) => ({ indigenous_extra: '原住民外加', offshore_extra: '離島外加', vision_extra: '願景計畫外加' }[k] + ' ' + v));
     h += `<section class="d-sec">${hIcon('info', '備註', 'h3')}<div class="long">${esc(d.notes || '—')}</div>
       <p class="src">${[...ex, d.vul ? '列在甄選會「116 訂有扶助弱勢招生措施校系一覽表」' : '', '學群：' + d.g.join('、')].filter(Boolean).map(esc).join(' · ')}<br>資料：甄選會 116 校系分則（${esc(D.fetched116)} 擷取）。以官方網站最新公告為準。</p></section>`;
@@ -1768,6 +1780,174 @@
       ${same ? '<p class="hint" style="margin-top:12px">拖曳上面的格子改級分，這裡會比較落點變化。</p>' : better.length ? `<h3 style="font-size:14.5px;margin-top:18px">變好的校系（${better.length}）</h3><ul class="better">${better.slice(0, 40).map(([d, a, b]) => `<li>${pillHTML(a)}<span class="arr">→</span>${pillHTML(b)}<a href="#d=${d.c}" data-open="${d.c}">${esc(sch(d))} ${nameHTML(d.n)}</a></li>`).join('')}</ul>${better.length > 40 ? '<p class="hint">只列前 40 個（依 115 門檻高到低）。</p>' : ''}` : `<p class="hint" style="margin-top:12px">沒有校系的落點變好${worse.length ? `，有 ${worse.length} 個變差` : ''}。</p>`}`;
   }
 
+  // ------------------------------------------------------------------ 分科與分發
+  const U = D.uac;
+  const UT = U ? { g60: U.g60, ast: U.ast } : null;
+  // 申請 系 → the 分發 系組 of the same 系 (a 系 can have several 分發 groups)
+  const UTWIN = {};
+  if (U) U.depts.forEach(u => { if (u.twin) (UTWIN[u.twin] = UTWIN[u.twin] || []).push(u); });
+  const ASTK = L.AST;
+  const astName = k => L.AST_NAME[k] || subj(k);
+  const uName = k => (L.AST_NAME[k] ? L.AST_NAME[k] : subj(k));
+  const uAbbr = k => ({ 數甲: '數甲', 數乙: '數乙', 物: '物', 化: '化', 生: '生', 歷: '歷', 地: '地', 公: '公', 音: '音樂', 美: '美術', 體: '體育' }[k] || ABBR[k] || k);
+  /** Until you choose: the 分科 subjects that go with your 學測 ones (數A → 數甲, 數B → 數乙, 自然 → 物化生, 社會 → 歷地公), estimated. */
+  function astDefault(S) {
+    const o = {}, has = k => L.val(S, k) != null;
+    if (has('數A')) o.數甲 = 'e';
+    if (has('數B')) o.數乙 = 'e';
+    if (has('自')) ['物', '化', '生'].forEach(k => { o[k] = 'e'; });
+    if (has('社')) ['歷', '地', '公'].forEach(k => { o[k] = 'e'; });
+    return o;
+  }
+  const astPlan = () => st.ast || astDefault(cur().S);
+  let UEV = new Map(), uSig = null, UM = {};
+  function ensureUac() {
+    const c = cur(), sig = c.sig + '|' + JSON.stringify(astPlan());
+    if (sig === uSig) return;
+    uSig = sig; UEV = new Map(); UM = {};
+    if (!U || !hasScores(c.S)) return;
+    UM = L.scores60(c.S, astPlan(), UT);
+    for (const d of U.depts) UEV.set(d.c, L.evaluateUac(d, UM, c.thS, c.std));
+  }
+  const uTier = d => { const e = UEV.get(d.c); return e ? e.tier : null; };
+  const isGood = t => t === '穩' || t === '適中';
+  const uSch = d => SCHOOL[d.sid].n;
+  /** 申請 vs 分發 on one yardstick: a 分發 系 is placed by the 115 申請 一階 門檻 of the same 系 (its twin). */
+  function pathCompare() {
+    const appGood = CAT_SCOPE.filter(d => !usesUntaken(d) && isGood(tierOf(d)));
+    const appSet = new Set(appGood.map(d => d.c));
+    const uGood = U.depts.filter(d => isGood(uTier(d)));
+    const sel = d => L.selectivity(d) || 0;
+    const top = (xs, f) => { const v = xs.map(f).filter(x => x > 0).sort((a, b) => b - a).slice(0, 5); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+    const twin = d => (d.twin ? BY_CODE[d.twin] : null);
+    const uOnly = uGood.filter(d => !twin(d) || !appSet.has(d.twin));
+    const uTwins = new Set(uGood.map(d => d.twin).filter(Boolean));
+    const aOnly = appGood.filter(d => !uTwins.has(d.c));
+    const best = (xs, f) => xs.slice().sort((a, b) => f(b) - f(a)).slice(0, 3);
+    return {
+      app: appGood, uac: uGood, aOnly, uOnly,
+      aTop: top(appGood, sel), uTop: top(uGood, d => (twin(d) ? sel(twin(d)) : 0)),
+      aBest: best(appGood, sel), uBest: best(uGood, d => L.uacSelectivity(d, UT) || 0),
+    };
+  }
+  /** Where you stand among 115 分發 考生 (學測) and 分科 考生, subject by subject. */
+  function standHTML() {
+    const out = [];
+    for (const k of SCORE_KEYS) { const m = UM[k]; if (m) out.push({ k, top: L.topAt(U.g60[k], m.v), est: false, lab: subj(k) }); }
+    for (const k of ASTK) { const m = UM[k]; if (m) out.push({ k, top: L.topAt(U.ast[k], m.v), est: m.kind === 'est', lab: astName(k) }); }
+    const cls = t => (t <= 25 ? 'hi' : t <= 50 ? 'mid' : 'lo');
+    return `<div class="str-rank">${out.map(x => `<span class="sr-c ${cls(x.top)}"><b>${x.lab}</b><small>${x.est ? '約' : ''}${fmtTop(x.top)}</small></span>`).join('')}</div>`;
+  }
+  function decisionHTML() {
+    const p = pathCompare(), c = cur();
+    const d = p.uTop - p.aTop;
+    let verdict, cls;
+    if (!ASTK.some(k => UM[k])) { verdict = '先在下面選你要考的分科，才能比分發'; cls = 'even'; }
+    else if (!p.uac.length && !p.app.length) { verdict = '兩條路現在都很難，先把成績拉上來'; cls = 'bad'; }
+    else if (!p.uac.length) { verdict = '申請比較有機會，分科當備案'; cls = 'app'; }
+    else if (!p.app.length || d >= 0.6) { verdict = '分科可能讓你上更好的系，值得拚'; cls = 'uac'; }
+    else if (d <= -0.6) { verdict = '申請比較有利，分科當備案'; cls = 'app'; }
+    else { verdict = '兩條路差不多：申請先試，分科當保底也能再拚'; cls = 'even'; }
+    const nm = x => `${esc(schShort(x))} ${esc(x.n.replace(/學系(?=$|\(|（)/, '').replace(/系(?=$|\(|（)/, ''))}`;
+    const side = (t, n, best, only, onlyLab) => `<div class="pc-side"><span class="pc-t">${t}</span><b class="pc-n num">${fmtN(n)}</b><small>個系${GOOD}</small>
+      ${best.length ? `<span class="pc-b">最搶手：${best.map(nm).join('、')}</span>` : ''}${only ? `<span class="pc-o">${onlyLab} <b>${only}</b> 個</span>` : ''}</div>`;
+    return `<section class="sec" id="pathSec">${hIcon('fork', '走申請，還是考分科？')}<p class="sub">用「${esc(c.name)}」比兩條路${GOOD}的系。分科是照你的學測排名估的（下面可以改）。</p>
+      <p class="pc-verdict ${cls}">${esc(verdict)}</p>
+      <div class="pc">${side('申請入學（一階）', p.app.length, p.aBest, p.aOnly.length, '只有申請有機會')}${side('分發入學（分科）', p.uac.length, p.uBest, p.uOnly.length, '只有分發有機會')}</div>
+      <ul class="pc-why">
+        <li><b>申請</b>：上面只算一階。過了還有二階（審查資料、面試），最後看總成績；3 月就知道結果。</li>
+        <li><b>分發</b>：只看分數（學測＋分科加權），沒有面試；分科 7/10 考、8/13 放榜，要多準備半年。</li>
+        <li>申請錄取了想改考分科，要在 6/13 前聲明放棄。很多人兩條都準備：申請先試，沒上或不滿意再拚分科。</li>
+      </ul>
+      <h3 class="sec-h3">你在分發考生裡的位置</h3><p class="sub">學測科目比 115 分發考生，分科比 115 分科考生。「約」是估計的。</p>${standHTML()}</section>`;
+  }
+  /** 分科 subjects: not taking / estimated from 學測 / your own number (目標或模考). */
+  function astEditorHTML() {
+    const plan = astPlan(), c = cur(), std = U.astStd;
+    const row = k => {
+      const v = plan[k], mode = v === 'e' ? 'e' : v != null && v !== '' ? 'n' : '';
+      const e = L.estimateAst(k, c.S, UT), m = UM[k];
+      const lv = m && std[k] ? (L.LEVELS.find(l => m.v >= std[k][l]) || '未達底標') : '';
+      const seg = [['', '不考'], ['e', '估計'], ['n', '自己填']].map(([x, l]) => `<button type="button" data-astmode="${k}:${x}" aria-pressed="${mode === x}" ${x === 'e' && !e ? 'disabled' : ''}>${l}</button>`).join('');
+      const body = mode === 'e' && e ? `<span class="av"><b class="num">約 ${e.v}</b><small>${e.lo}–${e.hi}・從學測${subj(e.from)}的排名推</small></span>`
+        : mode === 'n' ? `<span class="av"><input type="number" inputmode="numeric" min="0" max="60" value="${v}" data-astv="${k}" aria-label="${astName(k)}級分（0–60）"><small>/ 60</small></span>`
+          : `<span class="av muted">${e ? '' : '學測沒有可推的科目，要考的話自己填'}</span>`;
+      return `<div class="ar"><span class="ak">${astName(k)}</span><div class="segctl sm" role="group" aria-label="${astName(k)}">${seg}</div>${body}${lv && mode ? `<span class="alv">${lv}</span>` : ''}</div>`;
+    };
+    return `<section class="sec" id="astSec">${hIcon('edit', '分科成績')}<p class="sub">每科 0–60 級分。還沒考就先用估計，或填目標、分科模考的成績。學測科目在分發裡換成 60 級分（${'學測 g 級分 ≈ 4g−3～4g'}）。</p>
+      <div class="ars">${ASTK.map(row).join('')}</div>
+      <p class="hint">估計：你的學測在 115 分發考生裡排前幾 %，就當你在 115 分科考生裡也排那裡。分科只考一科、範圍更深，實際可能差很多。標是 115 分科五標。${st.ast ? ' <button class="textbtn" type="button" data-act="astReset">改回照學測自動選</button>' : ''}</p></section>`;
+  }
+  function uacList() {
+    const x = st.ux, q = x.q.trim();
+    const terms = q ? q.split(/\s+/) : [];
+    let list = U.depts.filter(d => (!x.group || d.g.includes(x.group)) && (!terms.length || terms.every(t => (uSch(d) + schShort(d) + d.n).includes(t))));
+    const base = list;
+    list = list.filter(d => x.tiers.includes(uTier(d)));
+    const ti = d => TIERS.indexOf(uTier(d));
+    const sel = d => L.uacSelectivity(d, UT);
+    const by = { chance: (a, b) => ti(a) - ti(b) || (sel(b) || 0) - (sel(a) || 0), select: (a, b) => (sel(b) || 0) - (sel(a) || 0), selectLow: (a, b) => (sel(a) ?? 9) - (sel(b) ?? 9) }[x.sort];
+    return { base, list: list.sort((a, b) => by(a, b) || (a.c < b.c ? -1 : 1)) };
+  }
+  function uRowHTML(d) {
+    const e = UEV.get(d.c), t = e.tier, r = d.r115;
+    const chips = d.use.map(u => { const m = UM[u.k]; return `<span class="uc${m ? '' : ' miss'}"><span>${uAbbr(u.k)}${u.w !== 1 ? `×${u.w.toFixed(2).replace(/0$/, '')}` : ''}</span>${u.x === '術科' ? '<small>術科</small>' : m ? `<b>${m.kind === 'ast' ? '' : '≈'}${Math.round(m.v)}</b>` : '<small>沒考</small>'}</span>`; }).join('');
+    let head, more = '';
+    if (t === '不符') {
+      head = e.missing.length ? `要考${e.missing.map(uName).join('、')}` : `檢定沒過：${e.thFail.map(alts => alts.map(a => (a.k === '聽' ? `英聽 ${a.t} 級` : `${subj(a.k)} ${a.t}`)).join(' 或 ')).join('、')}`;
+    } else if (t === '無資料') head = e.arts ? '要考術科，這裡算不了' : r ? '115 沒有錄取分數' : '116 新的系組，沒有 115 分數';
+    else {
+      const per = e.margin;
+      head = `<span class="uh"><span class="lab">你約</span><b>${e.total.toFixed(1)}</b></span><span class="uh"><span class="lab">115 最低</span><b>${e.cut.toFixed(1)}</b></span><span class="delta ${per >= 0 ? 'up' : 'down'}">每科${per >= 0 ? '多' : '差'} ${Math.abs(per).toFixed(1)}</span>`;
+      const notes = [];
+      if (e.est) notes.push(`含估計，範圍 ${e.lo.toFixed(0)}–${e.hi.toFixed(0)}`);
+      if (r.via) notes.push(`115 是「${esc(r.via)}」`);
+      else if (r.use) notes.push(`115 採計 ${r.use.map(u => uAbbr(u.k) + (u.w !== 1 ? '×' + u.w : '')).join(' ')}，門檻照權重換算`);
+      if (notes.length) more = `<div class="rv-n">${notes.join('・')}</div>`;
+    }
+    return `<li class="row urow">${schBadge(d)}<div class="r-title"><span class="sch">${esc(uSch(d))}</span><span class="dn">${nameHTML(d.n)}</span></div>
+      <div class="r-act"><span class="ucode num">${d.c}</span></div>
+      <div class="r-cmp">${verdict(t, head, more)}</div>
+      <div class="ucs">${chips}</div>
+      <div class="r-meta"><span class="pt">${icon('users', 'sm')}名額 ${d.q ?? '—'}</span>${r && r.adm ? `<span class="pt">115 錄取 ${r.adm}</span>` : ''}${d.th.length ? `<span class="pt">${icon('shield', 'sm')}檢定 ${d.th.map(alts => alts.map(a => (a.k === '聽' ? `英聽${a.t}` : `${uAbbr(a.k)}${a.t.replace('標', '')}`)).join('或')).join('、')}</span>` : ''}</div>
+      ${d.note ? `<details class="unote"><summary>選系說明</summary><p>${esc(d.note)}</p></details>` : ''}</li>`;
+  }
+  function uacListHTML() {
+    const { base, list } = uacList(), x = st.ux, n = {};
+    base.forEach(d => { const t = uTier(d); n[t] = (n[t] || 0) + 1; });
+    const shown = ui.uShown || PAGE;
+    return `<section class="sec" id="uacSec">${hIcon('search', '分發入學的校系')}<p class="sub">116 分發 ${fmtN(U.depts.length)} 個系組，加權總分跟 115 最低錄取分數比（一般生）。</p>
+      <div class="ux-bar"><label class="ux-q">${icon('search', 'sm')}<input id="uxQ" type="search" value="${esc(x.q)}" placeholder="學校或校系" aria-label="搜尋分發校系"></label>
+        <span class="selectbox"><select id="uxGroup" aria-label="學群"><option value="">所有學群</option>${GROUPS.map(g => `<option ${x.group === g ? 'selected' : ''}>${g}</option>`).join('')}</select>${icon('chevD', 'sm')}</span>
+        <span class="selectbox"><select id="uxSort" aria-label="排序"><option value="chance" ${x.sort === 'chance' ? 'selected' : ''}>最穩的在前</option><option value="select" ${x.sort === 'select' ? 'selected' : ''}>最搶手的在前</option><option value="selectLow" ${x.sort === 'selectLow' ? 'selected' : ''}>最好進的在前</option></select>${icon('chevD', 'sm')}</span></div>
+      ${tierBarHTML(n, base.length, { tiers: x.tiers, label: '分發落點' })}
+      <div class="legend" role="group" aria-label="按一下隱藏或顯示">${TIERS.map(t => `<button type="button" class="lg ${TC[t]}" data-utier="${t}" aria-pressed="${x.tiers.includes(t)}">${sigHTML(t)}${TL[t]}<b>${n[t] || 0}</b></button>`).join('')}</div>
+      <p class="hint">穩過＝比 115 最低每科多 ${L.UAC_SAFE} 級分以上；應該過＝過 115 最低；邊緣＝差 ${-L.UAC_REACH} 級分以內；過不了＝檢定沒過或沒考要用的科目。116 最低登記標準 7/29 才公布，這裡沒算。</p>
+      <ol class="list ulist">${list.slice(0, shown).map(uRowHTML).join('') || (ASTK.some(k => UM[k]) ? '<li class="empty"><b>沒有符合的系組</b><span>換個關鍵字，或顯示更多落點。</span></li>' : '<li class="empty"><b>還沒有分科成績</b><span>分發每個系都至少採計 1 科分科。在上面的「分科成績」選要考的科目（估計或自己填）。</span></li>')}</ol>
+      ${list.length > shown ? `<div class="more"><button class="btn" type="button" data-act="uMore">再顯示 ${Math.min(PAGE, list.length - shown)} 個（共 ${fmtN(list.length)}）</button></div>` : ''}</section>`;
+  }
+  /** In a 申請 系's detail: the same 系 in 分發, with your 分發 落點. */
+  function uacTwinHTML(d) {
+    const us = UTWIN[d.c] || [];
+    if (!us.length) return '';
+    ensureUac();
+    const row = u => {
+      const e = UEV.get(u.c);
+      const use = u.use.map(x => `<span class="nw">${uAbbr(x.k)}${x.w !== 1 ? '×' + x.w : ''}${x.x === '分科' ? '<small>分科</small>' : ''}</span>`).join('、');
+      const line = [`採計 ${use}`, u.r115 && u.r115.cut != null ? `115 最低 ${u.r115.cut}` : '', e && e.margin != null ? `你約 ${e.total.toFixed(1)}` : e && e.tier === '不符' && e.missing.length ? `要考${e.missing.map(uName).join('、')}` : ''].filter(Boolean).join('・');
+      return `<div class="ut">${e ? pillHTML(e.tier) : ''}<div><b>${esc(u.n)}</b> <span class="muted num">${u.c}</span><p>${line}</p></div></div>`;
+    };
+    return `<section class="d-sec">${hIcon('fork', '分發入學（考分科）', 'h3', '<small>116 分發分則</small>')}${us.map(row).join('')}<button class="textbtn" type="button" data-tab="uac">到「分科與分發」看全部</button></section>`;
+  }
+  function renderUac() {
+    const el = $('#uac'), c = cur();
+    ensureUac();
+    const head = `<header class="page-h"><div><h1 class="hi">${icon('fork')}<span>分科與分發</span></h1><p>考分科、走分發入學：學測和分科都換成 60 級分，照各系權重加總，跟 115 最低錄取分數比。</p></div></header>`;
+    if (!U) { el.innerHTML = head; return; }
+    if (!hasScores(c.S)) { el.innerHTML = head + ctxBarHTML(); return; }
+    keepFocus(el, () => { el.innerHTML = head + ctxBarHTML() + decisionHTML() + astEditorHTML() + uacListHTML(); });
+  }
+
   // ------------------------------------------------------------------ guide
   const TIMELINE = [
     ['準備期', '2026-11-03', '簡章與校系分則公告'],
@@ -1864,6 +2044,7 @@
     if (ui.tab === 'explore') renderExplore();
     else if (ui.tab === 'plan') renderPlan();
     else if (ui.tab === 'boost') renderBoost();
+    else if (ui.tab === 'uac') renderUac();
     else if (ui.tab === 'scores') renderScores();
     else renderGuide();
     save();
@@ -1983,6 +2164,8 @@
     resetCats: () => { st.f.cats = DEFAULT_CATS.slice(); ui.shown = PAGE; render(); },
     showTiers: () => { st.f.tiers = TIERS.slice(); render(); },
     goStrength: () => { setTab('scores'); requestAnimationFrame(() => { const el = $('#strengthSec'); if (el) el.scrollIntoView({ block: 'start' }); }); },
+    astReset: () => { st.ast = null; render(); },
+    uMore: () => { ui.uShown = (ui.uShown || PAGE) + PAGE; render(); },
     gxAll: () => { ui.gxAll = !ui.gxAll; render(); },
     showUntaken: () => { st.f.untaken = true; render(); },
     mfNew: () => { ui.mf = newMockDraft(); if (ui.tab !== 'scores') setTab('scores'); else render(); requestAnimationFrame(() => { const f = $('#mockForm'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); },
@@ -2042,6 +2225,14 @@
       if (ds.skip) { toggle(f.skip, ds.skip); ui.shown = PAGE; render(); return; }
       if (ds.src) { if (ds.src === st.src && !ui.mf) return; useSource(ds.src); return; }
       if (ds.bscope) { st.bx.scope = ds.bscope; render(); return; }
+      if (ds.astmode) {
+        const [k, m] = ds.astmode.split(':'), plan = { ...astPlan() };
+        if (m === '') delete plan[k];
+        else if (m === 'e') plan[k] = 'e';
+        else { const e = L.estimateAst(k, cur().S, UT); plan[k] = String(e ? e.v : 30); }
+        st.ast = plan; render(); return;
+      }
+      if (ds.utier) { toggle(st.ux.tiers, ds.utier); ui.uShown = PAGE; render(); return; }
       if (ds.gx) {
         // the best 系 you would likely pass in that 學群: a clean 找校系 so the list means exactly that
         st.f = { ...DEFAULT().f, groups: [ds.gx], tiers: ['穩', '適中'], sort: 'select' };
@@ -2120,6 +2311,13 @@
       if (t.id === 'stdYear') { st.stdYear = t.value; render(); return; }
       if (t.dataset.srcsel != null) { useSource(t.value); return; }
       if (t.id === 'bGroup') { st.bx.group = t.value; render(); return; }
+      if (t.id === 'uxGroup') { st.ux.group = t.value; ui.uShown = PAGE; render(); return; }
+      if (t.id === 'uxSort') { st.ux.sort = t.value; ui.uShown = PAGE; render(); return; }
+      if (t.dataset.astv) {
+        const n = Math.round(Number(t.value));
+        if (t.value !== '' && Number.isFinite(n) && n >= 0 && n <= 60) { st.ast = { ...astPlan(), [t.dataset.astv]: String(n) }; render(); } else toast('分科級分是 0–60');
+        return;
+      }
       if (t.dataset.std) {
         const [target, k, l] = t.dataset.std.split(':'), n = Math.round(Number(t.value)), tab = stdTable(target);
         if (tab && Number.isFinite(n) && n >= 1 && n <= 15) tab[k][l] = n;
@@ -2165,6 +2363,7 @@
     });
     let qTimer = null;
     document.addEventListener('input', ev => {
+      if (ev.target.id === 'uxQ') { st.ux.q = ev.target.value; ui.uShown = PAGE; clearTimeout(ui.uqT); ui.uqT = setTimeout(render, 200); return; }
       const t = ev.target, f = ui.mf;
       if (!f) return;
       if (t.dataset.mf && t.dataset.mf !== '聽') {
@@ -2229,7 +2428,7 @@
   new MutationObserver(() => { if (glueQueued) return; glueQueued = true; requestAnimationFrame(() => { glueQueued = false; glue(document.body); }); }).observe(document.body, { childList: true, subtree: true });
 
   // ------------------------------------------------------------------ init
-  $('#tabs').innerHTML = NAV.map(([k, l, , ic]) => `<button class="tab" type="button" data-tab="${k}">${icon(ic)}${l}${k === 'plan' ? '<span class="count" data-plancount></span>' : ''}</button>`).join('');
+  $('#tabs').innerHTML = NAV.map(([k, l, sh, ic]) => `<button class="tab" type="button" data-tab="${k}" aria-label="${l}">${icon(ic)}<span class="tl-l" aria-hidden="true">${l}</span><span class="tl-s" aria-hidden="true">${sh}</span>${k === 'plan' ? '<span class="count" data-plancount></span>' : ''}</button>`).join('');
   $('#bottomnav').innerHTML = NAV.map(([k, , s, ic]) => `<button class="bnav" type="button" data-tab="${k}">${icon(ic)}<span>${s}</span>${k === 'plan' ? '<span class="count" data-plancount></span>' : ''}</button>`).join('');
   if (st.theme) document.documentElement.dataset.theme = st.theme;
   $('#q').value = st.f.q;
@@ -2239,5 +2438,5 @@
   ui.tab = '';
   setTab(startTab, true);
   route();
-  window.__app = { st: () => st, evaluate: c => EV.get(c), ctx: () => cur(), render };
+  window.__app = { st: () => st, evaluate: c => EV.get(c), evaluateUac: c => { ensureUac(); return UEV.get(c); }, ctx: () => cur(), render };
 })();

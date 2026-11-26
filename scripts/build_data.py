@@ -135,6 +135,74 @@ def date_list(s):
     return sorted(set(x.strftime("%m-%d") for x in out))
 
 
+UAC_STRIP = r"[(（][^)）]*[)）]|[A-Z甲乙丙丁]組$|學士學位學程|學位學程|學程|學系|系"
+
+
+def uac_base(n):
+    return norm(re.sub(UAC_STRIP, "", re.sub(UAC_STRIP, "", n)))
+
+
+def build_uac(school_list, depts):
+    """分發入學 系組 (116 分則 + 115 最低錄取分數), with 學群 and city borrowed from the same 申請 系."""
+    path = os.path.join(OFF, "uac116.json")
+    if not os.path.exists(path):
+        return None
+    U = json.load(open(path))
+    sid_of = {s["n"]: s["id"] for s in school_list}
+    by_school = collections.defaultdict(list)
+    for d in depts:
+        by_school[d["sid"]].append(d)
+    r115 = U["r115"]
+    by_name115 = {(v["s"], norm(v["n"])): c for c, v in r115.items()}
+    out, no_school, no_ref, no_group = [], set(), [], 0
+    for d in U["depts"]:
+        sid = sid_of.get(d["s"])
+        if not sid:
+            no_school.add(d["s"])
+            continue
+        # 115: same code and the same 系 name, else the same name under another code
+        c115 = d["c"] if d["c"] in r115 and r115[d["c"]]["s"] == d["s"] and norm(r115[d["c"]]["n"]) == norm(d["n"]) else by_name115.get((d["s"], norm(d["n"])))
+        via = None
+        if not c115:  # renamed or split since 115 (光電系 → 光電系(半導體組)): the one 115 系 with the same base name
+            near = [c for c, v in r115.items() if v["s"] == d["s"] and uac_base(v["n"]) == uac_base(d["n"])]
+            if len(near) == 1:
+                c115, via = near[0], r115[near[0]]["n"]
+        ref = None
+        if c115:
+            x = r115[c115]
+            mine = sorted(("術" if u["x"] == "術科" else u["k"], u["w"]) for u in d["use"])
+            theirs = sorted((u["k"], u["w"]) for u in x["use"])
+            ref = {"cut": x["cut"], "adm": x["adm"], "tie": x["tie"]}
+            if mine != theirs:
+                ref["use"] = x["use"]
+            if c115 != d["c"]:
+                ref["code"] = c115
+            if via:
+                ref["via"] = via
+        else:
+            no_ref.append(d["s"] + d["n"])
+        # 學群 and city from the 申請 系 with the closest name in the same school
+        cands = sorted(((difflib.SequenceMatcher(None, uac_base(a["n"]), uac_base(d["n"])).ratio(), a) for a in by_school[sid]), key=lambda t: -t[0])
+        twin = cands[0][1] if cands and cands[0][0] >= 0.8 else None
+        if not twin:
+            no_group += 1
+        out.append({
+            "c": d["c"], "sid": sid, "n": d["n"], "q": d["q"], "th": d["th"],
+            "use": [{"k": u["k"], "x": u["x"], "w": u["w"]} for u in d["use"]],
+            "note": d["note"], "g": twin["g"] if twin else [], "city": twin["city"] if twin else CITY.get(sid, ""),
+            "twin": twin["c"] if twin else None, "r115": ref,
+        })
+    cum = lambda t: [t.get(str(v), t.get(v, [0, 0]))[1] if (str(v) in t or v in t) else None for v in range(61)]
+    def fill(t):
+        a = cum(t)
+        for v in range(59, -1, -1):  # 級分 nobody got: the count at or above is the one above it
+            if a[v] is None:
+                a[v] = a[v + 1] if v < 60 and a[v + 1] is not None else 0
+        return a
+    print("uac", len(out), "系組; no 115 ref", len(no_ref), "; no 學群", no_group, "; unknown schools", sorted(no_school))
+    return {"depts": out, "ast": {k: fill(t) for k, t in U["ast"].items()}, "g60": {k: fill(t) for k, t in U["gsat60"].items()}, "astStd": U["astStd"]}
+
+
 def main():
     src = json.load(open(os.path.join(SRC, "departments_116.json")))
     depts = src["departments"]
@@ -247,6 +315,7 @@ def main():
         "std": std,
         "pct": pct["tables"],
         "depts": out,
+        "uac": build_uac(school_list, out),
     }
     path = os.path.join(OUT, "app-data.json")
     json.dump(data, open(path, "w"), ensure_ascii=False, separators=(",", ":"))

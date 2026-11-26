@@ -356,3 +356,72 @@ test('檢定 can be judged on a 模考 and its own 五標 (thS), while 篩選 us
   // the same raw score judged on the 學測 五標 fails
   assert.equal(L.evaluate(d, raw, O).tier, '不符');
 });
+
+// ---------------------------------------------------------------- 分發入學
+const U = D.uac;
+const UT = { g60: U.g60, ast: U.ast };
+test('學測 g 級分 is 4g−3 … 4g on the 60-級分 scale', () => {
+  assert.deepEqual(L.gsat60(12), { lo: 45, hi: 48, v: 46.5 });
+  assert.equal(L.gsat60(1).lo, 1);
+  assert.equal(L.gsat60(null), null);
+});
+test('rank tables: atTop inverts topAt', () => {
+  const t = U.ast.數甲;
+  assert.equal(L.topAt(t, 0), 100);
+  for (const v of [10, 25, 40, 55]) assert.ok(L.atTop(t, L.topAt(t, v)) >= v);
+});
+test('分科 estimate follows the 學測 rank and needs the subject it builds on', () => {
+  const lo = L.estimateAst('數甲', S({ 數A: '8' }), UT), hi = L.estimateAst('數甲', S({ 數A: '13' }), UT);
+  assert.ok(lo.v < hi.v && lo.lo <= lo.v && lo.v <= lo.hi);
+  assert.equal(L.estimateAst('數甲', S({ 數B: '13' }), UT), null, '數甲 builds on 數A only');
+  assert.equal(L.estimateAst('數乙', S({ 數B: '10', 數A: '3' }), UT).from, '數B', '數乙 prefers 數B');
+  assert.equal(L.estimateAst('歷', S({ 社: '12' }), UT).from, '社');
+});
+test('scores60: typed 分科 is exact, estimates are marked', () => {
+  const M = L.scores60(S({ 英: '12', 社: '12' }), { 歷: '45', 地: 'e' }, UT);
+  assert.deepEqual(M.歷, { v: 45, lo: 45, hi: 45, kind: 'ast' });
+  assert.equal(M.地.kind, 'est');
+  assert.equal(M.英.kind, 'gsat');
+  assert.equal(M.公, undefined, 'not taking 公民 = no score');
+});
+test('分發 落點: weighted total against the 115 cut, per weighted subject', () => {
+  const d = (o = {}) => ({ use: [{ k: '英', x: '學測', w: 1.5 }, { k: '歷', x: '分科', w: 1 }], th: [], r115: { cut: 100 }, ...o });
+  const M = { 英: { v: 40, lo: 40, hi: 40, kind: 'ast' }, 歷: { v: 40, lo: 40, hi: 40, kind: 'ast' } };
+  const e = L.evaluateUac(d(), M, S({ 英: '10' }), STD);
+  assert.equal(e.total, 100);
+  assert.equal(e.tier, '適中', 'exactly the cut = 應該過');
+  assert.equal(L.evaluateUac(d({ r115: { cut: 90 } }), M, S({}), STD).tier, '穩', '+4 per weighted subject');
+  assert.equal(L.evaluateUac(d({ r115: { cut: 104 } }), M, S({}), STD).tier, '衝');
+  assert.equal(L.evaluateUac(d({ r115: { cut: 120 } }), M, S({}), STD).tier, '難');
+  assert.equal(L.evaluateUac(d({ r115: { cut: 90, use: [{ k: '英', w: 1.5 }, { k: '歷', w: 1 }] } }), M, S({}), STD).tier, '適中', 'changed 採計 is never 穩');
+  assert.equal(L.evaluateUac(d({ r115: { cut: 120, use: [{ k: '英', w: 2 }, { k: '歷', w: 1 }] } }), M, S({}), STD).cut, 100, 'cut scaled by total weight');
+  assert.deepEqual(L.evaluateUac(d(), { 英: M.英 }, S({}), STD).missing, ['歷']);
+  assert.equal(L.evaluateUac(d({ use: [...d().use, { k: '音', x: '術科', w: 2 }] }), M, S({}), STD).tier, '無資料');
+  assert.equal(L.evaluateUac(d({ r115: null }), M, S({}), STD).tier, '無資料');
+});
+test('分發 檢定: 學測 on 15 級分 and 五標, 數A or 數B, 英聽', () => {
+  const M = { 英: { v: 40, lo: 40, hi: 40, kind: 'ast' }, 歷: { v: 40, lo: 40, hi: 40, kind: 'ast' } };
+  const d = th => ({ use: [{ k: '英', x: '學測', w: 1 }, { k: '歷', x: '分科', w: 1 }], th, r115: { cut: 60 } });
+  const either = [[{ k: '數A', t: '均標' }, { k: '數B', t: '均標' }]];
+  assert.equal(L.evaluateUac(d(either), M, S({ 數B: String(STD.數B.均標) }), STD).tier, '穩');
+  assert.equal(L.evaluateUac(d(either), M, S({ 數B: String(STD.數B.均標 - 1) }), STD).tier, '不符');
+  assert.equal(L.evaluateUac(d([[{ k: '聽', t: 'A' }]]), M, S({ 聽: 'B' }), STD).tier, '不符');
+  assert.equal(L.evaluateUac(d([[{ k: '聽', t: 'B' }]]), M, S({ 聽: 'A' }), STD).tier, '穩');
+});
+test('分發 data: 3–5 subjects with at least one 分科, sane 115 cuts', () => {
+  assert.ok(U.depts.length > 1700, `${U.depts.length} 系組`);
+  for (const d of U.depts) {
+    assert.ok(d.use.length >= 3 && d.use.length <= 5, d.c);
+    assert.ok(d.use.some(u => u.x === '分科'), d.c + ' has no 分科');
+    if (d.r115 && d.r115.cut != null) assert.ok(d.r115.cut <= 60 * (d.r115.use || d.use).reduce((a, u) => a + u.w, 0) + 1e-9, d.c);
+  }
+  const ntu = U.depts.find(x => x.c === '0001');
+  assert.equal(ntu.n, '中國文學系');
+  assert.equal(ntu.r115.cut, 265.5);
+  assert.deepEqual(ntu.th, [[{ k: '數A', t: '均標' }, { k: '數B', t: '均標' }]]);
+});
+test('分發 selectivity reads the cut as a rank, so 臺大醫學系 ranks above a 系 with a low cut', () => {
+  const med = U.depts.find(x => x.c === '0031'), low = U.depts.filter(x => x.r115 && x.r115.cut != null).sort((a, b) => a.r115.cut / a.use.length - b.r115.cut / b.use.length)[0];
+  assert.ok(L.uacSelectivity(med, UT) > 95, String(L.uacSelectivity(med, UT)));
+  assert.ok(L.uacSelectivity(low, UT) < L.uacSelectivity(med, UT));
+});

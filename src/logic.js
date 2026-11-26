@@ -689,6 +689,105 @@
   /** 不用到校甄試: the 分則 gives no 甄試 date ("--"); every such 系 is judged on 審查資料 (and 學測 or APCS) only. */
   const noVisit = d => !(d.idays && d.idays.length);
 
+  // ---------------------------------------------------------------- 分發入學 (分科測驗)
+  // In 分發, 學測 and 分科 are both on a 60-級分 scale; a 系 weights 3–5 subjects and admits by the weighted
+  // total. We compare that total with the 系's 115 最低錄取分數 (普通生).
+  const AST = ['數甲', '數乙', '物', '化', '生', '歷', '地', '公'];
+  const AST_NAME = { 數甲: '數學甲', 數乙: '數學乙', 物: '物理', 化: '化學', 生: '生物', 歷: '歷史', 地: '地理', 公: '公民與社會' };
+  /** The 學測 subject an 分科 estimate starts from, in order of preference. */
+  const AST_FROM = { 數甲: ['數A'], 數乙: ['數B', '數A'], 物: ['自'], 化: ['自'], 生: ['自'], 歷: ['社'], 地: ['社'], 公: ['社'] };
+  // Tiers on the margin over the 115 cut, in 級分 per weighted subject (60-級分 scale).
+  const UAC_SAFE = 2.5, UAC_REACH = -2.5;
+  /**
+   * A 學測 15-級分 score on the 60-級分 scale 分發 uses. Both scales divide the same raw score (級距 = 前 1% 平均
+   * ÷ 15 or ÷ 60), so g 級分 is 4g−3 … 4g on the 60 scale.
+   */
+  const gsat60 = g => (g ? { lo: Math.max(1, 4 * g - 3), hi: 4 * g, v: 4 * g - 1.5 } : null);
+  /** Share (%) at or above v in a 60-級分 table (cum[v] = people at or above v; cum[0] = everyone). */
+  function topAt(cum, v) {
+    const i = Math.max(0, Math.min(60, Math.ceil(v)));
+    return cum && cum[0] ? (cum[i] / cum[0]) * 100 : null;
+  }
+  /** The 級分 at a rank: the highest v that at least top% of the table reach. */
+  function atTop(cum, top) {
+    for (let v = 60; v >= 0; v--) if ((cum[v] / cum[0]) * 100 >= top) return v;
+    return 0;
+  }
+  /**
+   * Estimate an 分科 score from 學測 (or a 模考 read as 學測): your rank among 115 分發 考生 in the 學測 subject it
+   * builds on (數A → 數甲, 社會 → 歷地公, 自然 → 物化生 …), read off the 115 分科 table at the same rank.
+   * Returns {v, lo, hi, from, top} or null. Only a rough guide: 分科 tests one subject, deeper.
+   */
+  function estimateAst(k, S, T) {
+    const from = (AST_FROM[k] || []).find(x => val(S, x) != null);
+    if (!from || !T.g60[from] || !T.ast[k]) return null;
+    const r = gsat60(val(S, from)), base = T.g60[from], tab = T.ast[k];
+    const pHi = topAt(base, r.hi), pLo = topAt(base, r.lo), mid = (pHi + pLo) / 2;
+    return { v: atTop(tab, mid), lo: atTop(tab, pLo), hi: atTop(tab, pHi), from, top: mid };
+  }
+  /**
+   * Your 60-級分 scores for 分發: 學測 subjects from S (a 4-級分 range), 分科 from `ast` ({k: number | 'e'}; 'e' =
+   * estimate, missing = not taking). {k: {v, lo, hi, kind: 'gsat' | 'ast' | 'est'}}.
+   */
+  function scores60(S, ast, T) {
+    const M = {};
+    for (const k of SUBJ) { const r = gsat60(val(S, k)); if (r) M[k] = { ...r, kind: 'gsat' }; }
+    for (const k of AST) {
+      const a = ast && ast[k];
+      if (a === 'e') { const e = estimateAst(k, S, T); if (e) M[k] = { v: e.v, lo: e.lo, hi: e.hi, kind: 'est', from: e.from }; }
+      else if (a !== undefined && a !== null && a !== '' && Number.isFinite(+a)) M[k] = { v: +a, lo: +a, hi: +a, kind: 'ast' };
+    }
+    return M;
+  }
+  /** 分發 落點 of one 系組 (d: {use, th, r115}) for 60-級分 scores M, 學測 S (檢定) and 五標 std. */
+  function evaluateUac(d, M, S, std) {
+    const arts = d.use.some(u => u.x === '術科');
+    const thFail = d.th.filter(alts => !alts.some(a => (a.k === '聽'
+      ? (LISTEN_RANK[S.聽] || 0) >= (LISTEN_RANK[a.t] || 9)
+      : val(S, a.k) != null && std[a.k] && val(S, a.k) >= std[a.k][a.t])));
+    const missing = d.use.filter(u => u.x !== '術科' && !M[u.k]).map(u => u.k);
+    let total = 0, lo = 0, hi = 0, W = 0, est = false;
+    for (const u of d.use) {
+      const m = M[u.k];
+      if (u.x === '術科' || !m) continue;
+      total += u.w * m.v; lo += u.w * m.lo; hi += u.w * m.hi; W += u.w;
+      if (m.kind !== 'ast') est = true;
+    }
+    const r = d.r115;
+    let cut = null, margin = null, tier;
+    if (r && r.cut != null) {
+      // 採計 changed since 115: scale the cut by the total weight (an average 級分 per weighted subject)
+      const w115 = r.use ? r.use.reduce((a, u) => a + u.w, 0) : W;
+      cut = r.use ? (r.cut * d.use.reduce((a, u) => a + u.w, 0)) / w115 : r.cut;
+    }
+    if (missing.length || thFail.length) tier = '不符';
+    else if (arts || cut == null || !W) tier = '無資料';
+    else {
+      margin = (total - cut) / W;
+      tier = margin >= UAC_SAFE ? '穩' : margin >= 0 ? '適中' : margin >= UAC_REACH ? '衝' : '難';
+      if (tier === '穩' && (r.use || r.via)) tier = '適中'; // a changed 採計, or last year's 系 under another name, is never 穩
+    }
+    return { tier, total, lo, hi, W, cut, margin, missing, thFail, arts, est, changed: !!(r && (r.use || r.via)) };
+  }
+  /**
+   * How hard a 系組 was to get into in 115 (higher = harder): its cut as an average 級分 per weighted subject, read as
+   * a rank in each subject's table (歷史 averages ~41 but 數甲 ~25, so raw 級分 do not compare), 100 − weighted top%.
+   */
+  function uacSelectivity(d, T) {
+    const r = d.r115;
+    if (!r || r.cut == null) return null;
+    const use = r.use || d.use;
+    if (use.some(u => u.k === '術' || u.x === '術科')) return null; // the cut includes a 術科 score we cannot rank
+    const c = r.cut / use.reduce((a, u) => a + u.w, 0);
+    let s = 0, n = 0;
+    for (const u of use) {
+      const tab = T.g60[u.k] || T.ast[u.k];
+      if (!tab) continue;
+      s += u.w * topAt(tab, c); n += u.w;
+    }
+    return n ? 100 - s / n : null;
+  }
+
   return {
     SUBJ, SUBJ_NAME, LEVELS, TIERS, SAFE_RATIO, REACH_RATIO,
     val, sumOf, checkThreshold, countAtOrAbove, topPercent, compareCuts, screenPlan, missingUse, stage1Groups, stage1Uses,
@@ -696,5 +795,6 @@
     partsText, align116, compare116, screenChanges, unknownText, cutReason, flowText,
     expected115, thresholdRisk, evaluate, chanceKey, selectivity, satShare, targets, conflicts, fmtDay,
     splitTop, reviewGroups, stage2Kind, stage2, hasInterview, hasWritten, noVisit,
+    AST, AST_NAME, AST_FROM, UAC_SAFE, UAC_REACH, gsat60, topAt, atTop, estimateAst, scores60, evaluateUac, uacSelectivity,
   };
 });
