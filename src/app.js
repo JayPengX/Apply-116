@@ -1368,16 +1368,16 @@ loadAppData().then(D => {
   // How each kind of 審查資料 is handed in (116 簡章總則：審查資料上傳).
   const REVIEW_HOW = {
     修課紀錄: '學習歷程資料庫提供',
-    課程學習成果: '從學習歷程資料庫勾選，最多 3 件',
-    多元表現: '從學習歷程資料庫勾選，最多 10 件，另寫綜整心得（800 字、3 張圖以內）',
-    學習歷程自述: '自己寫，做成一個 PDF 上傳',
+    課程學習成果: '從學習歷程資料庫挑最多 3 件，有哪幾類就挑哪幾類',
+    多元表現: '從學習歷程資料庫挑最多 10 件，有哪幾類就挑哪幾類；另寫綜整心得 N（800 字、3 張圖以內）',
+    學習歷程自述: '自己寫，列出的幾項都寫到，做成一個 PDF 上傳',
     其他: '自己做成一個 PDF，內容依各系規定',
   };
   const codeChip = (c, t) => `<span class="code">${c ? `<b>${esc(c)}</b>` : ''}${esc(t)}</span>`;
   function reviewHTML(d) {
     const gs = L.reviewGroups(d.rv);
     if (!gs.length) return '';
-    return `<h4 class="d-h4">要交的審查資料</h4><div class="rgs">${gs.map(g => `<div class="rg"><p class="rg-h"><b>${esc(g.g)}</b>${REVIEW_HOW[g.g] ? `<span>${esc(REVIEW_HOW[g.g])}</span>` : ''}</p><div class="codes">${(g.g === '其他' ? g.items.map(it => codeChip(it.c, it.t)) : g.codes.map(c => codeChip(c, REVIEW[c] || ''))).join('')}</div></div>`).join('')}</div>`;
+    return `<h4 class="d-h4">要交的審查資料</h4><p class="hint rg-note">列出的是這個系會看的類別，不用每一類都有。挑最能代表你、跟這個系有關的；字數和必交項目以「審查資料說明」為準。</p><div class="rgs">${gs.map(g => `<div class="rg"><p class="rg-h"><b>${esc(g.g)}</b>${REVIEW_HOW[g.g] ? `<span>${esc(REVIEW_HOW[g.g])}</span>` : ''}</p><div class="codes">${(g.g === '其他' ? g.items.map(it => codeChip(it.c, it.t)) : g.codes.map(c => codeChip(c, REVIEW[c] || ''))).join('')}</div></div>`).join('')}</div>`;
   }
   const foldHTML = (title, text) => `<details class="fold"><summary>${icon('chevR', 'sm')}${esc(title)}</summary><div class="long">${esc(text)}</div></details>`;
   function stage2HTML(d) {

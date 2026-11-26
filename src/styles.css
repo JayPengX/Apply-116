@@ -1267,3 +1267,4 @@ button.gb:hover{background:var(--surface-2)}
 .qz-bar .qn{text-align:right;font-weight:700}
 .qz-note{margin:0;padding:10px 12px;border-radius:10px;background:var(--warn-bg);color:var(--warn);font-size:13.5px;line-height:1.6}
 .qz-act{display:flex;gap:8px;flex-wrap:wrap}
+.rg-note{margin:-4px 0 10px}
